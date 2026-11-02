@@ -23,11 +23,12 @@ export async function salvarLead(lead) {
     cidade: corta(lead.cidade, 80),
     equipamento: corta(lead.equipamento, 40),
     problema: corta(lead.problema, 60),
-    detalhe: corta(lead.detalhe, 600),
+    detalhe: corta(lead.detalhe, 1500),
     atendimento: corta(lead.atendimento, 40),
     servico: corta(lead.servico, 40),
     origem: corta(lead.origem, 120),
     utm: corta(lead.utm, 120),
+    indicacao: corta(lead.indicacao, 60),
     status: 'Novo',
   };
   if (new URLSearchParams(location.search).has('demo')) {

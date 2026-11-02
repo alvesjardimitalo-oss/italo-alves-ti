@@ -15,6 +15,8 @@ const estado = {
   online: navigator.onLine,
 };
 const ouvintes = new Set();
+const gatilhos = {};
+function disparar(col, id) { (gatilhos[col] || []).forEach((fn) => Promise.resolve().then(() => fn(id)).catch((e) => console.warn('gatilho', col, e))); }
 let motor = null;
 let prontoResolver;
 const pronto = new Promise((r) => (prontoResolver = r));
@@ -56,11 +58,20 @@ export const store = {
   /** Cria documento. Se `contador` for informado, grava `numero` sequencial (atômico). */
   async criar(col, dados, contador, extra) {
     const base = { ...limpar(dados), criadoEm: new Date().toISOString(), criadoPor: estado.usuario?.email || '' };
-    return motor.criar(col, base, contador, extra);
+    const r = await motor.criar(col, base, contador, extra);
+    disparar(col, r.id);
+    return r;
   },
-  async atualizar(col, id, dados) {
-    return motor.atualizar(col, id, { ...limpar(dados), atualizadoEm: new Date().toISOString(), atualizadoPor: estado.usuario?.email || '' });
+  async atualizar(col, id, dados, { semGatilho = false } = {}) {
+    const r = await motor.atualizar(col, id, { ...limpar(dados), atualizadoEm: new Date().toISOString(), atualizadoPor: estado.usuario?.email || '' });
+    if (!semGatilho) disparar(col, id);
+    return r;
   },
+  /** Grava um documento com ID definido (fora das coleções carregadas, ex.: rastreio público). */
+  async definir(col, id, dados) { return motor.definir(col, id, limpar(dados)); },
+  async apagarDoc(col, id) { return motor.remover(col, id); },
+  /** Executa fn(id) depois de criar/atualizar documentos da coleção. */
+  aposGravar(col, fn) { (gatilhos[col] = gatilhos[col] || []).push(fn); },
   async remover(col, id) { return motor.remover(col, id); },
   async salvarConfig(dados) { return motor.salvarConfig(limpar(dados)); },
   /** Importação em lote (migração do sistema antigo). itens = [{col, id, dados}] */
@@ -173,6 +184,7 @@ async function motorFirebase() {
     },
     atualizar: (col, id, dados) => F.updateDoc(F.doc(colRef(col), id), dados),
     remover: (col, id) => F.deleteDoc(F.doc(colRef(col), id)),
+    definir: (col, id, dados) => F.setDoc(F.doc(colRef(col), id), dados),
     salvarConfig: (dados) => F.setDoc(cfgRef, dados, { merge: true }),
     async importar(itens, contadores) {
       for (let i = 0; i < itens.length; i += 400) {
@@ -220,7 +232,8 @@ function motorDemo() {
       return { id: k, ...novo };
     },
     async atualizar(col, k, dados) { db[col][k] = { ...db[col][k], ...dados }; mudou(); },
-    async remover(col, k) { delete db[col][k]; mudou(); },
+    async remover(col, k) { if (db[col]) delete db[col][k]; mudou(); },
+    async definir(col, k, dados) { db[col] = db[col] || {}; db[col][k] = dados; gravar(); },
     async salvarConfig(dados) { db.config = { ...db.config, ...dados }; mudou(); },
     async importar(itens, contadores) {
       itens.forEach(({ col, id: k, dados }) => { db[col][k] = dados; });

@@ -1,0 +1,39 @@
+{
+  "name": "Ítalo Alves TI",
+  "short_name": "Ítalo TI",
+  "description": "Manutenção de computadores e notebooks",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "assets/img/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Acompanhar OS",
+      "url": "acompanhar.html"
+    },
+    {
+      "name": "Check-up",
+      "url": "ferramentas/checkup.html"
+    }
+  ]
+}

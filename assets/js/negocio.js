@@ -1,6 +1,7 @@
 // Regras de negócio calculadas a partir dos dados em memória.
 import { store } from './store.js';
 import { round2, situacaoPagamento, norm, STATUS_OS_ABERTO } from './util.js';
+import { idRastreio } from './rastreio-hash.js';
 
 export const pagamentosDo = (orcId) => store.lista('pagamentos').filter((p) => p.orcamentoId === orcId)
   .sort((a, b) => (a.data || '').localeCompare(b.data || '') || (a.numero || 0) - (b.numero || 0));
@@ -75,4 +76,46 @@ export function buscar(termo) {
     }
   });
   return res.slice(0, 12);
+}
+
+/** Publica (ou atualiza) o status público da OS para a página "Acompanhar OS" do site. */
+export async function publicarRastreio(osId) {
+  let os = store.get('os', osId);
+  for (let t = 0; !os && t < 5; t++) { await new Promise((r) => setTimeout(r, 400)); os = store.get('os', osId); }
+  if (!os || !os.codigo) return;
+  const id = await idRastreio(os.codigo, os.clienteTelefone);
+  if (os.rastreioId && os.rastreioId !== id) await store.apagarDoc('rastreio', os.rastreioId).catch(() => {});
+  if (!id) return;
+  const orc = orcamentosDaOS(osId).find((o) => o.status !== 'Cancelado');
+  await store.definir('rastreio', id, {
+    codigo: os.codigo,
+    equipamento: [os.equipamento, os.marca].filter(Boolean).join(' '),
+    status: os.status,
+    entrada: os.entrada || '',
+    saida: os.saida || '',
+    recado: os.recado || '',
+    orcamento: orc ? { numero: orc.numero, status: orc.status, total: orc.total } : null,
+    atualizadoEm: new Date().toISOString(),
+  });
+  if (os.rastreioId !== id) await store.atualizar('os', osId, { rastreioId: id }, { semGatilho: true });
+}
+
+/** Link público para o cliente acompanhar a OS. */
+export function linkAcompanhar(codigo) {
+  return new URL('acompanhar.html?os=' + encodeURIComponent(codigo), location.href.split('#')[0].replace(/[^/]*$/, '')).href.replace(/\?demo&?/, '?');
+}
+
+/** Clientes cuja última OS foi entregue há 11 meses ou mais (lembrete de manutenção preventiva). */
+export function lembretesManutencao() {
+  const limite = new Date();
+  limite.setMonth(limite.getMonth() - 11);
+  const lim = limite.toISOString().slice(0, 10);
+  const porCliente = {};
+  store.lista('os').forEach((o) => {
+    const atual = porCliente[o.clienteId];
+    if (!atual || (o.entrada || '') > (atual.entrada || '')) porCliente[o.clienteId] = o;
+  });
+  return Object.values(porCliente)
+    .filter((o) => o.status === 'Entregue' && (o.saida || o.entrada || '') <= lim && !(o.lembreteEm && o.lembreteEm.slice(0, 10) > lim))
+    .sort((a, b) => (a.saida || a.entrada || '').localeCompare(b.saida || b.entrada || ''));
 }

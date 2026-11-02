@@ -37,7 +37,7 @@ export function lista(el, _p, query) {
       && (!t || norm([l.nome, l.cidade, l.problema, l.equipamento, l.detalhe].join(' ')).includes(t)));
     el.querySelector('#tab').innerHTML = itens.length ? `<table class="tabela"><thead><tr><th>Recebido</th><th>Contato</th><th>Pedido</th><th>Atendimento</th><th>Status</th><th></th></tr></thead><tbody>
       ${itens.map((l) => `<tr>
-        <td class="nowrap">${dataBR(l.criadoEm, true)}<div class="sub">${esc(l.origem || '')}${l.utm ? ' · ' + esc(l.utm) : ''}</div></td>
+        <td class="nowrap">${dataBR(l.criadoEm, true)}<div class="sub">${esc(l.origem || '')}${l.utm ? ' · ' + esc(l.utm) : ''}</div>${l.indicacao ? `<div class="sub" style="color:var(--ok)">indicação: ${esc(l.indicacao)}</div>` : ''}</td>
         <td><div class="forte">${esc(l.nome)}</div><div class="sub">${esc(formatFone(l.whatsapp))} · ${esc(l.cidade)}</div></td>
         <td>${esc(l.equipamento)} · ${esc(l.problema)}<div class="sub">${esc(l.servico || '')}${l.detalhe ? ' — ' + esc(l.detalhe.slice(0, 90)) + (l.detalhe.length > 90 ? '…' : '') : ''}</div></td>
         <td class="sub">${esc(l.atendimento)}</td>
@@ -65,7 +65,7 @@ function detalhe(l) {
     conteudo: `<dl class="info">
         <dt>Recebido</dt><dd>${dataBR(l.criadoEm, true)}</dd><dt>WhatsApp</dt><dd>${esc(formatFone(l.whatsapp))}</dd><dt>Cidade</dt><dd>${esc(l.cidade)}</dd>
         <dt>Pedido</dt><dd>${esc(l.servico)}</dd><dt>Equipamento</dt><dd>${esc(l.equipamento)}</dd><dt>Problema</dt><dd>${esc(l.problema)}</dd>
-        <dt>Atendimento</dt><dd>${esc(l.atendimento)}</dd>${l.origem ? `<dt>Origem</dt><dd>${esc(l.origem)}${l.utm ? ' · ' + esc(l.utm) : ''}</dd>` : ''}</dl>
+        <dt>Atendimento</dt><dd>${esc(l.atendimento)}</dd>${l.indicacao ? `<dt>Indicação</dt><dd>${esc(l.indicacao)}</dd>` : ''}${l.origem ? `<dt>Origem</dt><dd>${esc(l.origem)}${l.utm ? ' · ' + esc(l.utm) : ''}</dd>` : ''}</dl>
       ${l.detalhe ? `<div class="texto-bloco" style="margin-top:12px">${esc(l.detalhe)}</div>` : ''}
       <form id="fl" class="form" style="margin-top:16px">
         <div class="campo c6"><label>Status</label><select name="status">${Object.keys(STATUS_LEAD).map((s) => `<option ${l.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>

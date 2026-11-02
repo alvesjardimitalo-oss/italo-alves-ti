@@ -4,7 +4,7 @@ import {
   esc, norm, badge, STATUS_OS, STATUS_OS_ABERTO, STATUS_ORC, TIPOS_EQUIP, dataBR, hojeISO, diasDesde, formatFone,
   lerForm, toast, confirmar, codOS, money, whatsapp, botoesImpressao, vazio,
 } from '../util.js';
-import { clientesOrdenados, orcamentosDaOS, pagamentosDo, situacaoDo, empresa } from '../negocio.js';
+import { clientesOrdenados, orcamentosDaOS, pagamentosDo, situacaoDo, empresa, linkAcompanhar } from '../negocio.js';
 
 export function lista(el, _p, query) {
   let filtro = query.status || 'abertas';
@@ -60,6 +60,7 @@ export function form(el, params, query) {
         <h1>${id ? `<span class="cod" style="font-size:1.3rem">${esc(os.codigo)}</span> · ${esc(os.equipamento)}` : 'Nova ordem de serviço'}</h1>
         ${id ? `<p>${esc(os.clienteNome)} · entrada em ${dataBR(os.entrada)} ${badge(os.status, STATUS_OS)}</p>` : '<p>Registre o equipamento que o cliente deixou na bancada.</p>'}</div>
       ${id ? `<div class="acoes">${botoesImpressao('entrada', id, 'Comprovante')}
+        ${whatsapp(os.clienteTelefone) ? `<a class="btn" target="_blank" rel="noopener" title="Mandar o link para o cliente acompanhar" href="${esc(whatsapp(os.clienteTelefone, `Olá, ${os.clienteNome.split(' ')[0]}! Você pode acompanhar o conserto do seu ${os.equipamento} (${os.codigo}) por aqui: ${linkAcompanhar(os.codigo)} (use o código ${os.codigo} e o seu telefone). — ${empresa().nome}`))}">${icon('globe', 16)} Link de acompanhamento</a>` : ''}
         ${os.status === 'Pronto para retirada' && whatsapp(os.clienteTelefone) ? `<a class="btn" target="_blank" rel="noopener" href="${esc(whatsapp(os.clienteTelefone, `Olá, ${os.clienteNome.split(' ')[0]}! Seu ${os.equipamento} (${os.codigo}) está pronto para retirada. — ${empresa().nome}`))}">${icon('whatsapp', 16)} Avisar cliente</a>` : ''}
         <a class="btn btn-primary" href="#/orcamentos/novo?os=${id}">${icon('plus', 16)} Orçamento</a></div>` : ''}
     </div>
@@ -83,6 +84,7 @@ export function form(el, params, query) {
           <div class="campo c12"><label>Acessórios recebidos</label><input name="acessorios" maxlength="200" value="${esc(v.acessorios)}" placeholder="Carregador, bolsa, mouse… ou nenhum"></div>
           <div class="campo c6"><label>Defeito relatado pelo cliente</label><textarea name="defeito" maxlength="2000">${esc(v.defeito)}</textarea></div>
           <div class="campo c6"><label>Laudo técnico / solução</label><textarea name="laudo" maxlength="2000">${esc(v.laudo)}</textarea></div>
+          <div class="campo c12"><label>Recado para o cliente <span class="sub">(aparece na página "Acompanhar OS" do site)</span></label><input name="recado" maxlength="200" value="${esc(v.recado)}" placeholder="Ex.: peça chega na quinta; pode retirar a partir das 14h…"></div>
         </div>
         <div class="form-acoes">
           ${id ? `<button type="button" class="btn btn-danger" id="excluir">${icon('trash', 16)} Excluir</button><span style="flex:1"></span>` : ''}

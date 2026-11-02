@@ -96,6 +96,15 @@ function rodape(extra = '') {
   return `<footer class="rod">${extra}${e.rodape ? `<div class="frase">${esc(e.rodape)}</div>` : ''}<div class="pequeno">Emitido em ${new Date().toLocaleString('pt-BR')}</div></footer>`;
 }
 
+function blocoAcompanhar(codigo) {
+  const url = new URL('acompanhar.html?os=' + encodeURIComponent(codigo), location.href).href;
+  const tam = formato === '80' ? 120 : 90;
+  return `<section class="pix"><div class="pix-qr">${qrSvg(url, { tamanho: tam })}</div>
+    <div class="pix-txt"><div class="pix-tit">Acompanhe o seu conserto</div>
+      <div class="pequeno">Leia o QR Code ou acesse o link abaixo e informe o código <b>${esc(codigo)}</b> e o seu telefone.</div>
+      <div class="copia">${esc(url.replace(/^https?:\/\//, ''))}</div></div></section>`;
+}
+
 /* ---------------- Documentos ---------------- */
 function docEntrada() {
   const os = store.get('os', id);
@@ -106,6 +115,7 @@ function docEntrada() {
   return cabecalho(TITULOS.entrada, os.codigo, 'Entrada em ' + dataBR(os.entrada))
     + blocoCliente(cli) + blocoEquip(os)
     + texto('Defeito relatado pelo cliente', os.defeito || '-')
+    + blocoAcompanhar(os.codigo)
     + (termos.length ? secao('Termos', `<ol class="termos">${termos.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>`) : '')
     + assinaturas([cli.nome, 'Cliente'], [e.nome, 'Recebido em ' + dataBR(os.entrada)])
     + rodape(formato === '80' ? '<div class="pequeno forte">Apresente este comprovante na retirada.</div>' : '');

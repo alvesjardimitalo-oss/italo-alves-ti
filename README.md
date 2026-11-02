@@ -5,17 +5,32 @@ O projeto tem duas partes:
 - **Site público** (`index.html` e `dicas/`): apresenta os serviços, traz dicas e explicações de problemas e tem o assistente **"Fale comigo"**. O assistente monta o pedido do cliente, manda para o WhatsApp e salva o contato como **lead** no sistema.
 - **Sistema** (`sistema.html`, link "área técnica" no rodapé do site): a parte de gestão, descrita abaixo.
 
-### Configurar o site
+### Editar o site (sem programar)
 
-Edite `assets/js/site-config.js` direto pelo GitHub (botão de lápis):
-- `whatsapp`: número com 55 + DDD, só números (ex.: `5533999998888`). **Sem ele, o botão "Enviar pelo WhatsApp" não aparece.** O pedido continua sendo salvo no sistema.
-- `horario`: horário de atendimento (opcional).
-- `regiaoPresencial`: texto da área de atendimento presencial.
+O conteúdo do site fica na pasta **`conteudo/`**. Edite pelo GitHub (botão de lápis) e salve. Em cerca de 1 minuto, a ação **"Gerar site"** (aba *Actions*) cria as páginas de novo.
+
+| Arquivo | O que controla |
+|---|---|
+| `site.json` | WhatsApp, e-mail, horário, região, links do Google/Instagram, texto e foto do "Sobre", plano anual |
+| `cidades.json` | cidades atendidas. Cada uma vira uma página própria no Google ("Manutenção de notebook em …") |
+| `precos.json` | tabela "a partir de". Fica escondida enquanto os valores estiverem vazios |
+| `galeria.json` | fotos de antes e depois (envie as fotos para `assets/galeria/`) |
+| `avaliacoes.json` | avaliações reais copiadas do seu Perfil no Google |
+| `artigos.json` | dicas e artigos (o texto é HTML simples) |
+
+Não edite `index.html`, `dicas/`, `ferramentas/` e as outras páginas geradas: o gerador sobrescreve essas páginas.
+
+### Ferramentas do site
+Check-up do computador, Consertar ou trocar?, Monte seu PC, Teste de velocidade e Teste de teclado/tela/som/microfone/câmera. O resultado de cada uma pode ser enviado ao técnico pelo "Fale comigo".
+
+### Acompanhar OS
+Ao salvar uma OS, o sistema publica só o **status** dela num endereço secreto, calculado a partir do código da OS e do telefone do cliente. O cliente consulta em `acompanhar.html` com esses dois dados. O comprovante de entrada já sai com o QR Code dessa página. O campo "Recado para o cliente" da OS aparece lá.
 
 ### Captar clientes (leads)
 
 - Cada pedido feito no assistente aparece em **Pedidos do site**, dentro do sistema. Lá dá para responder pelo WhatsApp com um clique, anotar o andamento e transformar o pedido em cliente.
-- Para saber de onde vem cada cliente, divulgue o link com uma etiqueta no final. Ex.: `…/italo-alves-ti/?utm_source=instagram` ou `?utm_source=google-meu-negocio`. A origem aparece em cada pedido.
+- Em **Divulgação e indicação**, dentro do sistema, você gera links com etiqueta de origem e QR Codes para Instagram, Google, cartão, panfleto e adesivo. Também gera o link de indicação de cada cliente (`?ref=Nome`) e vê de onde vêm os pedidos e quem mais indica.
+- Em **Lembretes de manutenção** aparecem os clientes com a última OS entregue há 11 meses ou mais, com a mensagem pronta para o WhatsApp.
 - Para aparecer no Google:
   - cadastre o site no **Google Search Console** e envie o `sitemap.xml`;
   - crie ou atualize o **Perfil da Empresa no Google** (Google Meu Negócio) apontando para o site.

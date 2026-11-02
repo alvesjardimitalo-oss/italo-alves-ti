@@ -1,7 +1,7 @@
 import { store, COLECOES } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, lerForm, toast, confirmar, digits, codOS, round2, hojeISO } from '../util.js';
-import { empresa } from '../negocio.js';
+import { empresa, publicarRastreio } from '../negocio.js';
 
 export function tela(el) {
   const e = empresa();
@@ -48,6 +48,11 @@ export function tela(el) {
         <button class="btn" id="backup">${icon('download', 16)} Baixar backup</button>
       </div>
       <div class="card">
+        <div class="card-head"><h2>${icon('globe')} Acompanhar OS (site)</h2></div>
+        <p class="sub" style="margin-top:0">Cada OS salva já atualiza o status na página pública do site. Use este botão uma vez depois de importar dados antigos ou trocar telefones em massa.</p>
+        <button class="btn" id="rastreio">${icon('upload', 16)} Publicar status de todas as OS</button> <span class="sub" id="rastreio-res"></span>
+      </div>
+      <div class="card">
         <div class="card-head"><h2>${icon('upload')} Importar do sistema antigo (WAMP)</h2></div>
         <p class="sub" style="margin-top:0">1) Copie <code>tools/exportar_para_firebase.php</code> para a pasta do sistema antigo no WAMP e abra no navegador. 2) Envie aqui o arquivo JSON gerado. Pode importar mais de uma vez: o mesmo registro é atualizado, não duplica.</p>
         <input type="file" id="arq" accept=".json,application/json" style="display:none">
@@ -70,6 +75,15 @@ export function tela(el) {
     a.href = URL.createObjectURL(new Blob([JSON.stringify(store.exportar(), null, 1)], { type: 'application/json' }));
     a.download = `italo-alves-ti_backup_${hojeISO()}.json`;
     a.click();
+  });
+
+  el.querySelector('#rastreio').addEventListener('click', async (ev) => {
+    ev.target.disabled = true;
+    const lista = store.lista('os');
+    let n = 0;
+    for (const o of lista) { await publicarRastreio(o.id); n++; el.querySelector('#rastreio-res').textContent = `${n}/${lista.length}`; }
+    toast(`Status de ${n} OS publicado.`);
+    ev.target.disabled = false;
   });
 
   const arq = el.querySelector('#arq');

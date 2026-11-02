@@ -14,10 +14,11 @@
   <meta property="og:site_name" content="Ítalo Alves TI">
   <meta property="og:locale" content="pt_BR">
   <link rel="icon" href="./assets/img/logo.svg" type="image/svg+xml">
+  <link rel="manifest" href="./site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="./assets/css/site.css?v=1.1.0">
+  <link rel="stylesheet" href="./assets/css/site.css?v=2.0.0">
 </head>
 <body>
   <header class="topo">
@@ -25,10 +26,10 @@
       <a href="./" class="marca"><img src="./assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
       <nav class="menu" aria-label="Principal">
         <a href="./#servicos">Serviços</a>
-        <a href="./#como-funciona">Como funciona</a>
-        <a href="./#problemas">Problemas comuns</a>
+        <a href="./ferramentas/">Ferramentas</a>
         <a href="./dicas/">Dicas</a>
-        <a href="./#duvidas">Dúvidas</a>
+        <a href="./empresas.html">Empresas</a>
+        <a href="./acompanhar.html">Acompanhar OS</a>
       </nav>
       <a href="#fale-comigo" class="btn btn-pri btn-sm btn-topo" data-abrir-chat>Pedir orçamento</a>
       <button class="menu-toggle" type="button" aria-label="Menu">☰</button>
@@ -36,38 +37,54 @@
   </header>
 
   <main>
-    <div class="artigo-hero"><div class="wrap"><div class="crumb"><a href="./">início</a> / privacidade</div><h1>Política de privacidade</h1>
-      <p>Resumo simples de como os seus dados são usados, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p></div></div>
-    <div class="wrap artigo"><article class="conteudo">
-      <h2>Quais dados são coletados</h2>
-      <p>Quando você usa o assistente "Fale comigo", são coletados: nome, cidade, número de WhatsApp, tipo de equipamento, descrição do problema e preferência de atendimento. Também é registrada a página de onde o pedido foi enviado.</p>
-      <h2>Para que são usados</h2>
-      <p>Exclusivamente para responder ao seu pedido: entrar em contato, enviar orçamento e prestar o serviço solicitado. Os dados não são vendidos nem compartilhados com terceiros para fins de propaganda.</p>
-      <h2>Onde ficam guardados</h2>
-      <p>Em um banco de dados na nuvem (Google Firebase), com acesso restrito ao responsável pelo atendimento. Ao tocar em "Enviar pelo WhatsApp", a mensagem segue também pelo aplicativo WhatsApp, sujeito às regras dele.</p>
-      <h2>Por quanto tempo</h2>
-      <p>Pelo tempo necessário para o atendimento e para cumprir obrigações legais (por exemplo, garantia do serviço). Pedidos que não viraram atendimento podem ser apagados a qualquer momento.</p>
-      <h2>Seus direitos</h2>
-      <p>Você pode pedir para ver, corrigir ou apagar os seus dados a qualquer momento pelo e-mail <a href="mailto:alvesjardim.italo@gmail.com">alvesjardim.italo@gmail.com</a> ou pelo próprio WhatsApp de atendimento.</p>
-    </article></div>
+    <div class="artigo-hero"><div class="wrap">
+      <div class="crumb"><a href="./">início</a> / privacidade</div>
+      <h1>Política de privacidade</h1><p>Resumo simples de como os seus dados são usados, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p>
+    </div></div>
+    <div class="wrap pagina-larga">
+      <article class="conteudo">
+
+        <h2>Quais dados são coletados</h2>
+        <p>Quando você usa o assistente "Fale comigo" ou envia o resultado de uma ferramenta, são coletados: nome, cidade, número de WhatsApp, tipo de equipamento, descrição do problema, preferência de atendimento e, se você enviar, o resumo do check-up. Também são registradas a página de onde o pedido foi enviado e, se houver, quem indicou.</p>
+        <p>As ferramentas de teste (teclado, tela, som, microfone, câmera e velocidade) funcionam só no seu aparelho. Nada é gravado nem enviado.</p>
+        <h2>Para que são usados</h2>
+        <p>Exclusivamente para responder ao seu pedido: entrar em contato, enviar orçamento e prestar o serviço solicitado. Os dados não são vendidos nem compartilhados com terceiros para fins de propaganda.</p>
+        <h2>Onde ficam guardados</h2>
+        <p>Em um banco de dados na nuvem (Google Firebase), com acesso restrito ao responsável pelo atendimento. Ao tocar em "Enviar pelo WhatsApp", a mensagem segue também pelo aplicativo WhatsApp, sujeito às regras dele.</p>
+        <p>Na página "Acompanhar OS" só aparecem o status e o tipo de equipamento, nunca nome, endereço ou documento.</p>
+        <h2>Por quanto tempo</h2>
+        <p>Pelo tempo necessário para o atendimento e para cumprir obrigações legais (por exemplo, garantia do serviço). Pedidos que não viraram atendimento podem ser apagados a qualquer momento.</p>
+        <h2>Seus direitos</h2>
+        <p>Você pode pedir para ver, corrigir ou apagar os seus dados a qualquer momento pelo e-mail <a href="mailto:alvesjardim.italo@gmail.com">alvesjardim.italo@gmail.com</a> ou pelo WhatsApp de atendimento.</p>
+      </article>
+      
+    </div>
   </main>
 
   <footer class="rodape">
     <div class="wrap">
       <div>
         <a href="./" class="marca"><img src="./assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
-        <p>Manutenção de computadores e notebooks. Atendimento presencial em <span data-regiao>Frei Inocêncio e região</span> e suporte remoto para todo o Brasil.</p>
-        <p data-horario hidden></p>
+        <p>Manutenção de computadores e notebooks. Atendimento presencial em Frei Inocêncio e região e suporte remoto para todo o Brasil.</p>
+        <p><b>Atendimento 24 horas</b></p>
+        <p>WhatsApp: <a href="https://wa.me/5533998556503?text=Ol%C3%A1!%20Vim%20pelo%20site%20e%20gostaria%20de%20um%20or%C3%A7amento." rel="noopener" target="_blank">(33) 99855-6503</a></p>
       </div>
       <div><h4>Dicas</h4><ul><li><a href="./dicas/notebook-esquentando.html">Notebook esquentando</a></li><li><a href="./dicas/computador-lento.html">Computador lento</a></li><li><a href="./dicas/computador-nao-liga.html">Computador não liga</a></li><li><a href="./dicas/tela-azul.html">Tela azul</a></li><li><a href="./dicas/ssd-ou-hd.html">SSD ou HD?</a></li><li><a href="./dicas/">Ver todas</a></li></ul></div>
       <div><h4>Atendimento</h4><ul>
         <li><a href="#fale-comigo" data-abrir-chat>Fale comigo</a></li>
-        <li><a href="./#servicos">Serviços</a></li>
-        <li><a href="./politica-de-privacidade.html">Política de privacidade</a></li>
+        <li><a href="./acompanhar.html">Acompanhar minha OS</a></li>
+        <li><a href="./ferramentas/checkup.html">Check-up do computador</a></li>
+        <li><a href="./suporte-remoto.html">Suporte remoto</a></li>
+        <li><a href="./atendimento/">Cidades atendidas</a></li>
+        <li><a href="./garantia.html">Garantia</a></li>
+        <li><a href="./sobre.html">Sobre</a></li>
+        
+        <li><a href="./politica-de-privacidade.html">Privacidade</a></li>
       </ul></div>
     </div>
     <div class="rodape-base"><span>© <span data-ano></span> Ítalo Alves TI · Frei Inocêncio/MG</span><a class="area-tec" href="./sistema.html" rel="nofollow">área técnica</a></div>
   </footer>
-  <script type="module" src="./assets/js/site.js?v=1.1.0"></script>
+  <a class="wa-fab" href="https://wa.me/5533998556503?text=Ol%C3%A1!%20Vim%20pelo%20site%20e%20gostaria%20de%20um%20or%C3%A7amento." target="_blank" rel="noopener" aria-label="Chamar no WhatsApp"><svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.3-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.5-.6-2.7-1.2-4.4-3.9-4.6-4.1-.1-.2-1.1-1.4-1.1-2.7 0-1.3.7-1.9.9-2.2.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.7 1.2 1.6 1.9 1.1 1 2 1.3 2.3 1.4.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.7-.1 1.2z"/></svg></a>
+  <script type="module" src="./assets/js/site.js?v=2.0.0"></script>
 </body>
 </html>

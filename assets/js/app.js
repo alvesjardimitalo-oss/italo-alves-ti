@@ -2,7 +2,7 @@
 import { store } from './store.js';
 import { icon } from './icons.js';
 import { esc, VERSAO, toast } from './util.js';
-import { buscar, osAbertas, aReceber } from './negocio.js';
+import { buscar, osAbertas, aReceber, publicarRastreio, lembretesManutencao } from './negocio.js';
 import * as vDashboard from './views/dashboard.js';
 import * as vClientes from './views/clientes.js';
 import * as vOS from './views/os.js';
@@ -12,6 +12,8 @@ import * as vFin from './views/financeiro.js';
 import * as vCat from './views/catalogo.js';
 import * as vCfg from './views/config.js';
 import * as vLeads from './views/leads.js';
+import * as vDiv from './views/divulgacao.js';
+import * as vLemb from './views/lembretes.js';
 
 const $ = (s) => document.querySelector(s);
 $('#versao').textContent = VERSAO;
@@ -25,6 +27,8 @@ const ROTAS = [
   ['/notas', vNotas.lista], ['/notas/:id', vNotas.detalhe],
   ['/financeiro', vFin.lista],
   ['/leads', vLeads.lista],
+  ['/divulgacao', vDiv.tela],
+  ['/lembretes', vLemb.lista],
   ['/catalogo', vCat.lista],
   ['/config', vCfg.tela],
 ];
@@ -39,7 +43,9 @@ const MENU = [
   ['/notas', 'nota', 'Notas de serviço'],
   ['/clientes', 'users', 'Clientes'],
   ['Gestão'],
+  ['/lembretes', 'clock', 'Lembretes de manutenção', () => lembretesManutencao().length],
   ['/financeiro', 'financeiro', 'Financeiro', () => aReceber().length],
+  ['/divulgacao', 'globe', 'Divulgação e indicação'],
   ['/catalogo', 'catalogo', 'Produtos e serviços'],
   ['/config', 'config', 'Configurações'],
 ];
@@ -172,6 +178,10 @@ $('#btn-login').addEventListener('click', async () => {
     if (e.code !== 'auth/popup-closed-by-user') $('#login-msg').textContent = 'Não foi possível entrar: ' + (e.message || e);
   }
 });
+
+// "Acompanhar OS" do site: toda OS gravada (ou orçamento dela) atualiza o status público
+store.aposGravar('os', (id) => publicarRastreio(id));
+store.aposGravar('orcamentos', (id) => { const o = store.get('orcamentos', id); if (o) publicarRastreio(o.osId); });
 
 let iniciado = false;
 $('#view').innerHTML = '<div class="carregando"><div class="spinner"></div>carregando…</div>';

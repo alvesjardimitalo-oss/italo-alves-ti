@@ -15,7 +15,7 @@
     }
     match /ti/base/leads/{leadId} {
       allow create: if request.resource.data.keys().hasOnly(['nome', 'whatsapp', 'cidade', 'equipamento', 'problema',
-                         'detalhe', 'atendimento', 'servico', 'origem', 'utm', 'status', 'criadoEm'])
+                         'detalhe', 'atendimento', 'servico', 'origem', 'utm', 'indicacao', 'status', 'criadoEm'])
         && request.resource.data.nome is string
         && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 80
         && request.resource.data.whatsapp is string
@@ -23,11 +23,17 @@
         && tiTexto(request.resource.data, 'cidade', 80)
         && tiTexto(request.resource.data, 'equipamento', 40)
         && tiTexto(request.resource.data, 'problema', 60)
-        && tiTexto(request.resource.data, 'detalhe', 600)
+        && tiTexto(request.resource.data, 'detalhe', 1500)
         && tiTexto(request.resource.data, 'atendimento', 40)
         && tiTexto(request.resource.data, 'servico', 40)
         && tiTexto(request.resource.data, 'origem', 120)
         && tiTexto(request.resource.data, 'utm', 120)
+        && tiTexto(request.resource.data, 'indicacao', 60)
         && request.resource.data.status == 'Novo'
         && request.resource.data.criadoEm == request.time;
+    }
+    // "Acompanhar OS": o visitante só LÊ um documento se souber o ID exato
+    // (hash do código da OS + telefone). Não dá para listar nem gravar.
+    match /ti/base/rastreio/{rastreioId} {
+      allow get: if true;
     }

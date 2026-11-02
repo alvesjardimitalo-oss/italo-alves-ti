@@ -17,6 +17,28 @@ document.querySelectorAll('[data-wa-direto]').forEach((a) => {
   else a.addEventListener('click', (e) => { e.preventDefault(); abrirChat(); });
 });
 
+/* ---------------- indicação (?ref=Nome) — vale por 60 dias ---------------- */
+let indicacao = '';
+try {
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref) localStorage.setItem('italoti-ref', JSON.stringify({ nome: ref.slice(0, 60), ate: Date.now() + 60 * 864e5 }));
+  const salvo = JSON.parse(localStorage.getItem('italoti-ref') || 'null');
+  if (salvo && salvo.ate > Date.now()) indicacao = salvo.nome;
+} catch (e) { /* sem armazenamento */ }
+
+/* ---------------- origem da visita (utm_*) — guardada por 60 dias, vale para qualquer página ---------------- */
+let origemCampanha = '';
+try {
+  const q = new URLSearchParams(location.search);
+  const u = ['utm_source', 'utm_medium', 'utm_campaign'].map((k) => q.get(k)).filter(Boolean).join(' / ');
+  if (u) localStorage.setItem('italoti-utm', JSON.stringify({ u: u.slice(0, 120), ate: Date.now() + 60 * 864e5 }));
+  else if (document.referrer && !document.referrer.startsWith(location.origin) && !localStorage.getItem('italoti-utm')) {
+    localStorage.setItem('italoti-utm', JSON.stringify({ u: document.referrer.replace(/^https?:\/\//, '').split('/')[0].slice(0, 120), ate: Date.now() + 60 * 864e5 }));
+  }
+  const s = JSON.parse(localStorage.getItem('italoti-utm') || 'null');
+  if (s && s.ate > Date.now()) origemCampanha = s.u;
+} catch (e) { /* sem armazenamento */ }
+
 /* ---------------- assistente ---------------- */
 const ARTIGOS = [
   ['Notebook esquentando e desligando', 'dicas/notebook-esquentando.html'],
@@ -54,13 +76,16 @@ let iniciado = false;
 let esperando = null; // função que recebe o texto digitado
 const lead = {};
 
-function abrirChat() {
+function abrirChat(prefill) {
+  if (prefill && typeof prefill === 'object') Object.assign(lead, prefill);
+  document.body.classList.add('chat-on');
   chat.classList.add('aberto');
   chat.setAttribute('aria-hidden', 'false');
   $('#chat-fab').hidden = true;
   if (!iniciado) { iniciado = true; inicio(); }
 }
 function fecharChat() {
+  document.body.classList.remove('chat-on');
   chat.classList.remove('aberto');
   chat.setAttribute('aria-hidden', 'true');
   $('#chat-fab').hidden = false;
@@ -69,8 +94,7 @@ $('#chat-fab').addEventListener('click', abrirChat);
 $('#chat-fechar').addEventListener('click', fecharChat);
 document.querySelectorAll('[data-abrir-chat]').forEach((b) => b.addEventListener('click', (e) => {
   e.preventDefault();
-  if (b.dataset.servico) lead.servico = b.dataset.servico;
-  abrirChat();
+  abrirChat(b.dataset.servico ? { servico: b.dataset.servico } : null);
 }));
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && chat.classList.contains('aberto')) fecharChat(); });
 
@@ -153,19 +177,25 @@ async function duvida() {
 }
 
 async function fluxoPedido() {
-  await bot('Qual é o equipamento?');
-  lead.equipamento = await opcoes(['Notebook', 'Computador (desktop)', 'All-in-one', 'Impressora', 'Outro']);
-
-  await bot('O que está acontecendo?');
-  lead.problema = await opcoes(['Não liga', 'Está lento', 'Esquenta / desliga sozinho', 'Tela / imagem', 'Vírus / propagandas', 'Formatar / instalar Windows', 'Trocar peça / upgrade', 'Outro']);
-
-  await bot('Se quiser, descreva com suas palavras (desde quando, se caiu, se molhou, mensagens de erro…). Ou toque em <b>Pular</b>.');
-  const det = await Promise.race([
-    pergunta('Descreva o problema…', { validar: (t) => (t.length > 600 ? 'Texto muito longo, resuma um pouco 🙂' : '') }),
-    opcoes(['Pular']).then(() => { entrada.disabled = true; btnEnv.disabled = true; esperando = null; return ''; }),
-  ]);
-  document.querySelectorAll('#chat-msgs .opcoes').forEach((o) => o.remove());
-  lead.detalhe = det;
+  if (!lead.equipamento) {
+    await bot('Qual é o equipamento?');
+    lead.equipamento = await opcoes(['Notebook', 'Computador (desktop)', 'All-in-one', 'Impressora', 'Outro']);
+  }
+  if (!lead.problema) {
+    await bot('O que está acontecendo?');
+    lead.problema = await opcoes(['Não liga', 'Está lento', 'Esquenta / desliga sozinho', 'Tela / imagem', 'Vírus / propagandas', 'Formatar / instalar Windows', 'Trocar peça / upgrade', 'Outro']);
+  }
+  if (lead.detalhe) {
+    await bot('Já anexei o resultado da ferramenta ao seu pedido. ✅', 300);
+  } else {
+    await bot('Se quiser, descreva com suas palavras (desde quando, se caiu, se molhou, mensagens de erro…). Ou toque em <b>Pular</b>.');
+    const det = await Promise.race([
+      pergunta('Descreva o problema…', { validar: (t) => (t.length > 600 ? 'Texto muito longo, resuma um pouco 🙂' : '') }),
+      opcoes(['Pular']).then(() => { entrada.disabled = true; btnEnv.disabled = true; esperando = null; return ''; }),
+    ]);
+    document.querySelectorAll('#chat-msgs .opcoes').forEach((o) => o.remove());
+    lead.detalhe = det;
+  }
 
   await bot('Como prefere o atendimento?');
   lead.atendimento = await opcoes([`Levo até a assistência (${SITE.cidade})`, 'Atendimento remoto (qualquer cidade)', 'Preciso que busquem o equipamento']);
@@ -193,6 +223,7 @@ function textoPedido() {
     `*Equipamento:* ${lead.equipamento}`,
     `*Problema:* ${lead.problema}`,
     lead.detalhe ? `*Detalhes:* ${lead.detalhe}` : '',
+    indicacao ? `*Indicação de:* ${indicacao}` : '',
     `*Atendimento:* ${lead.atendimento}`,
     `*Nome:* ${lead.nome}`,
     `*Cidade:* ${lead.cidade}`,
@@ -211,10 +242,9 @@ async function concluir() {
   const ultimo = Number(localStorage.getItem('italoti-ultimo-lead') || 0);
   const bloqueado = $('#chat-hp').value || Date.now() - ultimo < 120000;
 
-  const utm = ['utm_source', 'utm_medium', 'utm_campaign'].map((k) => new URLSearchParams(location.search).get(k)).filter(Boolean).join(' / ');
   if (!bloqueado) {
     localStorage.setItem('italoti-ultimo-lead', String(Date.now()));
-    salvarLead({ ...lead, origem: location.pathname.split('/').pop() || 'inicio', utm: utm || document.referrer.replace(/^https?:\/\//, '').slice(0, 120) });
+    salvarLead({ ...lead, indicacao, origem: location.pathname.split('/').pop() || 'inicio', utm: origemCampanha });
   }
 
   if (SITE.whatsapp) {
@@ -232,3 +262,11 @@ async function concluir() {
 
 // abre o assistente direto se o link tiver #fale-comigo
 if (location.hash === '#fale-comigo') abrirChat();
+
+// API para as ferramentas: window.FaleComigo.abrir({ servico, equipamento, problema, detalhe })
+window.FaleComigo = { abrir: abrirChat };
+
+// app instalável (PWA): guarda as páginas para abrir rápido e funcionar com internet fraca
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register(raiz + 'sw.js').catch(() => {}));
+}
