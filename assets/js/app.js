@@ -11,6 +11,7 @@ import * as vNotas from './views/notas.js';
 import * as vFin from './views/financeiro.js';
 import * as vCat from './views/catalogo.js';
 import * as vCfg from './views/config.js';
+import * as vLeads from './views/leads.js';
 
 const $ = (s) => document.querySelector(s);
 $('#versao').textContent = VERSAO;
@@ -23,6 +24,7 @@ const ROTAS = [
   ['/orcamentos', vOrc.lista], ['/orcamentos/novo', vOrc.form], ['/orcamentos/:id', vOrc.form],
   ['/notas', vNotas.lista], ['/notas/:id', vNotas.detalhe],
   ['/financeiro', vFin.lista],
+  ['/leads', vLeads.lista],
   ['/catalogo', vCat.lista],
   ['/config', vCfg.tela],
 ];
@@ -31,6 +33,7 @@ const MENU = [
   ['Visão geral'],
   ['/', 'dashboard', 'Painel'],
   ['Atendimento'],
+  ['/leads', 'chat', 'Pedidos do site', () => store.lista('leads').filter((l) => (l.status || 'Novo') === 'Novo').length],
   ['/os', 'os', 'Ordens de serviço', () => osAbertas().length],
   ['/orcamentos', 'orcamento', 'Orçamentos', () => store.lista('orcamentos').filter((o) => o.status === 'Pendente').length],
   ['/notas', 'nota', 'Notas de serviço'],

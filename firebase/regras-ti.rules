@@ -8,3 +8,26 @@
     match /ti/{document=**} {
       allow read, write: if tiDono();
     }
+    // Site público: qualquer visitante pode CRIAR um pedido ("Fale comigo"),
+    // mas não pode ler, alterar nem apagar. Campos e tamanhos travados.
+    function tiTexto(d, campo, max) {
+      return !(campo in d) || (d[campo] is string && d[campo].size() <= max);
+    }
+    match /ti/base/leads/{leadId} {
+      allow create: if request.resource.data.keys().hasOnly(['nome', 'whatsapp', 'cidade', 'equipamento', 'problema',
+                         'detalhe', 'atendimento', 'servico', 'origem', 'utm', 'status', 'criadoEm'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() >= 2 && request.resource.data.nome.size() <= 80
+        && request.resource.data.whatsapp is string
+        && request.resource.data.whatsapp.matches('^[0-9]{10,13}$')
+        && tiTexto(request.resource.data, 'cidade', 80)
+        && tiTexto(request.resource.data, 'equipamento', 40)
+        && tiTexto(request.resource.data, 'problema', 60)
+        && tiTexto(request.resource.data, 'detalhe', 600)
+        && tiTexto(request.resource.data, 'atendimento', 40)
+        && tiTexto(request.resource.data, 'servico', 40)
+        && tiTexto(request.resource.data, 'origem', 120)
+        && tiTexto(request.resource.data, 'utm', 120)
+        && request.resource.data.status == 'Novo'
+        && request.resource.data.criadoEm == request.time;
+    }

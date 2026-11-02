@@ -3,7 +3,7 @@
 //  - demo: localStorage do navegador (abre com ?demo na URL) — para testar sem mexer nos dados reais
 import { FIREBASE_CONFIG, EMAILS_AUTORIZADOS } from './config.js';
 
-export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas'];
+export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads'];
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 
 const estado = {
@@ -77,6 +77,12 @@ function limpar(o) {
   Object.entries(o).forEach(([k, v]) => { if (v !== undefined && k !== 'id') r[k] = v; });
   return r;
 }
+/** Converte Timestamp do Firestore em texto ISO (o resto do sistema trabalha com ISO). */
+function normalizar(o) {
+  const r = {};
+  Object.entries(o).forEach(([k, v]) => { r[k] = v && typeof v.toDate === 'function' ? v.toDate().toISOString() : v; });
+  return r;
+}
 function avisar() { ouvintes.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } }); }
 
 window.addEventListener('online', () => { estado.online = true; avisar(); });
@@ -142,7 +148,7 @@ async function motorFirebase() {
               const m = estado.dados[alvo];
               snap.docChanges().forEach((ch) => {
                 if (ch.type === 'removed') m.delete(ch.doc.id);
-                else m.set(ch.doc.id, { id: ch.doc.id, ...ch.doc.data() });
+                else m.set(ch.doc.id, { id: ch.doc.id, ...normalizar(ch.doc.data()) });
               });
             }), erro));
           }

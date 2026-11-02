@@ -16,6 +16,7 @@ export function lista(el) {
     const abertas = osAbertas().sort((a, b) => (a.entrada || '').localeCompare(b.entrada || ''));
     const prontas = abertas.filter((o) => o.status === 'Pronto para retirada').length;
     const ultimos = [...pagamentos].sort((a, b) => (b.data || '').localeCompare(a.data || '') || (b.numero || 0) - (a.numero || 0)).slice(0, 6);
+    const novosLeads = store.lista('leads').filter((l) => (l.status || 'Novo') === 'Novo').length;
     const saud = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite';
     const primeiroNome = (store.usuario?.nome || '').split(' ')[0];
 
@@ -36,6 +37,8 @@ export function lista(el) {
           <div class="kpi-val">${pendentes.length}</div><div class="kpi-sub">${money(pendentes.reduce((s, o) => s + (+o.total || 0), 0))} aguardando aprovação</div></a>
         <a class="kpi" href="#/financeiro"><div class="kpi-top">Recebido em ${mesNome(new Date().getMonth())} ${icon('trend', 16)}</div>
           <div class="kpi-val">${money(recebidoMes)}</div><div class="kpi-sub">hoje: ${money(recebidoHoje)}</div></a>
+        <a class="kpi" href="#/leads"><div class="kpi-top">Pedidos do site ${icon('chat', 16)}</div>
+          <div class="kpi-val">${novosLeads}</div><div class="kpi-sub">novo(s) aguardando contato</div></a>
         <a class="kpi" href="#/financeiro"><div class="kpi-top">A receber ${icon('financeiro', 16)}</div>
           <div class="kpi-val">${money(totalReceber)}</div><div class="kpi-sub">${receber.length} orçamento(s) aprovado(s) com saldo</div></a>
       </div>

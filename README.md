@@ -1,4 +1,26 @@
-# Ítalo Alves TI · sistema da assistência técnica
+# Ítalo Alves TI · site + sistema da assistência técnica
+
+O projeto tem duas partes:
+
+- **Site público** (`index.html` e `dicas/`): apresenta os serviços, traz dicas e explicações de problemas e tem o assistente **"Fale comigo"**. O assistente monta o pedido do cliente, manda para o WhatsApp e salva o contato como **lead** no sistema.
+- **Sistema** (`sistema.html`, link "área técnica" no rodapé do site): a parte de gestão, descrita abaixo.
+
+### Configurar o site
+
+Edite `assets/js/site-config.js` direto pelo GitHub (botão de lápis):
+- `whatsapp`: número com 55 + DDD, só números (ex.: `5533999998888`). **Sem ele, o botão "Enviar pelo WhatsApp" não aparece.** O pedido continua sendo salvo no sistema.
+- `horario`: horário de atendimento (opcional).
+- `regiaoPresencial`: texto da área de atendimento presencial.
+
+### Captar clientes (leads)
+
+- Cada pedido feito no assistente aparece em **Pedidos do site**, dentro do sistema. Lá dá para responder pelo WhatsApp com um clique, anotar o andamento e transformar o pedido em cliente.
+- Para saber de onde vem cada cliente, divulgue o link com uma etiqueta no final. Ex.: `…/italo-alves-ti/?utm_source=instagram` ou `?utm_source=google-meu-negocio`. A origem aparece em cada pedido.
+- Para aparecer no Google:
+  - cadastre o site no **Google Search Console** e envie o `sitemap.xml`;
+  - crie ou atualize o **Perfil da Empresa no Google** (Google Meu Negócio) apontando para o site.
+
+Para os pedidos funcionarem, as regras do Firestore precisam do bloco `ti/base/leads` (já incluído em `firebase/regras-ti.rules` e no `firestore.rules` do `high-os-dev`).
 
 Sistema web para a assistência técnica em informática. Controla:
 
@@ -36,7 +58,7 @@ Os números das OS, dos orçamentos e dos recibos continuam de onde pararam.
 
 ## Modo demonstração
 
-Abra `…/italo-alves-ti/?demo` para testar sem tocar nos dados reais. Nesse modo os dados ficam só no navegador.
+Abra `…/italo-alves-ti/sistema.html?demo` para testar sem tocar nos dados reais. Nesse modo os dados ficam só no navegador.
 
 ## Impressora de bobina (80 mm)
 
@@ -52,7 +74,13 @@ O Chrome guarda essas opções para as próximas impressões.
 ## Estrutura
 
 ```
-index.html              app (login + telas)
+index.html              site público (serviços, problemas, dicas, FAQ)
+dicas/                  artigos de dicas (um HTML por artigo)
+sistema.html            sistema (login + telas)
+assets/css/site.css     visual do site
+assets/js/site.js       assistente "Fale comigo"
+assets/js/site-config.js WhatsApp, horário e região (edite aqui)
+assets/js/leads.js      grava o pedido no Firestore
 imprimir.html           impressão A4 / 80 mm
 assets/css/app.css      identidade visual (tema escuro e claro)
 assets/css/imprimir.css layout dos documentos
@@ -75,6 +103,7 @@ ti/base/catalogo/{id}
 ti/base/os/{id}            numero, codigo (OS000123), status, defeito, laudo…
 ti/base/orcamentos/{id}    itens[], desconto, total, status
 ti/base/pagamentos/{id}    numero do recibo, valor, forma, data
+ti/base/leads/{id}         pedidos do site (o público só consegue criar)
 ti/base/notas/{id}         cópia congelada do orçamento e dos pagamentos, garantia
 ti/base/meta/config        dados da empresa e PIX
 ti/base/meta/contadores    numeração sequencial (os, orcamento, recibo, nota)

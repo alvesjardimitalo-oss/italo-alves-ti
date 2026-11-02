@@ -1,7 +1,7 @@
 {
   "name": "Ítalo Alves TI",
   "short_name": "Ítalo TI",
-  "start_url": "./",
+  "start_url": "./sistema.html",
   "display": "standalone",
   "background_color": "#070b14",
   "theme_color": "#070b14",
