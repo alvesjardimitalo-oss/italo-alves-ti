@@ -1,0 +1,116 @@
+/* Impressão — A4 (colorido discreto) e bobina térmica 80 mm (preto puro) */
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #e9edf3; color: #0f172a; }
+body { font-family: "Inter", "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.carregando { padding: 30px; text-align: center; color: #64748b; }
+
+/* ---------- barra de ferramentas (não imprime) ---------- */
+.barra-impressao { position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: #0d1424; color: #e6edf7; flex-wrap: wrap; }
+.barra-impressao .titulo { font-weight: 600; margin-right: auto; }
+.barra-impressao button { font: inherit; font-size: .88rem; border: 1px solid #2a3a5e; background: #111a2e; color: #e6edf7; padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+.barra-impressao button.primario { background: linear-gradient(135deg, #22d3ee, #6366f1); border-color: transparent; font-weight: 600; }
+.barra-impressao .grupo { display: inline-flex; }
+.barra-impressao .grupo button { border-radius: 0; margin-left: -1px; }
+.barra-impressao .grupo button:first-child { border-radius: 8px 0 0 8px; }
+.barra-impressao .grupo button:last-child { border-radius: 0 8px 8px 0; }
+.barra-impressao .grupo button.ativo { background: #22d3ee; color: #04121a; border-color: #22d3ee; }
+.dica-bobina { max-width: 640px; margin: 12px auto 0; padding: 10px 14px; background: #fff7e6; color: #7a4a00; border: 1px solid #f5d9a8; border-radius: 8px; font-size: .85rem; }
+
+/* ---------- comuns ---------- */
+.doc h3 { margin: 0 0 5px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 0; }
+.kv dt { color: #64748b; }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.caixa { white-space: pre-wrap; }
+.r { text-align: right; } .c { text-align: center; }
+.forte { font-weight: 700; }
+.just { text-align: justify; }
+.copia { font-family: "JetBrains Mono", Consolas, monospace; word-break: break-all; }
+.assin { display: flex; gap: 28px; margin-top: 34px; }
+.assin > div { flex: 1; text-align: center; }
+.assin .linha { border-top: 1px solid #0f172a; margin-bottom: 4px; }
+.termos { margin: 0; padding-left: 18px; }
+.cancelada { border: 2px solid #b91c1c; color: #b91c1c; font-weight: 800; text-align: center; padding: 6px; margin: 8px 0; letter-spacing: .05em; }
+
+/* =====================================================================
+   A4
+   ===================================================================== */
+.fa4 .doc { width: 210mm; min-height: 297mm; margin: 16px auto; background: #fff; padding: 14mm 14mm 12mm; box-shadow: 0 6px 30px rgba(15, 23, 42, .15); font-size: 10pt; line-height: 1.45; position: relative; }
+.fa4 .doc::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 5px; background: linear-gradient(90deg, #22d3ee, #6366f1); }
+.fa4 .cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; }
+.fa4 .cab-esq { display: flex; gap: 12px; align-items: center; }
+.fa4 .logo { width: 48px; height: 48px; }
+.fa4 .emp-nome { font-size: 16pt; font-weight: 700; letter-spacing: -.01em; }
+.fa4 .pequeno { font-size: 8pt; color: #64748b; }
+.fa4 .cab-dir { text-align: right; }
+.fa4 .doc-titulo { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: #0891b2; }
+.fa4 .doc-num { font-family: "JetBrains Mono", Consolas, monospace; font-size: 17pt; font-weight: 700; }
+.fa4 .secao { margin-top: 12px; }
+.fa4 .secao h3 { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .14em; color: #0891b2; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 6px; }
+.fa4 .kv { grid-template-columns: 90px 1fr; }
+.fa4 .caixa { background: #f6f8fb; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 10px; }
+.fa4 table.itens { width: 100%; border-collapse: collapse; }
+.fa4 .itens th { background: #0d1424; color: #fff; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .08em; text-align: left; padding: 6px 8px; }
+.fa4 .itens th.r { text-align: right; } .fa4 .itens th.c { text-align: center; }
+.fa4 .itens td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+.fa4 .itens tbody tr:nth-child(even) td { background: #f8fafc; }
+.fa4 .totais { width: 46%; margin: 8px 0 0 auto; }
+.fa4 .totais > div { display: flex; justify-content: space-between; padding: 3px 8px; }
+.fa4 .totais .tot { font-size: 13pt; font-weight: 800; border-top: 2px solid #0d1424; margin-top: 4px; padding-top: 6px; }
+.fa4 .totais .tot span:last-child, .fa4 .totais span:last-child { font-family: "JetBrains Mono", Consolas, monospace; }
+.fa4 .pix { display: flex; gap: 14px; align-items: center; border: 1px dashed #0891b2; border-radius: 8px; padding: 10px; margin-top: 14px; }
+.fa4 .pix-tit { font-weight: 700; }
+.fa4 .copia { font-size: 6.5pt; color: #334155; margin-top: 4px; }
+.fa4 .aviso-fiscal { text-align: center; font-size: 8pt; text-transform: uppercase; letter-spacing: .2em; color: #64748b; margin-bottom: 4px; }
+.fa4 .valor-dest { font-family: "JetBrains Mono", Consolas, monospace; font-size: 22pt; font-weight: 700; margin: 10px 0; }
+.fa4 .recibo-txt { font-size: 11pt; line-height: 1.8; text-align: justify; }
+.fa4 .rod { position: absolute; left: 14mm; right: 14mm; bottom: 10mm; text-align: center; }
+.fa4 .frase { font-style: italic; color: #475569; font-size: 8.5pt; }
+
+/* =====================================================================
+   Bobina 80 mm (área útil ~72 mm) — só preto, sem fundos
+   ===================================================================== */
+.f80 .doc { width: 80mm; margin: 12px auto; background: #fff; padding: 3mm 4mm 6mm; font-family: "Courier New", "JetBrains Mono", Consolas, monospace; font-size: 11px; line-height: 1.35; color: #000; box-shadow: 0 6px 30px rgba(15, 23, 42, .15); }
+.f80 .cab { text-align: center; }
+.f80 .logo { width: 34px; height: 34px; }
+.f80 .emp-nome { font-size: 15px; font-weight: 700; margin-top: 2px; }
+.f80 .pequeno { font-size: 10px; }
+.f80 .doc-titulo { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.f80 .doc-num { font-size: 15px; font-weight: 700; }
+.f80 .sep, .f80 .secao { border-top: 1px dashed #000; }
+.f80 .sep { margin: 5px 0; }
+.f80 .cab .sep:last-child { margin-bottom: 0; }
+.f80 .secao { padding-top: 5px; margin-top: 5px; }
+.f80 .secao h3 { font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 3px; }
+.f80 .cab + .secao, .f80 .aviso-fiscal + .secao { border-top: 0; margin-top: 0; }
+.f80 .kv { grid-template-columns: max-content 1fr; }
+.f80 .kv dt { color: #000; }
+.f80 .kv dt::after { content: ":"; }
+.f80 .it { padding: 2px 0; }
+.f80 .it + .it { border-top: 1px dotted #000; }
+.f80 .it-val { display: flex; justify-content: space-between; }
+.f80 .totais { border-top: 1px dashed #000; margin-top: 5px; padding-top: 4px; }
+.f80 .totais > div { display: flex; justify-content: space-between; gap: 8px; }
+.f80 .totais .tot { font-size: 14px; font-weight: 700; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; margin: 2px 0; }
+.f80 .pix { border-top: 1px dashed #000; margin-top: 6px; padding-top: 6px; text-align: center; }
+.f80 .pix-qr svg { display: block; margin: 0 auto; }
+.f80 .pix-tit { font-weight: 700; margin-top: 2px; }
+.f80 .copia { font-size: 8px; margin-top: 3px; }
+.f80 .aviso-fiscal { text-align: center; font-size: 10px; font-weight: 700; margin: 4px 0; }
+.f80 .valor-dest { text-align: center; font-size: 20px; font-weight: 700; margin: 6px 0; }
+.f80 .recibo-txt { text-align: justify; margin: 6px 0; }
+.f80 .assin { flex-direction: column; gap: 30px; margin-top: 30px; }
+.f80 .rod { text-align: center; border-top: 1px dashed #000; margin-top: 10px; padding-top: 5px; }
+.f80 .frase { font-style: italic; font-size: 10px; }
+.f80 .cancelada { border-color: #000; color: #000; }
+.f80 .doc::after { content: ""; display: block; height: 10mm; } /* espaço para o corte */
+
+/* ---------- na impressão ---------- */
+@media print {
+  html, body { background: #fff; }
+  .barra-impressao, .dica-bobina { display: none !important; }
+  .fa4 .doc { margin: 0; width: auto; min-height: 0; box-shadow: none; padding: 0 0 18mm; }
+  .fa4 .doc::before { display: none; }
+  .fa4 .rod { position: fixed; left: 0; right: 0; bottom: 0; }
+  .f80 .doc { margin: 0; width: 80mm; box-shadow: none; }
+}

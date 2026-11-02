@@ -1,0 +1,7 @@
+# arquivos locais
+.DS_Store
+Thumbs.db
+*.log
+# exportações com dados de clientes NUNCA vão para o GitHub
+*.json
+!manifest.json

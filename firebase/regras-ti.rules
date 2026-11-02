@@ -1,0 +1,10 @@
+    // ---------- Ítalo Alves TI (assistência técnica · repo italo-alves-ti) ----------
+    // Só o dono acessa. Dados em ti/base/{colecao}/{doc} e ti/base/meta/{config|contadores}.
+    function tiDono() {
+      return signedIn()
+        && myEmail() in ['alvesjardim.italo@gmail.com']
+        && request.auth.token.email_verified == true;
+    }
+    match /ti/{document=**} {
+      allow read, write: if tiDono();
+    }

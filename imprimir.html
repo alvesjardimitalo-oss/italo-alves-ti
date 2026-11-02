@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Imprimir · Ítalo Alves TI</title>
+  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/css/imprimir.css?v=1.0.0">
+  <style id="page-size"></style>
+</head>
+<body>
+  <div class="barra-impressao" id="barra">
+    <span class="titulo" id="titulo-doc">Preparando…</span>
+    <div class="grupo" id="formatos">
+      <button data-f="a4">A4</button>
+      <button data-f="80">Bobina 80 mm</button>
+    </div>
+    <button class="primario" id="btn-imprimir">Imprimir</button>
+    <button id="btn-fechar">Fechar</button>
+  </div>
+  <div class="dica-bobina" id="dica" hidden>
+    Na janela de impressão, escolha a impressora térmica, papel <b>80 mm</b> (ou "Roll Paper 80 x 297 mm"), margens <b>Nenhuma</b> e escala <b>100%</b>, e desmarque "Cabeçalhos e rodapés".
+  </div>
+  <main id="doc" class="doc"><p class="carregando">Carregando…</p></main>
+  <script type="module" src="assets/js/imprimir.js?v=1.0.0"></script>
+</body>
+</html>
