@@ -2,12 +2,12 @@
 export const SITE = {
   nome: 'Ítalo Alves TI',
   // WhatsApp que recebe os pedidos: só números, com DDI 55 + DDD. Ex.: '5533999998888'
-  whatsapp: '',
+  whatsapp: '5533998556503',
   email: 'alvesjardim.italo@gmail.com',
   cidade: 'Frei Inocêncio',
   uf: 'MG',
   // Onde há atendimento presencial / busca e entrega
   regiaoPresencial: 'Frei Inocêncio e região',
   // Horário exibido no site e usado pelo assistente
-  horario: '', // ex.: 'Seg. a sex., 8h às 18h · Sáb., 8h às 12h' (vazio = não mostra)
+  horario: 'Atendimento 24 horas', // vazio = não mostra
 };

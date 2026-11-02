@@ -34,7 +34,7 @@ export function empresa() {
     cidade: c.cidade || 'Frei Inocêncio',
     uf: c.uf || 'MG',
     cep: c.cep || '35112-000',
-    telefone: c.telefone || '',
+    telefone: c.telefone || '33998556503',
     email: c.email || 'alvesjardim.italo@gmail.com',
     rodape: c.rodape ?? '"Feliz é a nação cujo Deus é o Senhor."',
     garantiaDias: Number(c.garantiaDias ?? 90),
