@@ -91,6 +91,11 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
   <meta property="og:url" content="{url}">
   <meta property="og:site_name" content="{e(NOME)}">
   <meta property="og:locale" content="pt_BR">
+  <meta property="og:image" content="{BASE}assets/img/icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="Logo {e(NOME)}">
+  <meta name="twitter:card" content="summary">
   <link rel="icon" href="{raiz}assets/img/logo.svg" type="image/svg+xml">
   <link rel="manifest" href="{raiz}site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -673,9 +678,9 @@ def gerar_institucionais():
         <p>Exclusivamente para responder ao seu pedido: entrar em contato, enviar orçamento e prestar o serviço solicitado. Os dados não são vendidos nem compartilhados com terceiros para fins de propaganda.</p>
         <h2>Onde ficam guardados</h2>
         <p>Em um banco de dados na nuvem (Google Firebase), com acesso restrito ao responsável pelo atendimento. Ao tocar em "Enviar pelo WhatsApp", a mensagem segue também pelo aplicativo WhatsApp, sujeito às regras dele.</p>
-        <p>Na página "Acompanhar OS" só aparecem o status e o tipo de equipamento, nunca nome, endereço ou documento.</p>
+        <p>Na página "Acompanhar OS", quem informa o código da ordem de serviço e o telefone correspondente pode consultar status, equipamento, datas, informações do orçamento (quando existentes) e recados sobre o atendimento. Não exibimos nome completo, CPF ou endereço nessa página. O acesso depende da combinação correta desses dados.</p>
         <h2>Por quanto tempo</h2>
-        <p>Pelo tempo necessário para o atendimento e para cumprir obrigações legais (por exemplo, garantia do serviço). Pedidos que não viraram atendimento podem ser apagados a qualquer momento.</p>
+        <p>Conservamos os dados durante o atendimento e pelo prazo necessário para cumprir obrigações legais, como garantia e documentação dos serviços. Solicitações de exclusão serão avaliadas considerando essas obrigações.</p>
         <h2>Seus direitos</h2>
         <p>Você pode pedir para ver, corrigir ou apagar os seus dados a qualquer momento pelo e-mail <a href="mailto:{e(SITE["email"])}">{e(SITE["email"])}</a> ou pelo WhatsApp de atendimento.</p>''', lateral=False)
 
