@@ -4,7 +4,7 @@
 import { FIREBASE_CONFIG, EMAILS_AUTORIZADOS } from './config.js';
 import { iniciarAppCheck } from './app-check.js';
 
-export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads'];
+export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads', 'metricasSite'];
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 
 const estado = {

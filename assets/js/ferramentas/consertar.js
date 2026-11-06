@@ -57,6 +57,7 @@ function decidir() {
 }
 
 function resultado() {
+  window.MetricasSite?.registrar('ferramenta_concluida', 'consertar-ou-trocar');
   const { v, motivos } = decidir();
   const txt = `CONSERTAR OU TROCAR — ${R.tipo}, faixa de idade ${R.idade}/4, linha ${R.linha}, problema ${R.problema}, uso ${R.uso}\nResultado: ${v[0]}`;
   app.innerHTML = `<div class="card"><span class="passo-ferr">recomendação</span><div class="veredito" style="color:${v[1]}">${v[0]}</div><p>${esc(v[2])}</p>

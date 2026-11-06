@@ -1,9 +1,14 @@
 // Site público: menu, ano do rodapé e o assistente "Fale comigo" (pedido -> WhatsApp + lead).
 import { SITE } from './site-config.js';
 import { salvarLead } from './leads.js';
+import { iniciarMetricas, registrarEvento, MetricasSite } from './metricas.js';
+
 import { CATEGORIAS, sintomasPorCategoria, orientarSintoma } from './alvesinho-conhecimento.js';
 
-const raiz = document.documentElement.dataset.raiz || './'; // páginas em /dicas/ usam "../"
+const raiz = document.documentElement.dataset.raiz || './';
+// Exposição somente da função de métricas, para as ferramentas públicas.
+window.MetricasSite = MetricasSite;
+iniciarMetricas(raiz); // páginas em /dicas/ usam "../"
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -78,6 +83,7 @@ let esperando = null; // função que recebe o texto digitado
 const lead = {};
 
 function abrirChat(prefill) {
+  registrarEvento('chat_aberto');
   if (prefill && typeof prefill === 'object') Object.assign(lead, prefill);
   document.body.classList.add('chat-on');
   chat.classList.add('aberto');
@@ -222,6 +228,7 @@ async function diagnostico(relato = '') {
     }
   }
   const orientacao = orientarSintoma(relato);
+  if (orientacao.conhecido) registrarEvento('sintoma_selecionado', orientacao.id);
   lead.problema = orientacao.conhecido ? orientacao.titulo : String(relato).slice(0, 160);
   // Preserva a descrição pessoal sem transformá-la em diagnóstico.
   if (!orientacao.conhecido) lead.detalhe = String(relato).slice(0, 450);

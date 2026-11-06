@@ -12,6 +12,7 @@ import * as vFin from './views/financeiro.js';
 import * as vCat from './views/catalogo.js';
 import * as vCfg from './views/config.js';
 import * as vLeads from './views/leads.js';
+import * as vConversoes from './views/conversoes.js';
 import * as vDiv from './views/divulgacao.js';
 import * as vLemb from './views/lembretes.js';
 
@@ -27,6 +28,7 @@ const ROTAS = [
   ['/notas', vNotas.lista], ['/notas/:id', vNotas.detalhe],
   ['/financeiro', vFin.lista],
   ['/leads', vLeads.lista],
+  ['/conversoes', vConversoes.tela],
   ['/divulgacao', vDiv.tela],
   ['/lembretes', vLemb.lista],
   ['/catalogo', vCat.lista],
@@ -38,6 +40,7 @@ const MENU = [
   ['/', 'dashboard', 'Painel'],
   ['Atendimento'],
   ['/leads', 'chat', 'Pedidos do site', () => store.lista('leads').filter((l) => (l.status || 'Novo') === 'Novo').length],
+  ['/conversoes', 'dashboard', 'Conversões do site'],
   ['/os', 'os', 'Ordens de serviço', () => osAbertas().length],
   ['/orcamentos', 'orcamento', 'Orçamentos', () => store.lista('orcamentos').filter((o) => o.status === 'Pendente').length],
   ['/notas', 'nota', 'Notas de serviço'],
