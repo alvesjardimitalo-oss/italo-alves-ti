@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 const codigo = readFileSync(new URL('../../sw.js', import.meta.url), 'utf8');
 const listeners = new Map();
 const armazenamentos = new Map([['cache-de-outra-aplicacao', new Map()], ['italoti-site-v3', new Map()]]);
-const chave = (request) => typeof request === 'string' ? request : request.url;
+const chave = (request) => new URL(typeof request === 'string' ? request : request.url, 'https://italoinfotec.com.br/').href;
 const copia = (response) => response?.clone() || null;
 
 const cachesMock = {
@@ -92,14 +92,15 @@ assert(!demo.interceptada && requisicoes === antes, 'modo demo não deve passar 
 const adm = await disparar('fetch', navegar('/sistema.html'));
 assert(!adm.interceptada, 'sistema administrativo não deve passar pelo service worker');
 
-await (await cachesMock.open('italoti-site-v4')).put(asset('/assets/js/site.js?v=2.0.0'), new Response('versao antiga'));
+await (await cachesMock.open('italoti-site-v4')).put(asset('/assets/js/site.js'), new Response('versao antiga'));
 respostaRede = () => new Response('versao atual', { status: 200, headers: { 'content-type': 'application/javascript' } });
 const js = await disparar('fetch', asset('/assets/js/site.js?v=2.0.0'));
 assert.equal(await js.resultado.text(), 'versao atual', 'JS desatualizado foi usado em vez do servidor');
-assert.equal(await cache.get('https://italoinfotec.com.br/assets/js/site.js?v=2.0.0').text(), 'versao atual', 'cache JS não foi atualizado');
+assert.equal(await cache.get('https://italoinfotec.com.br/assets/js/site.js').text(), 'versao atual', 'cache JS não foi atualizado');
 
 semRede = true;
-const jsOffline = await disparar('fetch', asset('/assets/js/site.js?v=2.0.0'));
+const jsOffline = await disparar('fetch', asset('/assets/js/site.js?v=2.0.1'));
+// Versão de URL diferente continua encontrando a cópia normalizada para uso offline.
 assert.equal(await jsOffline.resultado.text(), 'versao atual', 'JS offline não usou o cache');
 const paginaOffline = await disparar('fetch', navegar('/dicas/notebook.html?utm_source=outro'));
 assert.equal(await paginaOffline.resultado.text(), 'pagina', 'página não utilizou cache offline');
