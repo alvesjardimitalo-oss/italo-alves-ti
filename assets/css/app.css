@@ -370,3 +370,25 @@ dl.info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .conv-h-lead { background:#fbbf24; }
 @media(max-width:920px){.conv-paineis{grid-template-columns:1fr;}.conv-periodo{max-width:100%;}}
 @media(max-width:520px){.conv-dia{grid-template-columns:48px minmax(0,1fr) 64px;gap:6px;}.conv-barra{grid-template-columns:minmax(80px,1fr) minmax(40px,1fr) 30px;gap:6px;}}
+
+
+/* Login Google em navegadores internos do iPhone: orientação sem expor detalhes técnicos. */
+.login-ajuda {
+  margin: 15px 0 0; padding: 14px; border-radius: 12px;
+  border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--text); text-align: left;
+}
+.login-ajuda[hidden] { display: none !important; }
+.login-ajuda > b { display:block; font-size:.91rem; margin-bottom:7px; }
+.login-ajuda p { color:var(--text-2); font-size:.84rem; line-height:1.55; margin:0 0 12px; }
+.login-ajuda button { width:100%; justify-content:center; }
+.login-url {
+  display:block; width:100%; margin:10px 0 0; padding:9px 7px;
+  border:1px solid var(--border); background:var(--surface);
+  border-radius:8px; color:var(--text-2); font-size:.76rem;
+}
+.login-dica { font-size:.76rem; color:var(--text-3); line-height:1.5; margin:17px 0 0; }
+@media (max-width: 420px) {
+  .login-card { padding:24px 18px 22px; }
+  .login-ajuda { padding:12px; }
+}
