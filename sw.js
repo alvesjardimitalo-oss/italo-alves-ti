@@ -43,17 +43,19 @@ self.addEventListener('fetch', (e) => {
   }
 
   if (/\.(css|js)$/i.test(url.pathname)) {
+    // Scripts com ?v=... usam a mesma chave offline que o pré-cache da instalação.
+    const chave = new Request(url.origin + url.pathname);
     // Código atualizado tem prioridade: não servir JS antigo indefinidamente.
     e.respondWith((async () => {
       try {
         const resposta = await fetch(e.request);
         if (resposta.ok) {
           const copia = resposta.clone();
-          e.waitUntil(caches.open(CACHE).then((cache) => cache.put(e.request, copia)).catch(() => {}));
+          e.waitUntil(caches.open(CACHE).then((cache) => cache.put(chave, copia)).catch(() => {}));
         }
         return resposta;
       } catch (_) {
-        return (await caches.match(e.request)) || Response.error();
+        return (await caches.match(chave)) || Response.error();
       }
     })());
     return;
