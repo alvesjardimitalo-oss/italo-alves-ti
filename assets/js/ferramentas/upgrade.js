@@ -42,6 +42,7 @@ function desenhar() {
 }
 
 function mostrarResultado() {
+  window.MetricasSite?.registrar('ferramenta_concluida', 'upgrade');
   const itens = recomendarUpgrade(R);
   const resumo = `Equipamento: ${R.equipamento}; uso: ${R.uso}; armazenamento: ${R.disco}; RAM: ${R.ram}; principal necessidade: ${R.sintoma}. Sugestões: ${itens.map(i=>i.titulo).join('; ')}.`;
   el.innerHTML = `<div class="card">
