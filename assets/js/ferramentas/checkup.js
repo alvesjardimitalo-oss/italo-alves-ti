@@ -121,6 +121,7 @@ function textoResumo(itens) {
 }
 
 function laudo() {
+  window.MetricasSite?.registrar('ferramenta_concluida', 'checkup');
   const itens = analisar();
   const pior = itens[0].nivel;
   const ver = { alto: ['Precisa de atenção', 'var(--danger, #f87171)'], medio: ['Vale resolver logo', '#fbbf24'], baixo: ['Situação tranquila', '#34d399'] }[pior];
