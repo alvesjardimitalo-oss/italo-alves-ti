@@ -12,3 +12,9 @@ export const FIREBASE_CONFIG = {
 
 // Quem pode entrar. A mesma lista precisa estar nas regras do Firestore.
 export const EMAILS_AUTORIZADOS = ['alvesjardim.italo@gmail.com'];
+
+// Chave PÚBLICA do site reCAPTCHA Enterprise registrado em Firebase > App Check.
+// Nunca colocar uma chave privada ou token de depuração aqui.
+// Preencher apenas após registrar o aplicativo Web no projeto high-os.
+// Vazio = App Check desativado no cliente (sem efeito sobre os pedidos atuais).
+export const APP_CHECK_SITE_KEY = '';

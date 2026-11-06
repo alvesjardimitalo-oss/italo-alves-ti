@@ -1,6 +1,7 @@
 // Grava o pedido (lead) do site no Firestore, sem login.
 // As regras só permitem CRIAR, com campos e tamanhos controlados (ver firebase/regras-ti.rules).
 import { FIREBASE_CONFIG } from './config.js';
+import { iniciarAppCheck } from './app-check.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 let dbPromise = null;
@@ -8,7 +9,11 @@ let dbPromise = null;
 function conectar() {
   if (!dbPromise) {
     dbPromise = Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-firestore-lite.js')])
-      .then(([{ initializeApp }, F]) => ({ F, db: F.getFirestore(initializeApp(FIREBASE_CONFIG, 'site-leads')) }));
+      .then(async ([{ initializeApp }, F]) => {
+        const app = initializeApp(FIREBASE_CONFIG, 'site-leads');
+        await iniciarAppCheck(app);
+        return { F, db: F.getFirestore(app) };
+      });
   }
   return dbPromise;
 }

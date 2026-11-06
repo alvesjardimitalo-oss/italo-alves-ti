@@ -42,6 +42,22 @@ Ao salvar uma OS, o sistema publica **status, equipamento, datas, recado e infor
   - cadastre o site no **Google Search Console** e envie o `sitemap.xml`;
   - crie ou atualize o **Perfil da Empresa no Google** (Google Meu Negócio) apontando para o site.
 
+### Preparação do Firebase App Check (sem bloquear os clientes)
+
+O projeto **high-os** é compartilhado entre a Ítalo InfoTec e outros aplicativos. O App Check é aplicado por **serviço/projeto Firebase** (por exemplo, Cloud Firestore), não somente à coleção `ti/base/leads`. **Não ative o botão de enforcement do Firestore** enquanto os outros aplicativos que usam este projeto não estiverem registrados e enviando App Check: isso poderia interromper o High OS.
+
+O código da Ítalo InfoTec já contém a inicialização opcional em `assets/js/app-check.js`, executada antes da primeira operação Firebase em pedidos, rastreamento e área administrativa. No estado padrão, a variável `APP_CHECK_SITE_KEY` em `assets/js/config.js` está vazia, então **nada é ativado e o funcionamento atual permanece inalterado**.
+
+Passos para completar com segurança:
+
+1. No projeto **high-os**, Google Cloud Console, crie uma **chave pública de site** reCAPTCHA Enterprise do tipo Web / baseada em pontuação. Autorize `italoinfotec.com.br` e, se necessário, `www.italoinfotec.com.br`. Não habilite desafio por checkbox e não autorize `localhost` na chave de produção.
+2. No **Firebase Console → Security → App Check → Apps**, registre o aplicativo Web com o mesmo App ID de `assets/js/config.js` usando essa chave Enterprise. Não confunda a chave pública com segredos nem com tokens de depuração.
+3. Preencha a **chave pública de site** em `APP_CHECK_SITE_KEY` (arquivo `assets/js/config.js`) e publique pelo fluxo habitual de PR e testes; valide um pedido real autorizado e uma consulta de OS.
+4. No console **App Check → APIs → Cloud Firestore**, acompanhe os indicadores de solicitações verificadas/sem token. **Mantenha enforcement desativado nesta etapa**. Só habilite após adaptar e verificar todos os clientes Firebase do mesmo projeto (inclusive o High OS); alternativamente, isole a assistência técnica em um projeto Firebase próprio e planeje a migração de dados e acesso.
+5. **Não habilite enforcement de Authentication** até confirmar o suporte a App Check em todos os fluxos de login. O App Check não substitui regras do Firestore, autenticação ou limitação de requisições.
+
+A chave Enterprise do **site** é pública, mas *tokens de depuração, credenciais de servidor e chaves secretas não devem ir para o GitHub*. Atestados podem consumir a cota gratuita da API reCAPTCHA Enterprise e gerar cobranças além dela; confira a cobrança e limites no console antes de registrar a chave.
+
 Para os pedidos funcionarem, as **regras efetivamente publicadas** no Firestore precisam do bloco `ti/base/leads`. O arquivo `firebase/regras-ti.rules` é apenas um trecho (não é um ruleset independente); o `firestore.rules` do projeto `high-os-dev` contém uma cópia. Verifique a versão publicada no Console antes de divulgar. O formulário agora só diz que registrou um pedido após o Firebase confirmar a gravação.
 
 Sistema web para a assistência técnica em informática. Controla:

@@ -1,5 +1,6 @@
 // Página pública "Acompanhar OS": busca o status pelo código + telefone.
 import { FIREBASE_CONFIG } from '../config.js';
+import { iniciarAppCheck } from '../app-check.js';
 import { idRastreio } from '../rastreio-hash.js';
 import { esc } from './comum.js';
 
@@ -26,7 +27,9 @@ async function buscar(id) {
     return (db.rastreio || {})[id] || null;
   }
   const [{ initializeApp }, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-firestore-lite.js')]);
-  const db = F.getFirestore(initializeApp(FIREBASE_CONFIG, 'site-rastreio'));
+  const app = initializeApp(FIREBASE_CONFIG, 'site-rastreio');
+  await iniciarAppCheck(app);
+  const db = F.getFirestore(app);
   const s = await F.getDoc(F.doc(db, 'ti', 'base', 'rastreio', id));
   return s.exists() ? s.data() : null;
 }

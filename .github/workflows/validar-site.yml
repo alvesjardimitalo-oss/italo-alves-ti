@@ -37,5 +37,7 @@ jobs:
           git diff --stat
       - name: Testar cache e comportamento offline
         run: node tools/site/testar-sw.mjs
+      - name: Testar inicialização segura do Firebase App Check
+        run: node tools/site/testar-app-check.mjs
       - name: Verificar sintaxe do JavaScript
         run: find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
