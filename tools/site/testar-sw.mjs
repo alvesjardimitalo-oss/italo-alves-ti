@@ -96,7 +96,7 @@ await (await cachesMock.open('italoti-site-v4')).put(asset('/assets/js/site.js')
 respostaRede = () => new Response('versao atual', { status: 200, headers: { 'content-type': 'application/javascript' } });
 const js = await disparar('fetch', asset('/assets/js/site.js?v=2.0.0'));
 assert.equal(await js.resultado.text(), 'versao atual', 'JS desatualizado foi usado em vez do servidor');
-assert.equal(await cache.get('https://italoinfotec.com.br/assets/js/site.js').text(), 'versao atual', 'cache JS não foi atualizado');
+assert.equal(await cache.get('https://italoinfotec.com.br/assets/js/site.js').clone().text(), 'versao atual', 'cache JS não foi atualizado');
 
 semRede = true;
 const jsOffline = await disparar('fetch', asset('/assets/js/site.js?v=2.0.1'));
