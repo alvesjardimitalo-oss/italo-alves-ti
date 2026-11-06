@@ -24,8 +24,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validar e gerar páginas
+      - name: Gerar páginas
         run: python tools/site/gerar.py
+      - name: Bloquear publicação com links e metadados inválidos
+        run: python tools/site/validar.py
       - name: Salvar páginas geradas
         run: |
           git config user.name "gerador-do-site"
