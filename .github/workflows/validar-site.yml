@@ -1,0 +1,37 @@
+name: Validar site
+
+on:
+  pull_request:
+    paths:
+      - 'conteudo/**'
+      - 'tools/site/**'
+      - 'assets/**'
+      - '*.html'
+      - '.github/workflows/**'
+      - 'sitemap.xml'
+      - 'robots.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxe do gerador
+        run: python -m py_compile tools/site/gerar.py tools/site/validar.py
+      - name: Gerar páginas e conferir links
+        run: |
+          python tools/site/gerar.py
+          python tools/site/validar.py
+          git diff --stat
+      - name: Verificar sintaxe do JavaScript
+        run: find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
