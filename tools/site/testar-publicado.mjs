@@ -114,7 +114,7 @@ await test('Sistema administrativo demo lê os pedidos do site', async () => {
   await p.locator('#btn-login').waitFor({ state: 'visible', timeout: 15000 });
   await p.locator('#btn-login').click();
   await p.locator('#app').waitFor({ state: 'visible', timeout: 20000 });
-  await p.locator('a[href="#/leads"]').click();
+  await p.locator('#nav a[href="#/leads"]').click();
   await p.locator('#tab').getByText('Teste Navegador').waitFor({ timeout: 20000 });
   await p.screenshot({ path: 'test-results/pedidos-painel-demo.png', fullPage: false });
   return 'Painel abriu e mostrou pedido do fluxo demo';
