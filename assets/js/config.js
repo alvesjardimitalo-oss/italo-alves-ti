@@ -15,6 +15,6 @@ export const EMAILS_AUTORIZADOS = ['alvesjardim.italo@gmail.com'];
 
 // Chave PÚBLICA do site reCAPTCHA Enterprise registrado em Firebase > App Check.
 // Nunca colocar uma chave privada ou token de depuração aqui.
-// Preencher apenas após registrar o aplicativo Web no projeto high-os.
-// Vazio = App Check desativado no cliente (sem efeito sobre os pedidos atuais).
-export const APP_CHECK_SITE_KEY = '';
+// Registrada para o aplicativo Web no projeto high-os, domínio italoinfotec.com.br.
+// Não habilitar enforcement geral do Firestore enquanto outros apps do high-os não estiverem prontos.
+export const APP_CHECK_SITE_KEY = '6LewvBMuAAAAAB1q8B0KPlsQC6Lb6yWnDsWz1OAb';
