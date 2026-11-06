@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="ttl des">
+<title id="ttl">Alvesinho, assistente virtual da Ítalo InfoTec</title>
+<desc id="des">Mascote técnico sorridente com óculos, headset e uniforme azul</desc>
+<defs>
+<linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#102e57"/><stop offset=".52" stop-color="#09152c"/><stop offset="1" stop-color="#0a506b"/></linearGradient>
+<linearGradient id="camisa" x1=".1" y1="0" x2="1" y2="1"><stop stop-color="#142b4d"/><stop offset="1" stop-color="#071527"/></linearGradient>
+<linearGradient id="pele" x1="0" x2="1"><stop stop-color="#f6bc8a"/><stop offset="1" stop-color="#d98b63"/></linearGradient>
+<clipPath id="rosto"><circle cx="160" cy="160" r="154"/></clipPath>
+</defs>
+<circle cx="160" cy="160" r="158" fill="url(#fundo)" stroke="#28c8f6" stroke-width="4"/>
+<g clip-path="url(#rosto)">
+<circle cx="242" cy="48" r="72" fill="#12a4e5" opacity=".14"/>
+<path d="M12 330c8-70 53-103 105-111l43 28 44-28c65 12 98 49 107 111" fill="url(#camisa)" stroke="#24b6ea" stroke-width="3"/>
+<path d="M113 219l47 29 44-29-26 63h-38z" fill="#0e6b9e"/>
+<path d="M137 200v35c16 18 30 18 46 0v-35" fill="url(#pele)"/>
+<path d="M85 115c-8-58 22-92 78-96 53-2 82 39 75 95l-17 47-119 1z" fill="#241a1a"/>
+<path d="M96 130c-9-53 10-83 32-96 31-17 75-7 92 23 16 31 11 88-5 117-9 28-35 49-55 49-34 0-58-35-64-68" fill="url(#pele)"/>
+<path d="M100 101c7-40 40-61 77-58 28 2 48 19 50 53-27-8-45-24-57-37-14 25-36 36-70 42" fill="#251d1c"/>
+<path d="M116 125c14-9 28-9 39-1M169 123c13-8 29-7 41 2" fill="none" stroke="#3b2420" stroke-width="6" stroke-linecap="round"/>
+<ellipse cx="132" cy="144" rx="8" ry="10" fill="#272326"/>
+<ellipse cx="190" cy="144" rx="8" ry="10" fill="#272326"/>
+<circle cx="134" cy="141" r="2.8" fill="#fff"/><circle cx="192" cy="141" r="2.8" fill="#fff"/>
+<path d="M161 147l-7 18q6 6 14 0" fill="none" stroke="#af6955" stroke-width="4" stroke-linecap="round"/>
+<path d="M132 186c17 15 41 15 58 0" fill="none" stroke="#7c4237" stroke-width="5" stroke-linecap="round"/>
+<path d="M109 178c7 27 23 46 51 49 33 0 50-26 57-49-11 11-20 15-30 16-8 23-40 23-51 0-13-2-19-6-27-16z" fill="#4d3027" opacity=".72"/>
+<rect x="103" y="127" width="52" height="35" rx="11" fill="none" stroke="#172c43" stroke-width="6"/>
+<rect x="171" y="127" width="51" height="35" rx="11" fill="none" stroke="#172c43" stroke-width="6"/>
+<path d="M155 136q8-7 16 0M99 136l-9-3M223 135l10-3" fill="none" stroke="#172c43" stroke-width="6"/>
+<path d="M83 139v-26c0-55 32-88 77-88 51 0 82 39 82 85v30" fill="none" stroke="#24c7f4" stroke-width="11"/>
+<rect x="77" y="126" width="20" height="48" rx="9" fill="#163955" stroke="#54d9f8" stroke-width="5"/>
+<rect x="228" y="126" width="20" height="48" rx="9" fill="#163955" stroke="#54d9f8" stroke-width="5"/>
+<path d="M238 170c-4 29-25 35-52 35" fill="none" stroke="#3cc7ed" stroke-width="6" stroke-linecap="round"/>
+<rect x="176" y="196" width="23" height="11" rx="5" fill="#3ee0ff"/>
+<path d="M128 254l-13 68M191 254l13 68" stroke="#20b8f4" stroke-width="4" opacity=".8"/>
+<rect x="189" y="265" width="71" height="33" rx="8" fill="#123d5c" stroke="#32d4ff" stroke-width="2"/>
+<path d="M203 280h13l7-7 8 12 7-7h9" fill="none" stroke="#69eeff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</g></svg>
