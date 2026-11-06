@@ -3,7 +3,7 @@ import { chromium, devices } from 'playwright';
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 
-const BASE = process.env.SITE_URL || 'https://alvesjardimitalo-oss.github.io/italo-alves-ti/';
+const BASE = process.env.SITE_URL || 'https://italoinfotec.com.br/';
 const results = [];
 let failures = 0;
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
