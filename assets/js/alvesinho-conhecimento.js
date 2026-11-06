@@ -45,16 +45,23 @@ export function normalizarTexto(texto) {
   return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
 }
 
+// Desconsidera palavras de ligação sem remover negações (ex.: "não liga").
+const IGNORAR = new Set(['a','o','as','os','um','uma','meu','minha','meus','minhas','esta','estao','ta','tao','muito','demais','de','do','da','dos','das','com','quando','ao','em','eu','ele','ela','fica','ficou','que','para','por','sempre','isso','e']);
+function simplificar(texto) {
+  return normalizarTexto(texto).split(' ').filter((parte) => parte && !IGNORAR.has(parte)).join(' ');
+}
+
 export function encontrarSintoma(texto) {
   const entrada = normalizarTexto(texto);
+  const simplificada = simplificar(texto);
   if (!entrada) return null;
   const porId = SINTOMAS.find((s) => s.id === entrada || normalizarTexto(s.titulo) === entrada);
   if (porId) return porId;
   let melhor = null, pontos = 0;
   for (const item of SINTOMAS) {
-    const marcadores = [item.titulo, ...item.termos].map(normalizarTexto);
+    const marcadores = [item.titulo, ...item.termos].map(simplificar);
     for (const termo of marcadores) {
-      if (termo.length >= 4 && (' ' + entrada + ' ').includes(' ' + termo + ' ')) {
+      if (termo.length >= 4 && (' ' + simplificada + ' ').includes(' ' + termo + ' ')) {
         const nota = termo.split(' ').length * 10 + termo.length;
         if (nota > pontos) { melhor = item; pontos = nota; }
       }
