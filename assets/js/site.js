@@ -238,24 +238,36 @@ async function concluir() {
   r.textContent = textoPedido().replace(/\*/g, '');
   msgs.appendChild(r); rolar();
 
-  // anti-spam simples: campo invisível e 1 envio a cada 2 minutos por navegador
-  const ultimo = Number(localStorage.getItem('italoti-ultimo-lead') || 0);
-  const bloqueado = $('#chat-hp').value || Date.now() - ultimo < 120000;
-
+  // A gravação precisa ser confirmada antes de informar que o pedido foi registrado.
+  // O intervalo local é apenas um limitador de conveniência, não uma proteção contra bots.
+  let ultimo = 0;
+  try { ultimo = Number(localStorage.getItem('italoti-ultimo-lead') || 0); } catch (_) {}
+  const bloqueado = Boolean($('#chat-hp').value) || Date.now() - ultimo < 120000;
+  let registrado = false;
   if (!bloqueado) {
-    localStorage.setItem('italoti-ultimo-lead', String(Date.now()));
-    salvarLead({ ...lead, indicacao, origem: location.pathname.split('/').pop() || 'inicio', utm: origemCampanha });
+    registrado = await salvarLead({
+      ...lead, indicacao, origem: location.pathname.split('/').pop() || 'inicio', utm: origemCampanha,
+    });
+    if (registrado) {
+      try { localStorage.setItem('italoti-ultimo-lead', String(Date.now())); } catch (_) {}
+    }
+  }
+
+  if (registrado) {
+    await bot('Seu pedido foi registrado no sistema. ✅ O técnico poderá consultar seus dados de contato.', 250);
+  } else {
+    await bot('Não foi possível confirmar o registro automático deste pedido. Para garantir o atendimento, envie a mensagem diretamente pelo WhatsApp.', 250);
   }
 
   if (SITE.whatsapp) {
     const url = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(textoPedido())}`;
-    await bot('Toque no botão abaixo para enviar pelo WhatsApp. A mensagem já vai pronta 👇');
+    await bot('Toque abaixo para conversar com o técnico pelo WhatsApp. A mensagem já está pronta 👇', 250);
     const box = document.createElement('div');
     box.className = 'opcoes';
     box.innerHTML = `<a class="btn btn-wa btn-sm" href="${esc(url)}" target="_blank" rel="noopener">Enviar pelo WhatsApp</a>`;
     msgs.appendChild(box); rolar();
-  } else {
-    await bot(`Pedido registrado! ✅ O técnico vai te chamar no WhatsApp informado.${SITE.email ? `\nSe preferir, escreva para <a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>.` : ''}`);
+  } else if (!registrado) {
+    await bot(`Entre em contato pelo e-mail ${SITE.email ? `<a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : 'de atendimento informado no site'}.`);
   }
   await bot('Obrigado pelo contato! Enquanto isso, veja <a href="' + raiz + 'dicas/">nossas dicas</a>.', 600);
 }

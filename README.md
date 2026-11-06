@@ -7,7 +7,7 @@ O projeto tem duas partes:
 
 ### Editar o site (sem programar)
 
-O conteúdo do site fica na pasta **`conteudo/`**. Edite pelo GitHub (botão de lápis) e salve. Em cerca de 1 minuto, a ação **"Gerar site"** (aba *Actions*) cria as páginas de novo.
+O conteúdo editável do site fica em **`conteudo/`** (restaurado a partir das páginas publicadas). Altere apenas os arquivos dessa pasta pelo GitHub e faça commit na branch `main`; a ação **Gerar site** produzirá as páginas novamente. Antes de editar, confira os dados de empresa e textos restaurados.
 
 | Arquivo | O que controla |
 |---|---|
@@ -24,7 +24,7 @@ Não edite `index.html`, `dicas/`, `ferramentas/` e as outras páginas geradas: 
 Check-up do computador, Consertar ou trocar?, Monte seu PC, Teste de velocidade e Teste de teclado/tela/som/microfone/câmera. O resultado de cada uma pode ser enviado ao técnico pelo "Fale comigo".
 
 ### Acompanhar OS
-Ao salvar uma OS, o sistema publica só o **status** dela num endereço secreto, calculado a partir do código da OS e do telefone do cliente. O cliente consulta em `acompanhar.html` com esses dois dados. O comprovante de entrada já sai com o QR Code dessa página. O campo "Recado para o cliente" da OS aparece lá.
+Ao salvar uma OS, o sistema publica **status, equipamento, datas, recado e informações do orçamento quando existentes** num identificador calculado a partir do código da OS e dos últimos 8 dígitos do telefone do cliente. Evite dados pessoais ou confidenciais no campo de recados. O cliente consulta em `acompanhar.html` com esses dois dados. O comprovante de entrada já sai com o QR Code dessa página. O campo "Recado para o cliente" da OS aparece lá.
 
 ### Captar clientes (leads)
 
@@ -35,7 +35,7 @@ Ao salvar uma OS, o sistema publica só o **status** dela num endereço secreto,
   - cadastre o site no **Google Search Console** e envie o `sitemap.xml`;
   - crie ou atualize o **Perfil da Empresa no Google** (Google Meu Negócio) apontando para o site.
 
-Para os pedidos funcionarem, as regras do Firestore precisam do bloco `ti/base/leads` (já incluído em `firebase/regras-ti.rules` e no `firestore.rules` do `high-os-dev`).
+Para os pedidos funcionarem, as **regras efetivamente publicadas** no Firestore precisam do bloco `ti/base/leads`. O arquivo `firebase/regras-ti.rules` é apenas um trecho (não é um ruleset independente); o `firestore.rules` do projeto `high-os-dev` contém uma cópia. Verifique a versão publicada no Console antes de divulgar. O formulário agora só diz que registrou um pedido após o Firebase confirmar a gravação.
 
 Sistema web para a assistência técnica em informática. Controla:
 
@@ -61,6 +61,27 @@ Imprime em **A4** e em **impressora térmica de bobina 80 mm**, com **QR Code PI
    - clique em **Publicar**.
 3. **Domínio autorizado:** em *Authentication › Settings › Authorized domains*, confira se `alvesjardimitalo-oss.github.io` está na lista. Ele já está lá por causa do High OS.
 4. Entre no sistema, abra **Configurações** e preencha os dados da empresa e a **chave PIX**.
+
+
+## Verificações antes de divulgar
+
+- Abra um pull request: a ação **Validar site** confere o Python do gerador, a sintaxe dos arquivos JavaScript, os links locais, os títulos, as URLs canônicas e o sitemap.
+- Após um commit em `conteudo/` na `main`, confira a execução de **Gerar site** no GitHub Actions. Não divulgue a atualização se a ação falhar.
+- Faça um pedido de teste no site (sem `?demo`) e confirme que apareceu em **Pedidos do site**; confira também a abertura da mensagem no WhatsApp.
+- Faça login no sistema com o usuário autorizado e confira a recusa para contas não autorizadas. Confirme as regras publicadas no Firebase; o código do repositório sozinho não comprova a regra em produção.
+- Teste acompanhamento de OS usando uma OS de teste, o código e o telefone correspondentes.
+- Para reduzir spam automatizado, considere ativar Firebase App Check (reCAPTCHA Enterprise) no Console e acompanhar custos/limites de escrita. O anti-spam local não é uma garantia contra bots.
+- A página pública não usa ferramenta de métricas de visitas por padrão. Para medir campanhas, configure o Search Console e, se usar Analytics, atualize a política de privacidade e as escolhas de consentimento conforme aplicável.
+
+## Trocar para domínio próprio (somente depois de registrar)
+
+1. Adicione o domínio em **Settings → Pages → Custom domain** no GitHub e configure DNS no provedor (A/AAAA para o domínio raiz e CNAME do `www`, conforme a documentação atual do GitHub).
+2. Antes de publicar os links, verifique que o domínio aponta para o site e que HTTPS pode ser ativado.
+3. Atualize `conteudo/site.json` → `base` para a URL definitiva com barra final; ao salvar, **Gerar site** atualizará as URLs canônicas, dados estruturados, sitemap e links de compartilhamento.
+4. No Firebase Authentication, inclua o novo domínio em **Authorized domains** e teste o login pelo novo endereço.
+5. Teste links de campanhas, QR Codes e acompanhamento das OS e atualize os links no Perfil da Empresa no Google e no Search Console.
+
+O domínio da empresa ainda não foi escolhido, portanto **não altere `base` para um endereço que não foi registrado e verificado**. O endereço antigo do GitHub Pages deve permanecer acessível durante a migração.
 
 ## Trazer os dados do sistema antigo (WAMP)
 
@@ -94,7 +115,7 @@ dicas/                  artigos de dicas (um HTML por artigo)
 sistema.html            sistema (login + telas)
 assets/css/site.css     visual do site
 assets/js/site.js       assistente "Fale comigo"
-assets/js/site-config.js WhatsApp, horário e região (edite aqui)
+assets/js/site-config.js WhatsApp, horário e região (GERADO; edite conteudo/site.json)
 assets/js/leads.js      grava o pedido no Firestore
 imprimir.html           impressão A4 / 80 mm
 assets/css/app.css      identidade visual (tema escuro e claro)

@@ -1,7 +1,7 @@
 // Service worker do SITE público: abre rápido e funciona com internet fraca.
 // Páginas: rede primeiro (sempre atualizadas), cache se offline. Arquivos estáticos: cache primeiro.
 // O sistema (sistema.html / imprimir.html) e o Firebase NUNCA passam pelo cache.
-const CACHE = 'italoti-site-v2';
+const CACHE = 'italoti-site-v3';
 const BASICO = ['./', './index.html', './assets/css/site.css', './assets/js/site.js', './assets/js/site-config.js', './assets/img/logo.svg'];
 
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASICO)).then(() => self.skipWaiting())); });

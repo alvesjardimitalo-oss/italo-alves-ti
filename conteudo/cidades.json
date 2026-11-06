@@ -1,0 +1,13 @@
+{
+  "cidades": [
+    {
+      "cidade": "Frei Inocêncio",
+      "uf": "MG",
+      "presencial": true,
+      "busca": true,
+      "prazo": "",
+      "taxa": "",
+      "texto": ""
+    }
+  ]
+}
