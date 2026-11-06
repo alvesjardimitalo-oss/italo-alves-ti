@@ -20,10 +20,11 @@ CIDADES = [c for c in C('cidades.json')['cidades'] if c.get('cidade')]
 PRECOS = [p for p in C('precos.json')['servicos'] if p.get('a_partir_de')]
 GALERIA = C('galeria.json')['itens']
 AVALIACOES = C('avaliacoes.json')['itens']
+SINTOMAS_HOME = C('sintomas.json')['itens']
 BASE = SITE['base'].rstrip('/') + '/'
 NOME = SITE['nome']
 HOJE = datetime.date.today().isoformat()
-V = '2.0.0'
+V = '2.1.0'
 e = html.escape
 
 
@@ -141,6 +142,7 @@ def rodape(raiz, extra_js=''):
         <li><a href="#fale-comigo" data-abrir-chat>Fale comigo</a></li>
         <li><a href="{raiz}acompanhar.html">Acompanhar minha OS</a></li>
         <li><a href="{raiz}ferramentas/checkup.html">Check-up do computador</a></li>
+        <li><a href="{raiz}ferramentas/upgrade.html">Simulador de upgrade</a></li>
         <li><a href="{raiz}suporte-remoto.html">Suporte remoto</a></li>
         <li><a href="{raiz}atendimento/">Cidades atendidas</a></li>
         <li><a href="{raiz}garantia.html">Garantia</a></li>
@@ -207,6 +209,7 @@ SERVICOS = [
 FERRAMENTAS = [
     ('pulse', 'Check-up do computador', 'Análise rápida do seu aparelho + perguntas sobre os sintomas = laudo prévio com as causas prováveis.', 'checkup.html'),
     ('scale', 'Consertar ou trocar?', 'Descubra se vale mais a pena consertar, fazer upgrade ou comprar um equipamento novo.', 'consertar-ou-trocar.html'),
+    ('ssd', 'Qual upgrade vale mais?', 'Simule prioridades para SSD, memória RAM e desempenho sem comprar peças erradas.', 'upgrade.html'),
     ('cpu', 'Monte seu PC', 'Diga para que vai usar e receba uma configuração equilibrada, sem peça sobrando nem faltando.', 'monte-seu-pc.html'),
     ('speed', 'Teste de velocidade', 'Meça a internet do seu aparelho e entenda se a lentidão é do computador ou da rede.', 'velocidade.html'),
     ('keys', 'Teclado, tela e som', 'Teste teclas, pixels mortos, alto-falantes, microfone e câmera direto no navegador.', 'testes.html'),
@@ -316,10 +319,10 @@ def gerar_home():
     <div class="wrap">
       <div>
         <span class="selo">assistência técnica em informática</span>
-        <h1>Seu computador <span class="grad">de volta ao trabalho</span>, sem enrolação.</h1>
-        <p class="lead">Manutenção de notebooks e computadores com diagnóstico claro e orçamento antes de qualquer serviço. Atendimento presencial em {e(SITE["regiao_presencial"])} e suporte remoto para todo o Brasil.</p>
+        <h1>Seu notebook ou computador <span class="grad">deu problema?</span> Descubra o próximo passo.</h1>
+        <p class="lead">Está lento, não liga, esquentando ou com a tela quebrada? Converse com o Alvesinho, receba uma orientação inicial gratuita e peça uma avaliação técnica com orçamento antes do serviço. Atendimento em {e(SITE["regiao_presencial"])} e suporte remoto no Brasil.</p>
         <div class="hero-acoes">
-          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Pedir orçamento</a>
+          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Conversar com Alvesinho</a>
           <a href="ferramentas/checkup.html" class="btn">{ico("pulse", 20)} Fazer check-up grátis</a>
         </div>
         <div class="hero-fatos">
@@ -344,6 +347,19 @@ def gerar_home():
     </div>
   </section>
 
+
+  <section class="sec alt" id="sintomas">
+    <div class="wrap">
+      <div class="sec-head"><span class="kicker">// o que aconteceu?</span>
+        <h2>Qual destes problemas parece com o seu?</h2>
+        <p>Escolha um sintoma. O Alvesinho explica as causas possíveis, cuidados iniciais e como solicitar atendimento, sem prometer diagnóstico à distância.</p></div>
+      <div class="problemas-rapidos">
+        {''.join(f'<button type="button" class="sintoma-card" data-abrir-chat data-sintoma="{e(item["id"])}"><span class="problema-icon" aria-hidden="true">{e(item["icone"])}</span><strong>{e(item["titulo"])}</strong><small>Ver orientação →</small></button>' for item in SINTOMAS_HOME)}
+      </div>
+      <p class="sintoma-nota">Orientações educativas: problemas elétricos, líquidos ou baterias estufadas exigem cuidados especiais. Não abra fontes nem componentes energizados.</p>
+    </div>
+  </section>
+
   <section class="sec alt" id="servicos">
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// serviços</span><h2>O que eu resolvo</h2><p>Do notebook que esquenta ao computador que não liga, com explicação do que foi feito e por quê.</p></div>
@@ -362,11 +378,30 @@ def gerar_home():
     </div>
   </section>
 
+
+  <section class="sec alt" id="alvesinho">
+    <div class="wrap">
+      <div class="alvesinho-destaque">
+        <img src="assets/img/alvesinho.svg" width="160" height="160" loading="lazy" alt="Alvesinho, mascote técnico e atendente virtual da Ítalo InfoTec">
+        <div>
+          <span class="kicker">// atendimento guiado</span>
+          <h2>Conheça o Alvesinho, seu assistente virtual</h2>
+          <p>Ele conversa com você sobre os sintomas, sugere verificações seguras e organiza seu pedido para o técnico. É um assistente automatizado — não um diagnóstico humano ou orçamento definitivo.</p>
+          <div class="hero-acoes">
+            <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat data-servico="Diagnóstico por sintomas">Contar meu problema</a>
+            <a href="ferramentas/upgrade.html" class="btn">Qual upgrade vale mais?</a>
+            <a href="acompanhar.html" class="btn">Acompanhar OS</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="sec alt" id="como-funciona">
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// como funciona</span><h2>Do problema à entrega, em 4 passos</h2></div>
       <div class="grid g4 passos">
-        <div class="card passo"><h3>Conte o problema</h3><p>Pelo assistente "Fale comigo" ou WhatsApp. Leva menos de um minuto.</p></div>
+        <div class="card passo"><h3>Conte o problema</h3><p>Pelo Alvesinho ou WhatsApp: informe o equipamento e o sintoma em poucos passos.</p></div>
         <div class="card passo"><h3>Diagnóstico e orçamento</h3><p>O equipamento é avaliado e você recebe o orçamento detalhado, peça por peça.</p></div>
         <div class="card passo"><h3>Aprovação e conserto</h3><p>Só depois do seu "pode fazer". Você acompanha o status pela página <a href="acompanhar.html">Acompanhar OS</a>.</p></div>
         <div class="card passo"><h3>Entrega com garantia</h3><p>Você recebe a nota de serviço com tudo o que foi feito e o prazo de garantia.</p></div>
@@ -421,8 +456,8 @@ def gerar_home():
     <div class="wrap">
       <div class="cta">
         <h2>Seu equipamento está dando problema?</h2>
-        <p>Conte o que está acontecendo. O pedido chega direto no WhatsApp do técnico.</p>
-        <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Fale comigo</a>
+        <p>Conte para o Alvesinho o que aconteceu. Ele orienta inicialmente e prepara seu pedido para atendimento pelo WhatsApp.</p>
+        <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Pedir ajuda ao Alvesinho</a>
       </div>
     </div>
   </section>
@@ -496,7 +531,7 @@ def ferramenta(arquivo, titulo, desc, h1, sub, corpo, js):
 
 
 def gerar_ferramentas():
-    idx = head(f'Ferramentas grátis para testar seu computador · {NOME}', 'Check-up do computador, consertar ou trocar, monte seu PC, teste de velocidade da internet e teste de teclado, tela, som, microfone e câmera. Grátis e sem instalar nada.', 'ferramentas/', '../')
+    idx = head(f'Ferramentas grátis para testar seu computador · {NOME}', 'Check-up de sintomas, simulador de upgrade SSD/RAM, consertar ou trocar, monte seu PC, teste de internet, teclado, tela e som. Grátis e sem instalar nada.', 'ferramentas/', '../')
     idx += f'''
   <main>
     <div class="artigo-hero"><div class="wrap"><div class="crumb"><a href="../">início</a> / ferramentas</div>
@@ -514,6 +549,9 @@ def gerar_ferramentas():
     ferramenta('consertar-ou-trocar.html', 'Consertar ou trocar?', 'Descubra se vale mais a pena consertar, fazer upgrade ou trocar o computador ou notebook, de acordo com a idade, o defeito e o uso.',
                'Consertar ou trocar?', 'Responda 5 perguntas e veja a recomendação, com os motivos.',
                '<div id="app-ferramenta" class="ferr-app"></div>', 'consertar.js')
+    ferramenta('upgrade.html', 'Qual upgrade vale mais?', 'Simulador gratuito de upgrade para notebook e computador: priorize SSD, memória RAM e compatibilidade por uso e sintomas.',
+               'Qual upgrade vale mais para seu computador?', 'Responda 5 perguntas. Receba orientações de prioridade para SSD, RAM e desempenho, e peça uma avaliação de compatibilidade.',
+               '<div id="app-ferramenta" class="ferr-app"></div>', 'upgrade.js')
     ferramenta('monte-seu-pc.html', 'Monte seu PC', 'Configuração de computador recomendada para estudo, escritório, jogos ou edição, de acordo com o seu orçamento.',
                'Monte seu PC', 'Diga para que vai usar e qual faixa de investimento. Você recebe uma configuração equilibrada e pode pedir para eu montar.',
                '<div id="app-ferramenta" class="ferr-app"></div>', 'monte.js')
