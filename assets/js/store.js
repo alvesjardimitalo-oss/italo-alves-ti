@@ -2,6 +2,7 @@
 //  - firebase: Firestore do projeto high-os (dados em ti/base/...), login Google
 //  - demo: localStorage do navegador (abre com ?demo na URL) — para testar sem mexer nos dados reais
 import { FIREBASE_CONFIG, EMAILS_AUTORIZADOS } from './config.js';
+import { iniciarAppCheck } from './app-check.js';
 
 export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads'];
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
@@ -109,6 +110,7 @@ async function motorFirebase() {
     import(FB + 'firebase-firestore.js'),
   ]);
   const app = initializeApp(FIREBASE_CONFIG, 'italo-alves-ti');
+  await iniciarAppCheck(app);
   const auth = A.getAuth(app);
   const provider = new A.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
