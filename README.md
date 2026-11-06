@@ -168,3 +168,19 @@ ti/base/notas/{id}         cópia congelada do orçamento e dos pagamentos, gara
 ti/base/meta/config        dados da empresa e PIX
 ti/base/meta/contadores    numeração sequencial (os, orcamento, recibo, nota)
 ```
+
+## Alvesinho — atendimento virtual e conversão
+
+O **Alvesinho** é o assistente virtual automatizado da Ítalo InfoTec. Não usa API de IA, nem oferece diagnóstico remoto definitivo:
+- possui avatar próprio em `assets/img/alvesinho.svg`;
+- usa aproximadamente 28 situações da base `assets/js/alvesinho-conhecimento.js` para responder por sintomas e orientar cuidados seguros;
+- permite selecionar categorias ou escrever uma descrição livre, encaminhando para o formulário de orçamento existente e WhatsApp;
+- a página inicial traz 20 cartões em `conteudo/sintomas.json` (não renomear seus IDs sem ajustar a base do Alvesinho);
+- o simulador `ferramentas/upgrade.html` ajuda a avaliar SSD/RAM por uso e configuração, sem prometer ganho ou preço;
+- dados de contato só são enviados ao Firebase após o visitante preencher e concluir o fluxo de orçamento, preservando App Check e `?demo`.
+- em caso de líquidos, bateria estufada ou risco elétrico, o assistente prioriza cuidado e interromper o uso, em vez de ensinar intervenções arriscadas.
+
+Para editar a home, altere `conteudo/sintomas.json`; os arquivos HTML são regenerados pelo workflow `Gerar site`. Para adicionar conhecimento, ajuste `assets/js/alvesinho-conhecimento.js`. Para estilo, use `assets/css/site.css`. Os fluxos estão em `assets/js/site.js`.
+
+Métricas de conversão (contatos, origem de campanha, status) continuam disponíveis em **Pedidos do site**. Não há automação de envio de mensagens ou contato não solicitado.
+
