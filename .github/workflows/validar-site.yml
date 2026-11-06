@@ -10,6 +10,8 @@ on:
       - '.github/workflows/**'
       - 'sitemap.xml'
       - 'robots.txt'
+      - 'sw.js'
+      - 'site.webmanifest'
   workflow_dispatch:
 
 permissions:
@@ -33,5 +35,7 @@ jobs:
           python tools/site/gerar.py
           python tools/site/validar.py
           git diff --stat
+      - name: Testar cache e comportamento offline
+        run: node tools/site/testar-sw.mjs
       - name: Verificar sintaxe do JavaScript
         run: find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
