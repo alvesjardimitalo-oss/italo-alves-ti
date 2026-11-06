@@ -39,6 +39,8 @@ jobs:
         run: node tools/site/testar-alvesinho.mjs
       - name: Testar painel de conversões, coleta e privacidade
         run: node tools/site/testar-conversoes.mjs
+      - name: Testar acesso Google em navegador interno do iPhone
+        run: node tools/site/testar-login-ios.mjs
       - name: Testar cache e comportamento offline
         run: node tools/site/testar-sw.mjs
       - name: Testar inicialização segura do Firebase App Check
