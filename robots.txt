@@ -1,6 +1,6 @@
 User-agent: *
 Allow: /
-Disallow: /italo-alves-ti/sistema.html
-Disallow: /italo-alves-ti/imprimir.html
-Disallow: /italo-alves-ti/tools/
-Sitemap: https://alvesjardimitalo-oss.github.io/italo-alves-ti/sitemap.xml
+Disallow: /sistema.html
+Disallow: /imprimir.html
+Disallow: /tools/
+Sitemap: https://italoinfotec.com.br/sitemap.xml
