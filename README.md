@@ -184,3 +184,20 @@ Para editar a home, altere `conteudo/sintomas.json`; os arquivos HTML são regen
 
 Métricas de conversão (contatos, origem de campanha, status) continuam disponíveis em **Pedidos do site**. Não há automação de envio de mensagens ou contato não solicitado.
 
+
+## Painel de conversões e métricas com consentimento
+
+O painel está no **Sistema → Conversões do site** (`sistema.html#/conversoes`). Ele mostra:
+- Pedidos e conversões de clientes (fonte: `ti/base/leads`, disponíveis independentemente do consentimento de métricas).
+- Sessões monitoradas, chats abertos, sintomas, ferramentas e cliques em links do WhatsApp (fonte: `ti/base/metricasSite`, **somente quando o visitante permite a coleta**).
+- Evolução por dia, canais de origem agregados, ferramentas, problemas e exportação CSV **sem contato ou dados pessoais**.
+
+### Privacidade
+O visitante pode clicar **Permitir** ou **Não permitir**. A preferência é salva no seu próprio navegador e pode ser alterada em **Preferências de métricas**, no rodapé. A coleta não registra nome, telefone, IP, conteúdo de conversa, URL de referência completa nem identificador permanente do visitante. Uma contagem é feita por tipo/categoria em cada sessão de navegador, portanto **não representa pessoas únicas nem visitas totais**. Um clique em WhatsApp não prova envio de mensagem. Em `?demo`, os eventos são gravados apenas no localStorage da demonstração e não no Firestore real.
+
+### Etapa obrigatória para ativar coleta em produção
+A nova regra de Firestore em `firebase/regras-ti.rules` deve ser **incorporada ao arquivo COMPLETO de regras do projeto high-os** e publicada no Firebase Console. Não copie apenas o fragmento isolado para substituir as regras existentes. A regra autoriza somente a criação de eventos com cinco campos validados e mantém a leitura restrita ao dono. No sistema publicado, antes da regra, os pedidos reais continuam visíveis no painel; as sessões poderão ficar zeradas.
+
+O Firebase `high-os` é compartilhado. **Não ative enforcement geral do App Check** para o Firestore enquanto o High OS e os demais aplicativos não estiverem preparados. A API pública de métricas não possui limite de escrita imposto pelo Firestore Rules; monitore as cotas e eventuais abusos. Para alto tráfego, prefira mover a coleta para uma função server-side com App Check obrigatório e rate limiting.
+
+Quando a regra for publicada, abra o site, permita métricas, converse com o Alvesinho e confira depois `sistema.html#/conversoes`. No modo demo, utilize `?demo` em ambas as páginas para verificar os eventos sem gravar no Firebase.
