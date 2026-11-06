@@ -1,0 +1,28 @@
+{
+  "base": "https://alvesjardimitalo-oss.github.io/italo-alves-ti/",
+  "nome": "Ítalo Alves TI",
+  "whatsapp": "5533998556503",
+  "telefone_exibicao": "(33) 99855-6503",
+  "email": "alvesjardim.italo@gmail.com",
+  "cidade": "Frei Inocêncio",
+  "uf": "MG",
+  "endereco": "Rua Agostinho Moreira de Lima, 45 - Planalto",
+  "cep": "35112-000",
+  "regiao_presencial": "Frei Inocêncio e região",
+  "horario": "Atendimento 24 horas",
+  "instagram_url": "",
+  "google_perfil_url": "",
+  "garantia_dias": 90,
+  "sobre": {},
+  "plano_anual": {
+    "ativo": true,
+    "preco": "",
+    "itens": [
+      "Limpeza interna completa e troca de pasta térmica",
+      "Check-up de disco, memória, bateria e temperatura",
+      "Atualização do Windows, drivers e antivírus",
+      "Verificação do backup",
+      "Prioridade no atendimento"
+    ]
+  }
+}
