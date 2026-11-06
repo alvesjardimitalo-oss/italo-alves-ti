@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
-  <link rel="stylesheet" href="assets/css/app.css?v=1.0.0">
+  <link rel="stylesheet" href="assets/css/app.css?v=1.0.1">
   <script>
     // aplica o tema salvo antes de desenhar a página (evita "piscar")
     try { const t = localStorage.getItem('ti-tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
@@ -30,6 +30,13 @@
         Entrar com Google
       </button>
       <p id="login-msg" class="login-msg" role="alert"></p>
+      <div id="login-ajuda" class="login-ajuda" hidden>
+        <b>Como entrar no iPhone</b>
+        <p>Este navegador pode impedir o login Google. Toque no ícone do Safari na barra inferior ou no menu do aplicativo e escolha <strong>Abrir no navegador</strong>. Se não houver essa opção, copie o endereço e abra diretamente no Safari.</p>
+        <button type="button" id="copiar-login-url" class="btn btn-sm">Copiar endereço do painel</button>
+        <input type="text" id="login-url" class="login-url" value="https://italoinfotec.com.br/sistema.html" aria-label="Endereço do painel para abrir no navegador" readonly>
+      </div>
+      <p class="login-dica">No iPhone, para entrar com Google, prefira abrir esta página diretamente no Safari.</p>
       <p class="login-foot mono">v<span id="versao"></span> · acesso restrito · <a href="./">voltar ao site</a></p>
     </div>
   </section>
@@ -70,6 +77,6 @@
   <div id="modal-root"></div>
 
   <noscript>Ative o JavaScript para usar o sistema.</noscript>
-  <script type="module" src="assets/js/app.js?v=1.0.0"></script>
+  <script type="module" src="assets/js/app.js?v=1.0.1"></script>
 </body>
 </html>

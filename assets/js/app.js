@@ -1,5 +1,6 @@
 // Ítalo Alves TI — aplicação (roteador, layout, busca global)
 import { store } from './store.js';
+import { orientacaoLogin, URL_PAINEL } from './login-ajuda.js';
 import { icon } from './icons.js';
 import { esc, VERSAO, toast } from './util.js';
 import { buscar, osAbertas, aReceber, publicarRastreio, lembretesManutencao } from './negocio.js';
@@ -175,10 +176,32 @@ $('[data-fechar-menu]').addEventListener('click', () => document.body.classList.
 desenharTema();
 ligarBusca();
 
+$('#login-url').value = URL_PAINEL;
+$('#copiar-login-url').addEventListener('click', async () => {
+  const campo = $('#login-url');
+  try {
+    await navigator.clipboard.writeText(URL_PAINEL);
+    $('#copiar-login-url').textContent = 'Endereço copiado!';
+  } catch (_) {
+    // Alguns WebViews bloqueiam a área de transferência: o campo continua selecionável.
+    campo.focus();
+    campo.select();
+    $('#copiar-login-url').textContent = 'Selecione e copie o endereço acima';
+  }
+});
 $('#btn-login').addEventListener('click', async () => {
+  const botao = $('#btn-login');
   $('#login-msg').textContent = '';
-  try { await store.entrar(); } catch (e) {
-    if (e.code !== 'auth/popup-closed-by-user') $('#login-msg').textContent = 'Não foi possível entrar: ' + (e.message || e);
+  $('#login-ajuda').hidden = true;
+  botao.disabled = true;
+  try {
+    await store.entrar();
+  } catch (e) {
+    const { mensagem, mostrarAjuda } = orientacaoLogin(e?.code);
+    $('#login-msg').textContent = mensagem;
+    $('#login-ajuda').hidden = !mostrarAjuda;
+  } finally {
+    botao.disabled = false;
   }
 });
 
