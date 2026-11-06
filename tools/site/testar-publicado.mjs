@@ -149,6 +149,40 @@ await test('Acompanhar OS no modo demo: status e dados', async () => {
   return 'Consulta existente e não existente funcionando em demo';
 });
 
+await test('Criar OS no sistema demo e consultar no rastreio demo', async () => {
+  // Este caso testa o fluxo REAL da interface (cliente -> OS -> publicação -> consulta),
+  // mas todos os registros permanecem apenas no localStorage do navegador de teste.
+  await p.goto(BASE + 'sistema.html?demo#/clientes/novo', { waitUntil: 'load', timeout: 45000 });
+  await p.locator('#app').waitFor({ state: 'visible', timeout: 20000 });
+  await p.locator('#view #f input[name="nome"]').fill('Cliente Teste de Consulta');
+  await p.locator('#view #f input[name="telefone"]').fill('33999999999');
+  await p.locator('#view #f button[data-depois="os"]').click();
+  await p.waitForURL(/#\/os\/nova\?cliente=/, { timeout: 20000 });
+
+  await p.locator('#view #f input[name="equipamento"]').fill('Notebook');
+  await p.locator('#view #f button[type="submit"].btn-primary').click();
+  await p.waitForURL(/#\/os\/[^?]+$/, { timeout: 20000 });
+  const codigo = (await p.locator('#view h1 .cod').innerText()).trim();
+  assert(/^OS\d{6}$/.test(codigo), 'Código da OS criado incorretamente: ' + codigo);
+
+  // Publicação do documento de acompanhamento ocorre assincronamente.
+  await p.waitForFunction((codigoEsperado) => {
+    const dados = JSON.parse(localStorage.getItem('italoti-demo-v1') || '{}');
+    return Object.values(dados.rastreio || {}).some((item) => item.codigo === codigoEsperado && item.status === 'Recebido');
+  }, codigo, { timeout: 20000 });
+
+  await p.goto(BASE + 'acompanhar.html?demo', { waitUntil: 'domcontentloaded', timeout: 40000 });
+  await p.locator('#r-cod').fill(codigo);
+  await p.locator('#r-tel').fill('33999999999');
+  await p.locator('#form-rastreio button[type="submit"]').click();
+  await p.locator('#resultado-rastreio h2').getByText('Recebido').waitFor({ timeout: 18000 });
+  const resultado = await p.locator('#resultado-rastreio').innerText();
+  assert(resultado.includes(codigo), 'Código não apareceu no rastreamento');
+  assert(resultado.includes('Notebook'), 'Equipamento não apareceu no rastreamento');
+  await p.screenshot({ path: 'test-results/os-criada-e-consultada-demo.png', fullPage: false });
+  return 'Cliente + OS ' + codigo + ' criados no painel DEMO e consultados por código/telefone na mesma sessão';
+});
+
 await test('Login real não revela painel sem autenticação', async () => {
   const incognito = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   try {
