@@ -25,8 +25,15 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Testar site público (sem escrever no Firestore real)
         env:
-          SITE_URL: https://alvesjardimitalo-oss.github.io/italo-alves-ti/
+          SITE_URL: ${{ github.event_name == 'workflow_dispatch' && 'https://italoinfotec.com.br/' || 'https://alvesjardimitalo-oss.github.io/italo-alves-ti/' }}
         run: node tools/site/testar-publicado.mjs
+      - name: Diagnóstico DNS do novo domínio (informativo)
+        if: always()
+        run: |
+          echo 'A do domínio raiz:'
+          dig +short italoinfotec.com.br A || true
+          echo 'CNAME do www:'
+          dig +short www.italoinfotec.com.br CNAME || true
       - name: Salvar capturas para auditoria
         if: always()
         uses: actions/upload-artifact@v4

@@ -5,6 +5,13 @@ O projeto tem duas partes:
 - **Site público** (`index.html` e `dicas/`): apresenta os serviços, traz dicas e explicações de problemas e tem o assistente **"Fale comigo"**. O assistente monta o pedido do cliente, manda para o WhatsApp e salva o contato como **lead** no sistema.
 - **Sistema** (`sistema.html`, link "área técnica" no rodapé do site): a parte de gestão, descrita abaixo.
 
+### Domínio próprio
+
+- Site oficial preparado: **https://italoinfotec.com.br/**
+- Domínio registrado no Registro.br (registro/pagamento informado pelo proprietário em 06/11/2026).
+- Hospedagem: GitHub Pages; os dados continuam no Firestore do projeto `high-os`.
+- Enquanto o DNS e o HTTPS não estiverem operacionais, mantenha a versão atual na `main` e não incorpore a proposta de migração para evitar indisponibilidade.
+
 ### Editar o site (sem programar)
 
 O conteúdo editável do site fica em **`conteudo/`** (restaurado a partir das páginas publicadas). Altere apenas os arquivos dessa pasta pelo GitHub e faça commit na branch `main`; a ação **Gerar site** produzirá as páginas novamente. Antes de editar, confira os dados de empresa e textos restaurados.
@@ -75,13 +82,14 @@ Imprime em **A4** e em **impressora térmica de bobina 80 mm**, com **QR Code PI
 
 ## Trocar para domínio próprio (somente depois de registrar)
 
-1. Adicione o domínio em **Settings → Pages → Custom domain** no GitHub e configure DNS no provedor (A/AAAA para o domínio raiz e CNAME do `www`, conforme a documentação atual do GitHub).
+1. O domínio **italoinfotec.com.br** foi definido no arquivo `CNAME` nesta alteração. Ao incorporá-la na branch `main`, confirme em **Settings → Pages → Custom domain** que aparece `italoinfotec.com.br`.
+   No Registro.br, usando o DNS do Registro.br no **modo avançado**, crie quatro registros **A** para `@` apontando para `185.199.108.153`, `185.199.109.153`, `185.199.110.153` e `185.199.111.153`, além de **CNAME** de `www` para `alvesjardimitalo-oss.github.io`. Salve a zona DNS. Não altere outros registros MX/TXT de e-mail.
 2. Antes de publicar os links, verifique que o domínio aponta para o site e que HTTPS pode ser ativado.
-3. Atualize `conteudo/site.json` → `base` para a URL definitiva com barra final; ao salvar, **Gerar site** atualizará as URLs canônicas, dados estruturados, sitemap e links de compartilhamento.
-4. No Firebase Authentication, inclua o novo domínio em **Authorized domains** e teste o login pelo novo endereço.
+3. A configuração `conteudo/site.json` → `base` já foi preparada como `https://italoinfotec.com.br/`. Ao incorporar esta alteração, **Gerar site** atualizará as URLs canônicas, dados estruturados, sitemap e links de compartilhamento.
+4. No Firebase Authentication do projeto **high-os**, inclua **`italoinfotec.com.br`** em **Authorized domains** e teste o login pelo novo endereço. Se for utilizar o subdomínio `www` diretamente para login, adicione também `www.italoinfotec.com.br`.
 5. Teste links de campanhas, QR Codes e acompanhamento das OS e atualize os links no Perfil da Empresa no Google e no Search Console.
 
-O domínio da empresa ainda não foi escolhido, portanto **não altere `base` para um endereço que não foi registrado e verificado**. O endereço antigo do GitHub Pages deve permanecer acessível durante a migração.
+**Atenção:** a ativação deste commit na `main` deve ocorrer depois do apontamento de DNS no Registro.br, pois configurar `CNAME` pode fazer o endereço antigo redirecionar ao novo domínio antes de ele estar acessível. Nunca altere os registros DNS de e-mail ou remova dados do Firebase como parte desta migração.
 
 ## Trazer os dados do sistema antigo (WAMP)
 
