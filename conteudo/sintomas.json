@@ -1,0 +1,104 @@
+{
+  "itens": [
+    {
+      "id": "lento",
+      "titulo": "Notebook ou PC lento",
+      "icone": "🐢"
+    },
+    {
+      "id": "nao-liga",
+      "titulo": "Computador não liga",
+      "icone": "⏻"
+    },
+    {
+      "id": "liga-sem-imagem",
+      "titulo": "Liga, mas não dá vídeo",
+      "icone": "🖥️"
+    },
+    {
+      "id": "travando",
+      "titulo": "Congelando ou travando",
+      "icone": "⌛"
+    },
+    {
+      "id": "superaquece",
+      "titulo": "Esquentando demais",
+      "icone": "🌡️"
+    },
+    {
+      "id": "tela-quebrada",
+      "titulo": "Tela quebrada ou manchada",
+      "icone": "💻"
+    },
+    {
+      "id": "bateria",
+      "titulo": "Bateria dura pouco",
+      "icone": "🔋"
+    },
+    {
+      "id": "nao-carrega",
+      "titulo": "Não carrega",
+      "icone": "🔌"
+    },
+    {
+      "id": "wifi",
+      "titulo": "Internet ou Wi-Fi caindo",
+      "icone": "📶"
+    },
+    {
+      "id": "virus",
+      "titulo": "Vírus e propagandas",
+      "icone": "🛡️"
+    },
+    {
+      "id": "tela-azul",
+      "titulo": "Erro de tela azul",
+      "icone": "⚠️"
+    },
+    {
+      "id": "teclado",
+      "titulo": "Teclado ou touchpad",
+      "icone": "⌨️"
+    },
+    {
+      "id": "impressora",
+      "titulo": "Impressora não funciona",
+      "icone": "🖨️"
+    },
+    {
+      "id": "ssd-hd",
+      "titulo": "HD / SSD com falha",
+      "icone": "💾"
+    },
+    {
+      "id": "travado-logo",
+      "titulo": "Travado na logo",
+      "icone": "🔄"
+    },
+    {
+      "id": "upgrade",
+      "titulo": "Quero instalar SSD / RAM",
+      "icone": "🚀"
+    },
+    {
+      "id": "limpeza",
+      "titulo": "Limpeza e manutenção",
+      "icone": "🧹"
+    },
+    {
+      "id": "molhou",
+      "titulo": "Molhou o notebook",
+      "icone": "💧"
+    },
+    {
+      "id": "barulho",
+      "titulo": "Ventoinha barulhenta",
+      "icone": "🔊"
+    },
+    {
+      "id": "arquivos",
+      "titulo": "Arquivos perdidos",
+      "icone": "📁"
+    }
+  ]
+}

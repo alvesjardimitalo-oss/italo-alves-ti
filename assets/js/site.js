@@ -1,6 +1,7 @@
 // Site público: menu, ano do rodapé e o assistente "Fale comigo" (pedido -> WhatsApp + lead).
 import { SITE } from './site-config.js';
 import { salvarLead } from './leads.js';
+import { CATEGORIAS, sintomasPorCategoria, orientarSintoma } from './alvesinho-conhecimento.js';
 
 const raiz = document.documentElement.dataset.raiz || './'; // páginas em /dicas/ usam "../"
 const $ = (s) => document.querySelector(s);
@@ -55,9 +56,9 @@ const ICO_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICO_ENV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>';
 
 document.body.insertAdjacentHTML('beforeend', `
-  <button class="chat-fab" id="chat-fab" type="button" aria-label="Fale comigo">${ICO_CHAT}<span class="txt">Fale comigo</span><span class="pulso"></span></button>
+  <button class="chat-fab" id="chat-fab" type="button" aria-label="Conversar com Alvesinho"><img src="${raiz}assets/img/alvesinho.svg" alt="" width="30" height="30"><span class="txt">Fale com o Alvesinho</span><span class="pulso"></span></button>
   <div class="chat" id="chat" role="dialog" aria-label="Assistente de atendimento" aria-hidden="true">
-    <div class="chat-head"><img src="${raiz}assets/img/logo.svg" alt=""><div><b>${esc(SITE.nome)}</b><small>Assistente de atendimento</small></div>
+    <div class="chat-head"><img class="alvesinho-avatar" src="${raiz}assets/img/alvesinho.svg" alt="Avatar do Alvesinho"><div><b>Alvesinho</b><small>Assistente virtual · ${esc(SITE.nome)}</small></div>
       <button type="button" id="chat-fechar" aria-label="Fechar">×</button></div>
     <div class="chat-msgs" id="chat-msgs" aria-live="polite"></div>
     <form class="chat-form" id="chat-form" autocomplete="on">
@@ -65,7 +66,7 @@ document.body.insertAdjacentHTML('beforeend', `
       <input id="chat-hp" name="empresa_site" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
       <button id="chat-env" type="submit" disabled aria-label="Enviar">${ICO_ENV}</button>
     </form>
-    <div class="chat-legal">Seus dados são usados só para responder ao seu pedido. <a href="${raiz}politica-de-privacidade.html">Privacidade</a></div>
+    <div class="chat-legal">Sou um assistente virtual automatizado. Orientações iniciais não são diagnóstico técnico. Seus dados são usados para responder ao pedido. <a href="${raiz}politica-de-privacidade.html">Privacidade</a></div>
   </div>`);
 
 const chat = $('#chat');
@@ -90,22 +91,33 @@ function fecharChat() {
   chat.setAttribute('aria-hidden', 'true');
   $('#chat-fab').hidden = false;
 }
-$('#chat-fab').addEventListener('click', abrirChat);
+$('#chat-fab').addEventListener('click', () => abrirChat());
 $('#chat-fechar').addEventListener('click', fecharChat);
 document.querySelectorAll('[data-abrir-chat]').forEach((b) => b.addEventListener('click', (e) => {
   e.preventDefault();
-  abrirChat(b.dataset.servico ? { servico: b.dataset.servico } : null);
+  abrirChat(b.dataset.sintoma ? { problema: b.dataset.sintoma, servico: 'Diagnóstico por sintomas', equipamento: b.dataset.equipamento || '' }
+    : b.dataset.servico ? { servico: b.dataset.servico } : null);
 }));
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && chat.classList.contains('aberto')) fecharChat(); });
 
 const rolar = () => { msgs.scrollTop = msgs.scrollHeight; };
 function bot(texto, ms = 450) {
   return new Promise((ok) => {
+    const linha = document.createElement('div');
+    linha.className = 'alvesinho-resposta';
+    const avatar = document.createElement('img');
+    avatar.src = raiz + 'assets/img/alvesinho.svg';
+    avatar.alt = '';
+    avatar.width = 27;
+    avatar.height = 27;
+    avatar.className = 'alvesinho-mini';
     const d = document.createElement('div');
     d.className = 'msg bot digitando';
-    d.textContent = '• • •';
-    msgs.appendChild(d); rolar();
-    setTimeout(() => { d.classList.remove('digitando'); d.innerHTML = texto; rolar(); ok(); }, ms);
+    d.textContent = 'digitando…';
+    linha.append(avatar, d);
+    msgs.appendChild(linha); rolar();
+    const tempo = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : Math.min(850, Math.max(140, ms + texto.length * 3));
+    setTimeout(() => { d.classList.remove('digitando'); d.innerHTML = texto; rolar(); ok(); }, tempo);
   });
 }
 function eu(texto) {
@@ -155,11 +167,78 @@ $('#chat-form').addEventListener('submit', async (e) => {
 });
 
 async function inicio() {
-  await bot(`Olá! 👋 Sou o assistente da <b>${esc(SITE.nome)}</b>.\nEm menos de 1 minuto eu organizo o seu pedido e envio direto para o WhatsApp do técnico.`, 300);
-  const servicos = ['Conserto / orçamento', 'Suporte remoto', 'Upgrade ou montagem', 'Só tirar uma dúvida'];
+  await bot(`Olá! 👋 Eu sou o <b>Alvesinho</b>, assistente virtual da <b>${esc(SITE.nome)}</b>. Posso te orientar pelos sintomas e encaminhar seu pedido diretamente ao técnico.`, 250);
+  if (lead.problema && lead.servico === 'Diagnóstico por sintomas') return diagnostico(lead.problema);
+  const servicos = ['Conserto / orçamento', 'Diagnóstico por sintomas', 'Descrever meu problema', 'Suporte remoto', 'Upgrade ou montagem', 'Vale consertar ou trocar?', 'Acompanhar OS', 'Só tirar uma dúvida'];
   const esc1 = lead.servico || await opcoes(servicos);
   lead.servico = esc1;
+  if (esc1 === 'Diagnóstico por sintomas') return diagnostico();
+  if (esc1 === 'Descrever meu problema') {
+    await bot('Pode me contar com suas palavras o que está acontecendo? Vou procurar uma orientação inicial.', 200);
+    const relato = await pergunta('Ex.: meu notebook liga, mas fica com tela preta', {
+      validar: (t) => t.length < 5 ? 'Descreva um pouco mais o sintoma, por favor.' : t.length > 450 ? 'Resuma em até 450 caracteres, por favor.' : '',
+    });
+    return diagnostico(relato);
+  }
+  if (esc1 === 'Vale consertar ou trocar?') {
+    await bot(`Essa dúvida é muito comum. Tenho uma ferramenta gratuita com perguntas sobre a idade do computador, defeito e o uso. <a href="${raiz}ferramentas/consertar-ou-trocar.html">Descobrir se compensa consertar ou trocar</a>.`);
+    const proximo = await opcoes(['Quero orçamento mesmo assim', 'Ver sintomas primeiro']);
+    if (proximo === 'Ver sintomas primeiro') return diagnostico();
+    lead.servico = 'Avaliar conserto ou troca';
+    return fluxoPedido();
+  }
+  if (esc1 === 'Acompanhar OS') {
+    await bot(`Para conferir o andamento do conserto, você precisa do código da ordem de serviço e do telefone cadastrado. <a href="${raiz}acompanhar.html">Abrir acompanhamento de OS</a>.`);
+    const proximo = await opcoes(['Preciso de ajuda com a OS', 'Quero outro atendimento']);
+    if (proximo === 'Quero outro atendimento') { lead.servico = 'Conserto / orçamento'; return fluxoPedido(); }
+    lead.servico = 'Dúvida sobre acompanhamento de OS';
+    return fluxoPedido();
+  }
   if (esc1 === 'Só tirar uma dúvida') return duvida();
+  return fluxoPedido();
+}
+
+async function diagnostico(relato = '') {
+  if (!lead.equipamento) {
+    await bot('Vamos entender o equipamento primeiro. Qual deles está apresentando o problema?');
+    lead.equipamento = await opcoes(['Notebook', 'Computador (desktop)', 'All-in-one', 'Impressora', 'Outro']);
+  }
+  if (!relato) {
+    await bot('Em qual área está o sintoma? Se preferir, pode escrever o problema com suas palavras.');
+    const grupo = await opcoes([...CATEGORIAS.map((g) => g.titulo), 'Descrever outro sintoma']);
+    if (grupo === 'Descrever outro sintoma') {
+      await bot('Conte o que acontece quando tenta usar o equipamento.');
+      relato = await pergunta('Ex.: não carrega, tela piscando, Wi-Fi cai...', {
+        validar: (t) => t.length < 4 ? 'Conte um pouco mais, por favor.' : t.length > 450 ? 'Resuma em até 450 caracteres.' : '',
+      });
+    } else {
+      const categoria = CATEGORIAS.find((g) => g.titulo === grupo);
+      const itens = sintomasPorCategoria(categoria.id);
+      await bot('Qual destas situações parece mais com a sua?');
+      relato = await opcoes([...itens.map((x) => x.titulo), 'Outra situação']);
+      if (relato === 'Outra situação') {
+        relato = await pergunta('Descreva o sintoma...', { validar: (t) => t.length < 4 ? 'Pode descrever mais?' : '' });
+      }
+    }
+  }
+  const orientacao = orientarSintoma(relato);
+  lead.problema = orientacao.conhecido ? orientacao.titulo : String(relato).slice(0, 160);
+  // Preserva a descrição pessoal sem transformá-la em diagnóstico.
+  if (!orientacao.conhecido) lead.detalhe = String(relato).slice(0, 450);
+  await bot(`<b>${esc(orientacao.titulo)}</b>\n${esc(orientacao.possiveis)}`, 350);
+  await bot(`${orientacao.alerta ? '<b>Atenção:</b> ' : '<b>Primeiro cuidado:</b> '}${esc(orientacao.passo)}`, 330);
+  await bot('Isso é uma orientação preliminar: só uma avaliação técnica confirma a causa e o valor do reparo.', 200);
+  if (orientacao.dica) {
+    await bot(`Se quiser entender melhor, veja também: <a href="${raiz}${esc(orientacao.dica)}">ler dica relacionada</a>.`, 150);
+  }
+  const opcao = await opcoes(['Quero solicitar orçamento', 'Avaliar outro sintoma', 'Falar direto no WhatsApp']);
+  if (opcao === 'Avaliar outro sintoma') { lead.problema = ''; lead.detalhe = ''; return diagnostico(); }
+  if (opcao === 'Falar direto no WhatsApp' && SITE.whatsapp) {
+    const msg = `Olá! Conversei com o Alvesinho sobre ${lead.equipamento}: ${lead.problema}. Gostaria de uma avaliação.`;
+    await bot(`Preparei sua mensagem. <a class="btn btn-wa btn-sm" href="https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Abrir conversa no WhatsApp</a>`);
+    return;
+  }
+  lead.servico = 'Diagnóstico e orçamento';
   return fluxoPedido();
 }
 
@@ -182,8 +261,9 @@ async function fluxoPedido() {
     lead.equipamento = await opcoes(['Notebook', 'Computador (desktop)', 'All-in-one', 'Impressora', 'Outro']);
   }
   if (!lead.problema) {
-    await bot('O que está acontecendo?');
-    lead.problema = await opcoes(['Não liga', 'Está lento', 'Esquenta / desliga sozinho', 'Tela / imagem', 'Vírus / propagandas', 'Formatar / instalar Windows', 'Trocar peça / upgrade', 'Outro']);
+    await bot('O que está acontecendo? Você também pode escolher <b>Outros sintomas</b> para uma orientação mais detalhada.');
+    lead.problema = await opcoes(['Não liga', 'Está lento', 'Esquenta / desliga sozinho', 'Tela / imagem', 'Vírus / propagandas', 'Formatar / instalar Windows', 'Trocar peça / upgrade', 'Bateria / carregador', 'Internet / Wi-Fi', 'Impressora', 'Outros sintomas']);
+    if (lead.problema === 'Outros sintomas') { lead.problema = ''; return diagnostico(); }
   }
   if (lead.detalhe) {
     await bot('Já anexei o resultado da ferramenta ao seu pedido. ✅', 300);
