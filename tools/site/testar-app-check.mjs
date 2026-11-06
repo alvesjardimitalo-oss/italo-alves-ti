@@ -2,6 +2,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+const config = readFileSync(new URL('../../assets/js/config.js', import.meta.url), 'utf8');
+const chave = config.match(/export const APP_CHECK_SITE_KEY = '([^']+)';/);
+assert(chave, 'App Check deve ter uma chave pública configurada para o domínio oficial');
+assert(/^[A-Za-z0-9_-]{35,100}$/.test(chave[1]), 'Formato da chave pública Enterprise inválido');
 const fonte = readFileSync(new URL('../../assets/js/app-check.js', import.meta.url), 'utf8');
 const testavel = fonte.replace(
   "import { APP_CHECK_SITE_KEY } from './config.js';",
