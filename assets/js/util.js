@@ -1,7 +1,7 @@
 // Utilitários: formatação, validação e componentes de interface.
 import { icon } from './icons.js';
 
-export const VERSAO = '1.0.0';
+export const VERSAO = '1.0.1';
 
 /* ---------------- Texto e HTML ---------------- */
 export function esc(v) {
