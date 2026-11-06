@@ -24,7 +24,7 @@ SINTOMAS_HOME = C('sintomas.json')['itens']
 BASE = SITE['base'].rstrip('/') + '/'
 NOME = SITE['nome']
 HOJE = datetime.date.today().isoformat()
-V = '2.1.0'
+V = '2.2.0'
 e = html.escape
 
 
@@ -711,7 +711,10 @@ def gerar_institucionais():
                    '<a href="./">início</a> / privacidade', 'Política de privacidade', 'Resumo simples de como os seus dados são usados, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).', f'''
         <h2>Quais dados são coletados</h2>
         <p>Quando você usa o assistente "Fale comigo" ou envia o resultado de uma ferramenta, são coletados: nome, cidade, número de WhatsApp, tipo de equipamento, descrição do problema, preferência de atendimento e, se você enviar, o resumo do check-up. Também são registradas a página de onde o pedido foi enviado e, se houver, quem indicou.</p>
-        <p>As ferramentas de teste (teclado, tela, som, microfone, câmera e velocidade) funcionam só no seu aparelho. Nada é gravado nem enviado.</p>
+        <p>Os resultados locais das ferramentas de teste (teclado, tela, som, microfone, câmera e velocidade) não são transmitidos como diagnóstico. Se você decidir pedir atendimento, o resumo fornecido ao técnico será enviado com sua autorização.</p>
+        <h2>Métricas de uso opcionais</h2>
+        <p>Se você tocar em <b>Permitir</b> no aviso de privacidade, registramos somente eventos limitados: uma sessão monitorada, abertura do Alvesinho, seleção de sintomas por categoria, abertura ou conclusão de ferramentas e cliques em links do WhatsApp. Também usamos categorias amplas de origem do acesso e da página. <b>Não incluímos nome, telefone, texto digitado, IP, identificação pessoal ou conteúdo de conversa nesses registros.</b> A contagem não identifica pessoas e não informa se a mensagem no WhatsApp foi enviada.</p>
+        <p>Essa coleta usa o Firebase e só acontece após a sua escolha. O navegador guarda a preferência para respeitá-la e um marcador temporário da sessão para não repetir o mesmo evento. Você pode alterar a escolha em <b>Preferências de métricas</b>, no rodapé, a qualquer momento. Ao escolher <b>Não permitir</b>, os eventos opcionais não são enviados. Os pedidos de orçamento continuam funcionando mesmo sem métricas.</p>
         <h2>Para que são usados</h2>
         <p>Exclusivamente para responder ao seu pedido: entrar em contato, enviar orçamento e prestar o serviço solicitado. Os dados não são vendidos nem compartilhados com terceiros para fins de propaganda.</p>
         <h2>Onde ficam guardados</h2>
