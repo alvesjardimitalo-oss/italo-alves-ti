@@ -381,3 +381,15 @@ video.cam { width: 100%; max-width: 560px; border-radius: 12px; background: #000
   .sintoma-card { transition:none; }
   .sintoma-card:hover { transform:none; }
 }
+
+
+/* Consentimento explícito e revogável para métricas de uso. */
+.metricas-aviso { position:fixed;left:16px;bottom:16px;z-index:90;max-width:min(545px,calc(100vw - 32px));padding:16px 18px;border:1px solid var(--border-strong);border-radius:14px;background:var(--bg-2);box-shadow:0 18px 48px rgba(0,0,0,.55);color:var(--text); }
+.metricas-aviso[hidden] { display:none!important; }
+.metricas-aviso b { display:block;font-size:.96rem; }
+.metricas-aviso p { margin:6px 0 13px;font-size:.83rem;color:var(--text-2);line-height:1.5; }
+.metricas-aviso a { color:var(--cyan); }
+.metricas-acoes { display:flex;gap:9px;justify-content:flex-start;flex-wrap:wrap; }
+.metricas-preferencias { border:0;color:var(--text-3);background:none;cursor:pointer;font:inherit;font-size:.75rem;text-decoration:underline; }
+.metricas-preferencias:focus-visible,.metricas-acoes button:focus-visible { outline:3px solid #fbbf24;outline-offset:2px; }
+@media(max-width:720px){.metricas-aviso { left:8px;bottom:8px;max-width:calc(100vw - 16px);padding:13px; } }
