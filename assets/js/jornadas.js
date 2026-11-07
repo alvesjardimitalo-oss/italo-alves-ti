@@ -43,14 +43,14 @@ async function enviarPedido({contato,servico,equipamento,problema,detalhe,atendi
  '*Assunto:* '+(problema||'Não informado'),
  '*Detalhes:* '+detalhe,
  '',
- 'Aguardo retorno e confirmação do técnico.'
+ 'Aguardo seu retorno para combinarmos os detalhes.'
  ].join('\n');
  const result=$('[data-envio-resultado]');
  if(result){
    result.hidden=false;
    result.replaceChildren();
-   const h=document.createElement('h3');h.textContent=gravado?'Solicitação recebida pelo sistema':'Envie sua solicitação para concluir';
-   const p=document.createElement('p');p.textContent=gravado?'Recebemos seus dados. A data, o preço e a disponibilidade ainda precisam ser confirmados pelo técnico.':'O registro automático não pôde ser confirmado. Envie os detalhes pelo WhatsApp para garantir o contato.';
+   const h=document.createElement('h3');h.textContent=gravado?'Recebi seus dados':'Falta enviar pelo WhatsApp';
+   const p=document.createElement('p');p.textContent=gravado?'Seu pedido chegou ao sistema. Vou confirmar a disponibilidade e os detalhes antes de combinar o atendimento.':'Não consegui confirmar o registro pelo site. Envie a mensagem no WhatsApp para eu receber seu pedido.';
    const a=document.createElement('a');a.className='btn btn-pri';a.href=whatsapp(msg);a.target='_blank';a.rel='noopener noreferrer';a.textContent='Enviar detalhes pelo WhatsApp';
    result.append(h,p,a);
    result.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -98,7 +98,7 @@ function iniciarAgendamento(){
 }
 
 const SERVICOS = [
- {id:'avaliacao',nome:'Avaliação inicial',min:60,max:140,observacao:'Faixa ilustrativa; avaliação pode ter outra política de cobrança.'},
+ {id:'avaliacao',nome:'Avaliação inicial',min:60,max:140,observacao:'Valor de exemplo, sujeito à avaliação.'},
  {id:'limpeza',nome:'Limpeza e revisão térmica',min:140,max:280,observacao:'Dependente de modelo e condições.'},
  {id:'sistema',nome:'Reinstalação/configuração de sistema',min:160,max:320,observacao:'Não inclui licenças, backup complexo ou peças.'},
  {id:'ssd',nome:'Instalação de SSD (mão de obra)',min:90,max:210,observacao:'SSD e eventual adaptação cobrados à parte.'},
@@ -112,7 +112,7 @@ function iniciarEstimativa(){
    const label=document.createElement('label');label.className='jornada-choice';
    const box=document.createElement('input');box.type='checkbox';box.value=s.id;box.name='servico';box.style.marginRight='8px';
    const head=document.createElement('b');head.append(box,document.createTextNode(s.nome));
-   const sub=document.createElement('span');sub.textContent='Referência simulada: '+moeda(s.min)+' a '+moeda(s.max);
+   const sub=document.createElement('span');sub.textContent='Simulação: '+moeda(s.min)+' a '+moeda(s.max);
    label.append(head,sub);lista.append(label);
    box.addEventListener('change',()=>label.classList.toggle('is-active',box.checked));
  }
