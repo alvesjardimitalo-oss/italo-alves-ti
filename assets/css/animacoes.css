@@ -192,3 +192,16 @@
 @media(max-width:920px){.hero-compacta .wrap{grid-template-columns:minmax(0,1fr) 200px}.alves-showcase{grid-template-columns:1fr 300px}}
 @media(max-width:720px){.hero-compacta .wrap{grid-template-columns:1fr 125px;gap:8px}.hero-alves-personagem{min-height:130px}.hero-alves-personagem img{width:120px}.hero-alves-balao{display:none}.alves-showcase{grid-template-columns:1fr}.alves-avatar-area>img{width:145px}}
 @media(max-width:520px){.hero.hero-compacta{padding:24px 0 20px}.hero-compacta .wrap{grid-template-columns:1fr}.hero-alves-personagem{min-height:0;position:absolute;right:0;top:0;opacity:.16;pointer-events:none}.hero-alves-personagem img{width:115px}.hero-compacta .hero-copy{position:relative;z-index:1}.hero-compacta h1{font-size:1.9rem}.hero-compacta .hero-acoes .btn{flex:1;justify-content:center;font-size:.82rem}.alves-stage-content{grid-template-columns:100px minmax(0,1fr)}.alves-avatar-area>img{width:100px}.alves-avatar-area:before{width:110px}.alves-stage-illustration .ani-visual{height:76px}}
+
+
+/* Humanização visual: destaque para o conteúdo, menos efeitos artificiais */
+.alves-banner-head .kicker,.alves-showcase-aside .kicker,.alves-onair,.alves-episode-label{letter-spacing:.035em;text-transform:none}
+.alves-main-stage{box-shadow:0 12px 28px #0003;border-color:#236e91}
+.alves-avatar-area>img{box-shadow:0 3px 18px #0004;border-color:#1aaec4}
+.alves-avatar-area:before{box-shadow:none}
+.alves-assist-card .btn{background:#177baf;box-shadow:none}
+.alves-assist-card .btn:hover{background:#1a8cbe}
+.alves-subtitle{background:#132b40;border-left-color:#25bdb6;box-shadow:none}
+.alves-stage-steps button.is-active{box-shadow:none}
+.alves-tip:hover{transform:none}
+.alves-banner-head h2{letter-spacing:-.015em}
