@@ -137,10 +137,10 @@ function iniciarEstimativa(){
 const PLANOS={
  essencial:{titulo:'Preventivo essencial',itens:['Avaliação periódica do equipamento','Recomendações de limpeza e segurança','Checklist de armazenamento e atualizações']},
  familia:{titulo:'Casa e família',itens:['Orientação para vários dispositivos domésticos','Rotina de backup e proteção','Acompanhamento preventivo combinado']},
- empresa:{titulo:'Suporte para empresas',itens:['Levantamento do parque de equipamentos','Plano de manutenção e prioridades','Atendimento e SLA definidos em proposta']}
+ empresa:{titulo:'Manutenção mensal para empresas',itens:['Cadastro e acompanhamento dos equipamentos atendidos','Revisões preventivas com frequência combinada','Suporte remoto para falhas e dúvidas dentro do contrato','Verificações de backup, segurança, atualizações e rede conforme escopo','Relatório de serviços e recomendações','Visitas, horários, limite de chamados e prazo de resposta definidos na proposta']}
 };
 function iniciarPlanos(){
- let escolhido='essencial';
+ let escolhido='empresa';
  const box=$('[data-plano-resumo]');
  function render(){
   const p=PLANOS[escolhido];texto($('[data-plano-titulo]'),p.titulo);
@@ -154,8 +154,9 @@ function iniciarPlanos(){
   e.preventDefault();
   const contato=tratarContato();if(!contato)return;
   const qtd=Number(valor('j-quantidade'));if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de equipamentos (1 a 2000).');return;}
-  const relato=valor('j-detalhe');
-  await enviarPedido({contato,servico:'Proposta de plano de manutenção',equipamento:'Computadores e notebooks',problema:PLANOS[escolhido].titulo,detalhe:('Plano: '+PLANOS[escolhido].titulo+'; Quantidade: '+qtd+'; necessidade: '+relato).slice(0,1500),atendimento:'Proposta sob consulta'});
+  const relato=valor('j-detalhe'),empresa=valor('j-empresa'),frequencia=valor('j-frequencia'),suporte=valor('j-suporte');
+  if(empresa.length>100){mostrarErro('Informe o nome da empresa com até 100 caracteres.');return;}
+  await enviarPedido({contato,servico:'Proposta de manutenção mensal',equipamento:'Computadores e notebooks',problema:PLANOS[escolhido].titulo,detalhe:('Empresa: '+(empresa||'Não informada')+'; Plano: '+PLANOS[escolhido].titulo+'; Quantidade: '+qtd+'; Visitas: '+frequencia+'; Suporte: '+suporte+'; Necessidade: '+relato).slice(0,1500),atendimento:'Mensalidade sob proposta'});
  });
 }
 if(tipo==='diagnostico')iniciarDiagnostico();
