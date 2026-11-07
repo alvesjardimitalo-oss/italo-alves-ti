@@ -111,3 +111,40 @@
 @media(max-width:920px){.alves-showcase{grid-template-columns:1fr}.alves-showcase-aside{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.alves-tip-header,.alves-assist-card{grid-column:1/-1}.alves-main-stage{min-height:440px}}
 @media(max-width:600px){.alves-banner-section{padding:30px 0}.alves-banner-head{display:block}.alves-banner-all{margin-top:12px}.alves-main-stage{padding:16px;min-height:0}.alves-stage-content{grid-template-columns:110px minmax(0,1fr);gap:9px;padding:20px 0}.alves-avatar-area>img{width:100px}.alves-avatar-name{font-size:.64rem}.alves-stage-message h3{font-size:1.13rem}.alves-stage-message>p{font-size:.75rem}.alves-stage-illustration .ani-visual{height:82px}.alves-stage-illustration .ani-window{height:65px}.alves-stage-illustration .ani-monitor{transform:scale(.75)}.alves-stage-illustration .ani-fan{transform:scale(.8)}.alves-showcase-aside{display:flex;padding:15px}.alves-stage-bottom{gap:10px}.alves-learn-link{width:100%;text-align:center}.alves-other-tips{gap:7px}}
 @media(prefers-reduced-motion:reduce){.alves-avatar-area>img,.alves-speaking i{animation:none!important}}
+
+
+/* Destaque premium: direção de arte do banner aprovado */
+.alves-banner-section{background:radial-gradient(ellipse at 40% 70%,rgba(13,62,109,.1),transparent 65%)}
+.alves-banner-head .kicker{color:#19edfb;letter-spacing:.15em}
+.alves-banner-head h2{font-weight:800;letter-spacing:-.035em}
+.alves-main-stage{background:radial-gradient(circle at 20% 45%,#0b4674 0%,#082643 34%,#06172f 78%);border:1.5px solid #16d9f5;box-shadow:0 0 0 1px #058aca30,0 18px 38px #0005,0 0 38px #00cdff1a}
+.alves-stage-glow{width:420px;height:420px;top:35px;left:-75px;background:radial-gradient(circle,#0ccfff39,transparent 70%)}
+.alves-onair{color:#7affef;font-weight:800}
+.alves-onair i{box-shadow:0 0 16px #3affac,0 0 3px #52ffc1}
+.alves-stage-content{grid-template-columns:minmax(180px,.95fr) minmax(0,1fr);gap:22px}
+.alves-avatar-area{align-self:stretch;justify-content:center}
+.alves-avatar-area:before{content:"";position:absolute;width:92%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#09648d90,#102344 65%,transparent 72%);box-shadow:0 0 28px #00dcff40;z-index:-1}
+.alves-avatar-area>img{width:min(100%,270px);border-radius:50%;border:2px solid #0ceeff;box-shadow:0 0 0 7px #03d8ff14,0 0 36px #00d8ff3d;object-fit:cover;animation:alves-float 4s ease-in-out infinite}
+.alves-avatar-name{color:#f4fdff;text-shadow:0 2px 10px #0008;letter-spacing:.14em}
+.alves-stage-message h3{font-size:clamp(1.42rem,2.5vw,2.2rem);font-weight:800;letter-spacing:-.03em;max-width:420px}
+.alves-episode-label{color:#08eef3}
+.alves-stage-illustration{max-width:300px}
+.alves-stage-illustration .ani-visual{height:128px;background:linear-gradient(120deg,#102f51,#061d32);border-color:#237ba8;box-shadow:inset 0 0 22px #19b8dd0d}
+.alves-subtitle{background:linear-gradient(90deg,#114e687d,#17405a7a);border-left:4px solid #36f5e6;border-radius:10px;padding:16px 19px;box-shadow:inset 0 1px 0 #ffffff10}
+.alves-subtitle-label{color:#6bfff0}
+.alves-stage-bottom{border-top-color:#8aaac53d}
+.alves-stage-steps button.is-active{background:#19efec;box-shadow:0 0 10px #0aeaf766}
+.alves-showcase-aside{background:linear-gradient(155deg,#0e1c32,#0b1427);border-color:#35627b}
+.alves-showcase-aside .kicker{color:#03dffa}
+.alves-tip{border-color:#315270;background:#0e2035;transition:border-color .2s,background .2s,transform .2s}
+.alves-tip:hover{transform:translateX(2px)}
+.alves-tip.is-selected{border-color:#16f0e7;background:#12394b;box-shadow:0 0 0 1px #11dfe522}
+.alves-tip-icon{background:#0e4252;color:#17f8e8}
+.alves-assist-card{background:linear-gradient(145deg,#0e4a75,#0e2b4f);border:1px solid #066b9a}
+.alves-assist-card img{border:2px solid #06daed;box-shadow:0 0 16px #00cfff3e;object-fit:cover}
+.alves-assist-card .btn{background:linear-gradient(105deg,#17c8ec,#6660f1);color:white;border:0;box-shadow:0 9px 22px #009bff31;font-weight:800}
+.alves-assist-card .btn:hover,.alves-assist-card .btn:focus-visible{filter:brightness(1.1)}
+.inicio-alvesinho{border-radius:50%;box-shadow:0 0 0 3px #2bcbec33}
+@media(max-width:1100px){.alves-stage-content{grid-template-columns:minmax(130px,.8fr) minmax(0,1fr)}.alves-avatar-area>img{width:min(100%,240px)}}
+@media(max-width:600px){.alves-stage-content{grid-template-columns:110px minmax(0,1fr);gap:12px}.alves-avatar-area>img{width:106px}.alves-stage-message h3{font-size:1.12rem}.alves-stage-illustration .ani-visual{height:86px}}
+@media(prefers-reduced-motion:reduce){.alves-tip{transition:none}}
