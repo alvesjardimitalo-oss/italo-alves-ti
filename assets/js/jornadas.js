@@ -211,6 +211,20 @@ function iniciarAvaliacaoEmpresarial(){
  });
 }
 
+
+function iniciarAtendimentoPessoal(){
+ const form=$('#j-form');if(!form)return;
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const contato=tratarContato();if(!contato)return;
+  const equipamento=valor('j-equipamento'),problema=valor('j-prioridade'),atendimento=valor('j-atendimento'),relato=valor('j-detalhe');
+  if(!equipamento||!problema||!atendimento){mostrarErro('Escolha o equipamento, o problema e a forma de atendimento.');return;}
+  const detalhe=('Sintoma informado: '+problema+'; Preferência: '+atendimento+'; Relato: '+relato+'; Solicitação sujeita à avaliação e aprovação do orçamento.').slice(0,1500);
+  await enviarPedido({contato,servico:'Atendimento pessoa física',equipamento,problema,detalhe,atendimento});
+ });
+}
+
+if(tipo==='atendimento-pessoal')iniciarAtendimentoPessoal();
 if(tipo==='avaliacao-empresa')iniciarAvaliacaoEmpresarial();
 if(tipo==='diagnostico')iniciarDiagnostico();
 if(tipo==='agendar')iniciarAgendamento();
