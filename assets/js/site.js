@@ -13,8 +13,25 @@ const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---------------- menu e rodapé ---------------- */
-$('.menu-toggle')?.addEventListener('click', () => document.body.classList.toggle('menu-on'));
-document.querySelectorAll('.menu a').forEach((a) => a.addEventListener('click', () => document.body.classList.remove('menu-on')));
+const botaoMenu = $('.menu-toggle');
+function definirMenu(aberto) {
+  document.body.classList.toggle('menu-on', aberto);
+  if (botaoMenu) {
+    botaoMenu.setAttribute('aria-expanded', String(aberto));
+    botaoMenu.setAttribute('aria-label', aberto ? 'Fechar menu' : 'Abrir menu');
+  }
+}
+botaoMenu?.addEventListener('click', () => definirMenu(!document.body.classList.contains('menu-on')));
+document.querySelectorAll('.menu a').forEach((link) => link.addEventListener('click', () => definirMenu(false)));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('menu-on')) {
+    definirMenu(false);
+    botaoMenu?.focus();
+  }
+});
+document.addEventListener('click', (e) => {
+  if (document.body.classList.contains('menu-on') && !e.target.closest('.topo')) definirMenu(false);
+});
 document.querySelectorAll('[data-ano]').forEach((el) => { el.textContent = new Date().getFullYear(); });
 document.querySelectorAll('[data-horario]').forEach((el) => { if (SITE.horario) { el.textContent = SITE.horario; el.hidden = false; } });
 document.querySelectorAll('[data-regiao]').forEach((el) => { el.textContent = SITE.regiaoPresencial; });
