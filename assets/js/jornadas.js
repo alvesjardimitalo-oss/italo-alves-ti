@@ -135,28 +135,47 @@ function iniciarEstimativa(){
 }
 
 const PLANOS={
- essencial:{titulo:'Preventivo essencial',itens:['Avaliação periódica do equipamento','Recomendações de limpeza e segurança','Checklist de armazenamento e atualizações']},
- familia:{titulo:'Casa e família',itens:['Orientação para vários dispositivos domésticos','Rotina de backup e proteção','Acompanhamento preventivo combinado']},
- empresa:{titulo:'Manutenção mensal para empresas',itens:['Cadastro e acompanhamento dos equipamentos atendidos','Revisões preventivas com frequência combinada','Suporte remoto para falhas e dúvidas dentro do contrato','Verificações de backup, segurança, atualizações e rede conforme escopo','Relatório de serviços e recomendações','Visitas, horários, limite de chamados e prazo de resposta definidos na proposta']}
+ essencial:{titulo:'Essencial — até 5 máquinas',min:1,max:5,visitas:'1 revisão preventiva mensal',itens:['Cobertura de 1 a 5 computadores ou notebooks cadastrados','Uma revisão preventiva programada por mês para os equipamentos cobertos, conforme cronograma','Registro individual das intervenções e ordens de serviço','Verificações de desempenho, armazenamento, segurança e ventilação conforme necessidade','Garantia de 90 dias sobre os serviços efetivamente executados e registrados']},
+ profissional:{titulo:'Profissional — 6 a 15 máquinas',min:6,max:15,visitas:'2 revisões preventivas mensais',itens:['Cobertura de 6 a 15 computadores ou notebooks cadastrados','Duas revisões preventivas programadas por mês conforme cronograma','Registro de chamados e histórico de manutenção por equipamento','Orientações de backup, segurança, rede e atualizações conforme escopo','Garantia de 90 dias dos serviços executados, registrada por ordem de serviço']},
+ empresa:{titulo:'Empresarial — 16 a 30 máquinas',min:16,max:30,visitas:'Cronograma de visitas definido em proposta',itens:['Cobertura de 16 a 30 computadores ou notebooks cadastrados','Calendário de revisões periódicas definido com a empresa','Inventário, histórico por máquina e acompanhamento de chamados','Registro das ordens de serviço, ocorrências, recomendações e conclusão','Garantia de 90 dias sobre os serviços executados, documentada por OS']},
+ personalizado:{titulo:'Personalizado — acima de 30 máquinas',min:31,max:2000,visitas:'Cronograma sob avaliação',itens:['Para mais de 30 máquinas, é preciso avaliar distribuição, localização e criticidade','Cronograma de revisões e suporte calculado conforme necessidade','Inventário, acompanhamento por equipamento e registro de intervenções','Garantias dos serviços executados documentadas em cada OS','Limites, disponibilidade, prazo de resposta e mensalidade definidos em proposta']}
 };
 function iniciarPlanos(){
- let escolhido='empresa';
- const box=$('[data-plano-resumo]');
+ const box=$('[data-plano-resumo]'),quantidade=$('#j-quantidade'),faixa=$('[data-plano-faixa]');
+ let escolhido='essencial';
+ const recomendado=q=>q>30?'personalizado':q>=16?'empresa':q>=6?'profissional':'essencial';
  function render(){
-  const p=PLANOS[escolhido];texto($('[data-plano-titulo]'),p.titulo);
+  const p=PLANOS[escolhido];
+  texto($('[data-plano-titulo]'),p.titulo);
   box.replaceChildren();
   for(const item of p.itens){const li=document.createElement('li');li.textContent=item;box.append(li);}
-  $$('[data-plano]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.plano===escolhido)));
+  $$('[data-plano]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.plano===escolhido));b.classList.toggle('is-active',b.dataset.plano===escolhido);});
+  const q=Number(quantidade.value);
+  if(Number.isInteger(q)&&q>=1&&q<=2000){
+   const ideal=recomendado(q);
+   texto(faixa,ideal==='personalizado'?'Acima de 30 máquinas: orçamento personalizado.':('Para '+q+' '+(q===1?'máquina':'máquinas')+', a faixa indicada é '+PLANOS[ideal].titulo+'.'));
+  }
  }
- $$('[data-plano]').forEach(b=>b.addEventListener('click',()=>{escolhido=b.dataset.plano;render();}));
+ $$('[data-plano]').forEach(b=>b.addEventListener('click',()=>{
+  escolhido=b.dataset.plano;
+  quantidade.value=String(PLANOS[escolhido].min);
+  render();
+ }));
+ quantidade?.addEventListener('input',()=>{
+  const q=Number(quantidade.value);
+  if(Number.isInteger(q)&&q>=1&&q<=2000)escolhido=recomendado(q);
+  render();
+ });
  render();
  $('#j-form')?.addEventListener('submit',async e=>{
   e.preventDefault();
+  const qtd=Number(valor('j-quantidade'));
+  if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de computadores ou notebooks, entre 1 e 2000.');quantidade.focus();return;}
+  const ideal=recomendado(qtd);
+  if(ideal!==escolhido){escolhido=ideal;render();}
   const contato=tratarContato();if(!contato)return;
-  const qtd=Number(valor('j-quantidade'));if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de equipamentos (1 a 2000).');return;}
   const relato=valor('j-detalhe'),empresa=valor('j-empresa'),frequencia=valor('j-frequencia'),suporte=valor('j-suporte');
-  if(empresa.length>100){mostrarErro('Informe o nome da empresa com até 100 caracteres.');return;}
-  await enviarPedido({contato,servico:'Proposta de manutenção mensal',equipamento:'Computadores e notebooks',problema:PLANOS[escolhido].titulo,detalhe:('Empresa: '+(empresa||'Não informada')+'; Plano: '+PLANOS[escolhido].titulo+'; Quantidade: '+qtd+'; Visitas: '+frequencia+'; Suporte: '+suporte+'; Necessidade: '+relato).slice(0,1500),atendimento:'Mensalidade sob proposta'});
+  await enviarPedido({contato,servico:'Proposta de manutenção mensal',equipamento:'Computadores e notebooks',problema:PLANOS[ideal].titulo,detalhe:('Empresa: '+(empresa||'Não informada')+'; Plano: '+PLANOS[ideal].titulo+'; Máquinas: '+qtd+'; Periodicidade prevista: '+PLANOS[ideal].visitas+'; Visitas desejadas: '+frequencia+'; Suporte: '+suporte+'; Histórico individual e OS: solicitado; Garantia dos serviços: 90 dias conforme política e OS; Peças não incluídas; Necessidade: '+relato).slice(0,1500),atendimento:'Mensalidade sob proposta'});
  });
 }
 if(tipo==='diagnostico')iniciarDiagnostico();
