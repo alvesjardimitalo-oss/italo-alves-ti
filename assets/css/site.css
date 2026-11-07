@@ -460,3 +460,18 @@ video.cam { width: 100%; max-width: 560px; border-radius: 12px; background: #000
 @keyframes demo-blink{0%,100%{opacity:.22}45%,70%{opacity:1}}
 @media(max-width:700px){.inicio-resumo,.inicio-atalhos,.inicio-contato{padding-top:36px;padding-bottom:36px}.demo-tela{height:130px}.inicio-botoes .btn{width:100%;justify-content:center}}
 @media(prefers-reduced-motion:reduce){.demo-carregando span,.demo-ventoinha span,.demo-termometro span,.demo-display span{animation:none!important}.demo-carregando span{width:65%}}
+
+
+/* Vídeos sob demanda: o YouTube não carrega até a interação */
+.inicio-videos{padding:54px 0}.video-aula{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.video-capa{position:relative;min-height:215px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 50% 38%,#233d62,#0a1223 70%);border-bottom:1px solid rgba(138,172,214,.18)}
+.video-aula:nth-child(2) .video-capa{background:radial-gradient(circle at 50% 38%,#4b313b,#0a1223 70%)}
+.video-icone{font-size:65px;opacity:.2;color:white;position:absolute;transform:translateY(-15px)}
+.video-play{position:relative;border:1px solid #6f9cbb;border-radius:50px;padding:13px 23px;background:#dff6ff;color:#0a2237;font-weight:800;cursor:pointer}
+.video-play:hover,.video-play:focus-visible{background:#fff;outline:3px solid rgba(120,210,247,.35)}
+.video-corpo{padding:20px;display:flex;flex-direction:column;gap:9px;flex:1}
+.video-corpo h3{margin:0}.video-corpo p{margin:0}.video-corpo a{margin-top:auto}
+.video-credito{font-size:.8rem;color:#9dacc3}.video-alerta{font-size:.86rem;margin-top:20px;opacity:.85}
+.video-capa iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.artigo-video{margin:28px 0}.artigo-video .video-capa{min-height:180px}
+@media(max-width:700px){.inicio-videos{padding:36px 0}.video-capa{min-height:175px}}
