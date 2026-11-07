@@ -78,107 +78,62 @@
   </section>
 
 
-  <section class="sec alt" id="sintomas">
+
+  <section class="sec inicio-resumo" id="sintomas">
     <div class="wrap">
-      <div class="sec-head"><span class="kicker">// o que aconteceu?</span>
-        <h2>Qual destes problemas parece com o seu?</h2>
-        <p>Escolha um sintoma. O Alvesinho explica as causas possíveis, cuidados iniciais e como solicitar atendimento, sem prometer diagnóstico à distância.</p></div>
-      <div class="problemas-rapidos">
-        <button type="button" class="sintoma-card" data-abrir-chat data-sintoma="lento"><span class="problema-icon" aria-hidden="true">🐢</span><strong>Notebook ou PC lento</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="nao-liga"><span class="problema-icon" aria-hidden="true">⏻</span><strong>Computador não liga</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="liga-sem-imagem"><span class="problema-icon" aria-hidden="true">🖥️</span><strong>Liga, mas não dá vídeo</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="travando"><span class="problema-icon" aria-hidden="true">⌛</span><strong>Congelando ou travando</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="superaquece"><span class="problema-icon" aria-hidden="true">🌡️</span><strong>Esquentando demais</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="tela-quebrada"><span class="problema-icon" aria-hidden="true">💻</span><strong>Tela quebrada ou manchada</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="bateria"><span class="problema-icon" aria-hidden="true">🔋</span><strong>Bateria dura pouco</strong><small>Ver orientação →</small></button><button type="button" class="sintoma-card" data-abrir-chat data-sintoma="nao-carrega"><span class="problema-icon" aria-hidden="true">🔌</span><strong>Não carrega</strong><small>Ver orientação →</small></button>
+      <div class="sec-head">
+        <span class="kicker">// entenda o sintoma</span>
+        <h2>O que está acontecendo com seu computador?</h2>
+        <p>Veja três exemplos ilustrados. Cada situação pode ter causas diferentes; o diagnóstico depende de uma avaliação.</p>
       </div>
-      <p class="pagina-link"><a href="problemas/" class="btn">Ver todos os 20 problemas e orientações →</a></p>
-      <p class="sintoma-nota">Orientações educativas: problemas elétricos, líquidos ou baterias estufadas exigem cuidados especiais. Não abra fontes nem componentes energizados.</p>
+      <div class="grid g3 exemplos-animados">
+        <a class="card exemplo-animado" href="dicas/computador-lento.html">
+          <div class="demo-tela demo-lento" aria-hidden="true"><div class="demo-janela"><span class="demo-luzes"><i></i><i></i><i></i></span><div class="demo-carregando"><span></span></div><span class="demo-status">Carregando...</span></div></div>
+          <span class="demo-legenda">01 · Desempenho</span>
+          <h3>Computador muito lento</h3>
+          <p>Demora para iniciar e abrir programas? Entenda o papel do SSD, da memória e do sistema.</p>
+          <span class="mais">Ver causas e soluções →</span>
+        </a>
+        <a class="card exemplo-animado" href="dicas/notebook-esquentando.html">
+          <div class="demo-tela demo-calor" aria-hidden="true"><div class="demo-ventoinha"><span>✣</span></div><div class="demo-termometro"><span></span></div><span class="demo-sinal">CALOR</span></div>
+          <span class="demo-legenda">02 · Temperatura</span>
+          <h3>Notebook esquentando</h3>
+          <p>Calor excessivo e desligamentos podem indicar problemas de ventilação ou refrigeração.</p>
+          <span class="mais">Ver cuidados e soluções →</span>
+        </a>
+        <a class="card exemplo-animado" href="dicas/notebook-liga-sem-imagem.html">
+          <div class="demo-tela demo-video" aria-hidden="true"><div class="demo-monitor"><div class="demo-display"><span>SEM SINAL</span></div><div class="demo-base"></div></div><span class="demo-led"></span></div>
+          <span class="demo-legenda">03 · Imagem</span>
+          <h3>Liga, mas não aparece imagem</h3>
+          <p>Luzes acesas com tela preta? Veja como diferenciar possíveis falhas de vídeo e inicialização.</p>
+          <span class="mais">Ver primeiros testes →</span>
+        </a>
+      </div>
+      <p class="pagina-link"><a href="problemas/" class="btn">Explorar os 20 problemas comuns →</a></p>
     </div>
   </section>
 
-  <section class="sec alt" id="servicos">
+  <section class="sec alt inicio-atalhos" id="servicos">
     <div class="wrap">
-      <div class="sec-head"><span class="kicker">// serviços</span><h2>O que eu resolvo</h2><p>Do notebook que esquenta ao computador que não liga, com explicação do que foi feito e por quê.</p></div>
-      <div class="grid g4">
-        <a class="card" href="#fale-comigo" data-abrir-chat data-servico="Diagnóstico técnico"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg></div><h3>Diagnóstico técnico</h3><p>Descobrimos a causa do defeito e você recebe o orçamento antes de qualquer serviço.</p><span class="mais">Pedir orçamento →</span></a><a class="card" href="#fale-comigo" data-abrir-chat data-servico="Limpeza e pasta térmica"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7 2 0 3 2 2 4l-4 4M14 12c4 0 7 1 7 4 0 2-2 3-4 2l-4-4M12 14c0 4-1 7-4 7-2 0-3-2-2-4l4-4M10 12c-4 0-7-1-7-4 0-2 2-3 4-2l4 4"/></svg></div><h3>Limpeza e pasta térmica</h3><p>Fim do superaquecimento e dos desligamentos: limpeza interna, pasta e thermal pads.</p><span class="mais">Pedir orçamento →</span></a><a class="card" href="#fale-comigo" data-abrir-chat data-servico="Upgrade de SSD e memória"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h6M7 14h3"/><circle cx="17" cy="12" r="1.5"/></svg></div><h3>Upgrade de SSD e memória</h3><p>O jeito mais barato de deixar um computador antigo rápido de novo, com seus arquivos migrados.</p><span class="mais">Pedir orçamento →</span></a><a class="card" href="#fale-comigo" data-abrir-chat data-servico="Formatação e Windows 11"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5 10.5 4.5v7H3zM12 4.3 21 3v8.5h-9zM3 12.5h7.5v7L3 18.5zM12 12.5h9V21l-9-1.3z"/></svg></div><h3>Formatação e Windows 11</h3><p>Sistema limpo e atualizado, com backup dos seus arquivos e programas essenciais.</p><span class="mais">Pedir orçamento →</span></a>
-      </div>
-      <p class="pagina-link"><a href="servicos/" class="btn">Conhecer todos os serviços e opções de atendimento →</a></p>
-    </div>
-  </section>
-
-  <section class="sec" id="ferramentas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// ferramentas grátis</span><h2>Descubra o problema antes de sair de casa</h2><p>Testes que rodam direto no navegador. Sem instalar nada.</p></div>
-      <div class="grid g5">
-        <a class="card" href="ferramentas/checkup.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div><h3>Check-up do computador</h3><p>Análise rápida do seu aparelho + perguntas sobre os sintomas = laudo prévio com as causas prováveis.</p><span class="mais">Usar →</span></a><a class="card" href="ferramentas/consertar-ou-trocar.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 7h14M7 7l-3 7a3 3 0 0 0 6 0zM17 7l-3 7a3 3 0 0 0 6 0z"/></svg></div><h3>Consertar ou trocar?</h3><p>Descubra se vale mais a pena consertar, fazer upgrade ou comprar um equipamento novo.</p><span class="mais">Usar →</span></a><a class="card" href="ferramentas/upgrade.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h6M7 14h3"/><circle cx="17" cy="12" r="1.5"/></svg></div><h3>Qual upgrade vale mais?</h3><p>Simule prioridades para SSD, memória RAM e desempenho sem comprar peças erradas.</p><span class="mais">Usar →</span></a>
-      </div>
-      <p class="pagina-link"><a href="ferramentas/" class="btn">Explorar todas as ferramentas gratuitas →</a></p>
-    </div>
-  </section>
-
-
-  <section class="sec alt" id="alvesinho">
-    <div class="wrap">
-      <div class="alvesinho-destaque">
-        <img src="assets/img/alvesinho.svg" width="160" height="160" loading="lazy" alt="Alvesinho, mascote técnico e atendente virtual da Ítalo InfoTec">
-        <div>
-          <span class="kicker">// atendimento guiado</span>
-          <h2>Conheça o Alvesinho, seu assistente virtual</h2>
-          <p>Ele conversa com você sobre os sintomas, sugere verificações seguras e organiza seu pedido para o técnico. É um assistente automatizado — não um diagnóstico humano ou orçamento definitivo.</p>
-          <div class="hero-acoes">
-            <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat data-servico="Diagnóstico por sintomas">Contar meu problema</a>
-            <a href="ferramentas/upgrade.html" class="btn">Qual upgrade vale mais?</a>
-            <a href="acompanhar.html" class="btn">Acompanhar OS</a>
-          </div>
-        </div>
+      <div class="sec-head"><span class="kicker">// acesso rápido</span><h2>Como posso ajudar?</h2></div>
+      <div class="grid g3">
+        <a class="card" href="servicos/"><h3>Serviços de manutenção</h3><p>Diagnóstico, limpeza, formatação, troca de peças e suporte.</p><span class="mais">Ver serviços →</span></a>
+        <a class="card" href="ferramentas/"><h3>Ferramentas gratuitas</h3><p>Check-up inicial, simulador de upgrade e outros testes.</p><span class="mais">Explorar ferramentas →</span></a>
+        <a class="card" href="dicas/"><h3>Guias e orientações</h3><p>Artigos práticos sobre defeitos e cuidados com seu equipamento.</p><span class="mais">Ler as dicas →</span></a>
       </div>
     </div>
   </section>
 
-  <section class="sec alt" id="como-funciona">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// como funciona</span><h2>Do problema à entrega, em 4 passos</h2></div>
-      <div class="grid g4 passos">
-        <div class="card passo"><h3>Conte o problema</h3><p>Pelo Alvesinho ou WhatsApp: informe o equipamento e o sintoma em poucos passos.</p></div>
-        <div class="card passo"><h3>Diagnóstico e orçamento</h3><p>O equipamento é avaliado e você recebe o orçamento detalhado, peça por peça.</p></div>
-        <div class="card passo"><h3>Aprovação e conserto</h3><p>Só depois do seu "pode fazer". Você acompanha o status pela página <a href="acompanhar.html">Acompanhar OS</a>.</p></div>
-        <div class="card passo"><h3>Entrega com garantia</h3><p>Você recebe a nota de serviço com tudo o que foi feito e o prazo de garantia.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="atendimento">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// atendimento</span><h2>Perto de você ou à distância</h2></div>
-      <div class="atend">
-        <div class="card"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><h3>Presencial</h3><p>Em Frei Inocêncio e região. <a href="atendimento/">Ver cidades e busca do equipamento</a></p>
-          <ul><li>Consertos de hardware e troca de peças</li><li>Limpeza, pasta térmica e upgrades</li><li>Formatação com backup</li><li>Montagem de computadores</li></ul></div>
-        <div class="card"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><h3>Remoto · todo o Brasil</h3><p>Você acompanha tudo pela tela. <a href="suporte-remoto.html">Como funciona</a></p>
-          <ul><li>Programas travando ou com erro</li><li>Configuração de impressora, e-mail e contas</li><li>Remoção de vírus e propagandas</li><li>Orientação antes de comprar peças ou um PC</li></ul></div>
-      </div>
-    </div>
-  </section>
-  
-  <section class="sec" id="dicas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// dicas</span><h2>Como fazer seu equipamento durar mais</h2></div>
-      <div class="grid g4">
-        <a class="card" href="dicas/notebook-molhou-o-que-fazer.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/></svg></div><h3>notebook molhou</h3><p>Saiba quais cuidados tomar imediatamente após derramar líquido no notebook e por que insistir em ligar pode agravar o defeito.</p><span class="mais">Ler dica →</span></a><a class="card" href="dicas/notebook-nao-carrega.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/></svg></div><h3>notebook não carrega</h3><p>O que verificar com segurança quando o notebook não carrega, carrega intermitentemente ou só funciona na tomada.</p><span class="mais">Ler dica →</span></a><a class="card" href="dicas/notebook-liga-sem-imagem.html"><div class="ico-box"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3"/></svg></div><h3>liga sem imagem</h3><p>Diferencie ausência de imagem de falha na inicialização e saiba quando procurar assistência para tela, memória ou placa.</p><span class="mais">Ler dica →</span></a>
-      </div>
-      <p class="pagina-link"><a class="btn" href="dicas/">Ver todos os 18 artigos e tutoriais</a></p>
-    </div>
-  </section>
-
-  <section class="sec alt" id="duvidas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// dúvidas</span><h2>Perguntas frequentes</h2></div>
-      <div class="acordeao">
-        <details><summary>Vou pagar só para saber o defeito?</summary><div class="resp"><p>O diagnóstico vem antes de tudo e o orçamento é passado para você aprovar. Nenhum serviço é feito sem a sua autorização.</p></div></details><details><summary>Vou perder meus arquivos?</summary><div class="resp"><p>Sempre que possível, os arquivos são preservados. Antes de formatar, fazemos a cópia dos seus documentos, fotos e pastas importantes, combinado com você.</p></div></details><details><summary>Quanto tempo demora?</summary><div class="resp"><p>Depende do defeito e da disponibilidade de peças. Serviços como limpeza, formatação e troca de SSD costumam ser rápidos. O prazo é informado junto com o orçamento.</p></div></details><details><summary>Como acompanho o meu conserto?</summary><div class="resp"><p>Pela página &quot;Acompanhar OS&quot;: digite o código da ordem de serviço e o seu telefone para ver o status, sem precisar ligar.</p></div></details>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec">
+  <section class="sec inicio-contato" id="atendimento">
     <div class="wrap">
       <div class="cta">
-        <h2>Seu equipamento está dando problema?</h2>
-        <p>Conte para o Alvesinho o que aconteceu. Ele orienta inicialmente e prepara seu pedido para atendimento pelo WhatsApp.</p>
-        <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg> Pedir ajuda ao Alvesinho</a>
+        <img class="inicio-alvesinho" src="assets/img/alvesinho.svg" width="96" height="96" loading="lazy" alt="Alvesinho, atendente virtual">
+        <h2>Seu computador precisa de ajuda?</h2>
+        <p>Converse com o Alvesinho, descreva o sintoma e encaminhe seu pedido. Atendimento presencial em Frei Inocêncio e região e remoto para todo o Brasil.</p>
+        <div class="hero-acoes inicio-botoes">
+          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>Conversar com Alvesinho</a>
+          <a href="acompanhar.html" class="btn">Acompanhar minha OS</a>
+        </div>
       </div>
     </div>
   </section>
