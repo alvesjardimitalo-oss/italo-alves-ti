@@ -195,6 +195,23 @@ function iniciarPlanos(){
   await enviarPedido({contato,servico:'Solicitação de contratação mensal',equipamento:'Computadores e notebooks',problema:PLANOS[ideal].titulo,detalhe:('Empresa: '+empresa+'; Plano: '+PLANOS[ideal].titulo+'; Máquinas: '+qtd+'; Mensalidade estimada: '+referencia+'; Periodicidade prevista: '+PLANOS[ideal].visitas+'; Visitas desejadas: '+frequencia+'; Suporte: '+suporte+'; Histórico por máquina e OS: previsto; Garantia dos serviços: 90 dias conforme política e OS; Atendimento presencial na empresa; logística de coleta e devolução incluída dentro do limite mensal do plano e da área urbana; peças não incluídas; reparos extras sob orçamento; contratação depende de proposta e assinatura; Necessidade: '+relato).slice(0,1500),atendimento:'Contratação pendente de proposta e assinatura'});
  });
 }
+
+function iniciarAvaliacaoEmpresarial(){
+ const form=$('#j-form');if(!form)return;
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const empresa=valor('j-empresa');
+  if(empresa.length<2||empresa.length>100){mostrarErro('Informe o nome da empresa.');$('#j-empresa').focus();return;}
+  const qtd=Number(valor('j-quantidade'));
+  if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de equipamentos (entre 1 e 2000).');$('#j-quantidade').focus();return;}
+  const contato=tratarContato();if(!contato)return;
+  const setor=valor('j-segmento'),prioridade=valor('j-prioridade'),relato=valor('j-detalhe');
+  const resumo=('Empresa: '+empresa+'; Setor: '+setor+'; Quantidade: '+qtd+'; Principal dificuldade: '+prioridade+'; Detalhes: '+relato+'; Cliente deseja avaliação inicial e eventual visita, sujeita a confirmação prévia de disponibilidade e valores.').slice(0,1500);
+  await enviarPedido({contato,servico:'Avaliação inicial empresarial',equipamento:'Computadores e notebooks',problema:prioridade,detalhe:resumo,atendimento:'Visita na empresa sob confirmação'});
+ });
+}
+
+if(tipo==='avaliacao-empresa')iniciarAvaliacaoEmpresarial();
 if(tipo==='diagnostico')iniciarDiagnostico();
 if(tipo==='agendar')iniciarAgendamento();
 if(tipo==='estimativa')iniciarEstimativa();
