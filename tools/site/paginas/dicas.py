@@ -45,7 +45,7 @@ def gerar_dicas(ctx):
     <div class="artigo-hero"><div class="wrap"><div class="crumb"><a href="../">início</a> / dicas</div>
       <h1>Dicas e explicações</h1><p>Entenda o que está acontecendo com o seu equipamento e como fazer ele durar mais.</p></div></div>
     <section class="sec" style="padding-top:44px"><div class="wrap"><div class="grid g3">
-      {''.join(f'<a class="card" href="{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["titulo"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler →</span></a>' for a in ARTIGOS)}
+      {''.join(f'<a class="card" href="{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["titulo"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler →</span></a>' for a in sorted(ARTIGOS, key=lambda item: item.get('data', ''), reverse=True))}
     </div></div></section>
   </main>
 ''' + rodape('../')
