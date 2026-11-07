@@ -3,102 +3,141 @@
     {
       "id": "lento",
       "titulo": "Notebook ou PC lento",
-      "icone": "🐢"
+      "icone": "🐢",
+      "categoria": "Desempenho",
+      "dica": "computador-lento"
     },
     {
       "id": "nao-liga",
       "titulo": "Computador não liga",
-      "icone": "⏻"
+      "icone": "⏻",
+      "categoria": "Energia e inicialização",
+      "dica": "computador-nao-liga"
     },
     {
       "id": "liga-sem-imagem",
       "titulo": "Liga, mas não dá vídeo",
-      "icone": "🖥️"
+      "icone": "🖥️",
+      "categoria": "Energia e inicialização",
+      "dica": "notebook-liga-sem-imagem"
     },
     {
       "id": "travando",
       "titulo": "Congelando ou travando",
-      "icone": "⌛"
+      "icone": "⌛",
+      "categoria": "Desempenho",
+      "dica": "computador-lento"
     },
     {
       "id": "superaquece",
       "titulo": "Esquentando demais",
-      "icone": "🌡️"
+      "icone": "🌡️",
+      "categoria": "Calor e manutenção",
+      "dica": "notebook-esquentando"
     },
     {
       "id": "tela-quebrada",
       "titulo": "Tela quebrada ou manchada",
-      "icone": "💻"
+      "icone": "💻",
+      "categoria": "Tela e componentes",
+      "dica": "tela-notebook-quebrada"
     },
     {
       "id": "bateria",
       "titulo": "Bateria dura pouco",
-      "icone": "🔋"
+      "icone": "🔋",
+      "categoria": "Tela e componentes",
+      "dica": "bateria-notebook"
     },
     {
       "id": "nao-carrega",
       "titulo": "Não carrega",
-      "icone": "🔌"
+      "icone": "🔌",
+      "categoria": "Energia e inicialização",
+      "dica": "notebook-nao-carrega"
     },
     {
       "id": "wifi",
       "titulo": "Internet ou Wi-Fi caindo",
-      "icone": "📶"
+      "icone": "📶",
+      "categoria": "Internet e sistema",
+      "dica": "wifi-nao-conecta"
     },
     {
       "id": "virus",
       "titulo": "Vírus e propagandas",
-      "icone": "🛡️"
+      "icone": "🛡️",
+      "categoria": "Internet e sistema",
+      "dica": "virus-e-golpes"
     },
     {
       "id": "tela-azul",
       "titulo": "Erro de tela azul",
-      "icone": "⚠️"
+      "icone": "⚠️",
+      "categoria": "Internet e sistema",
+      "dica": "tela-azul"
     },
     {
       "id": "teclado",
       "titulo": "Teclado ou touchpad",
-      "icone": "⌨️"
+      "icone": "⌨️",
+      "categoria": "Tela e componentes"
     },
     {
       "id": "impressora",
       "titulo": "Impressora não funciona",
-      "icone": "🖨️"
+      "icone": "🖨️",
+      "categoria": "Internet e sistema",
+      "dica": "impressora-nao-imprime"
     },
     {
       "id": "ssd-hd",
       "titulo": "HD / SSD com falha",
-      "icone": "💾"
+      "icone": "💾",
+      "categoria": "Desempenho",
+      "dica": "ssd-esta-bom"
     },
     {
       "id": "travado-logo",
       "titulo": "Travado na logo",
-      "icone": "🔄"
+      "icone": "🔄",
+      "categoria": "Energia e inicialização",
+      "dica": "windows-travando-apos-atualizacao"
     },
     {
       "id": "upgrade",
       "titulo": "Quero instalar SSD / RAM",
-      "icone": "🚀"
+      "icone": "🚀",
+      "categoria": "Desempenho",
+      "dica": "ssd-ou-hd"
     },
     {
       "id": "limpeza",
       "titulo": "Limpeza e manutenção",
-      "icone": "🧹"
+      "icone": "🧹",
+      "categoria": "Calor e manutenção",
+      "dica": "notebook-esquentando"
     },
     {
       "id": "molhou",
       "titulo": "Molhou o notebook",
-      "icone": "💧"
+      "icone": "💧",
+      "categoria": "Energia e inicialização",
+      "dica": "notebook-molhou-o-que-fazer"
     },
     {
       "id": "barulho",
       "titulo": "Ventoinha barulhenta",
-      "icone": "🔊"
+      "icone": "🔊",
+      "categoria": "Calor e manutenção",
+      "dica": "ventilador-notebook-barulhento"
     },
     {
       "id": "arquivos",
       "titulo": "Arquivos perdidos",
-      "icone": "📁"
+      "icone": "📁",
+      "categoria": "Internet e sistema",
+      "dica": "backup"
     }
   ]
 }

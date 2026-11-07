@@ -27,7 +27,7 @@ for (const [frase,id] of casos) {
 assert(sintomas.orientarSintoma('notebook molhou').alerta, 'Caso de líquido deve alertar');
 assert(sintomas.orientarSintoma('não reconheço o problema descrito de jeito nenhum').conhecido === false, 'Não inventar diagnóstico');
 const cards = JSON.parse(ler('conteudo/sintomas.json')).itens;
-assert(cards.length >= 18, 'Home precisa de mais situações');
+assert(cards.length >= 18, 'O catálogo de problemas precisa conter os sintomas completos');
 const ids = new Set(sintomas.SINTOMAS.map(s=>s.id));
 for (const item of cards) assert(ids.has(item.id), 'Cartão sem resposta no Alvesinho: ' + item.id);
 assert(new Set(cards.map(x=>x.id)).size === cards.length, 'Cards duplicados');
@@ -45,8 +45,11 @@ assert(ssd.some(x=>/Diagnóstico/.test(x.titulo)), 'SSD e RAM suficiente não de
 const home = ler('index.html'), ferramentas = ler('ferramentas/index.html');
 assert(home.includes('id="sintomas"') && home.includes('id="alvesinho"'), 'Seções comerciais faltando');
 assert(home.includes('assets/img/alvesinho.svg'), 'Avatar ausente da home');
-assert((home.match(/data-sintoma="/g)||[]).length===cards.length, 'Quantidade de cartões diferente');
+const catalogo = ler('problemas/index.html');
+assert((home.match(/data-sintoma="/g)||[]).length === 8, 'A home deve exibir só 8 sintomas para ser objetiva');
+assert((catalogo.match(/data-sintoma="/g)||[]).length === cards.length, 'Catálogo deve exibir todos os sintomas');
+for (const item of cards) assert(catalogo.includes('data-sintoma="' + item.id + '"'), 'Problema ausente no catálogo: ' + item.id);
 assert(home.includes('data-abrir-chat'), 'CTAs chat ausentes');
 assert(ferramentas.includes('upgrade.html') && existsSync(resolve(root,'ferramentas/upgrade.html')), 'Ferramenta de upgrade ausente');
 assert(ler('assets/js/site.js').includes('assistente virtual') || ler('assets/js/site.js').includes('Assistente virtual'), 'Chat deve informar que é automatizado');
-console.log('OK: ' + sintomas.SINTOMAS.length + ' diagnósticos locais, ' + cards.length + ' situações na home, avatar, CTA e simulador de upgrade.');
+console.log('OK: ' + sintomas.SINTOMAS.length + ' diagnósticos locais, 8 destaques na home, ' + cards.length + ' no catálogo, avatar e simulador de upgrade.');
