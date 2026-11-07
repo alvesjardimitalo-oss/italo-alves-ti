@@ -35,7 +35,7 @@ def gerar_catalogos(ctx):
             link = (f'<a href="../dicas/{e(artigo)}.html" class="mais">Ler explicação detalhada →</a>'
                     if artigo else '')
             cards.append(f'''
-              <article class="card sintoma-hub-card">
+              <article class="card sintoma-hub-card" data-item-busca="{e(item["titulo"])} {e(nome)}">
                 <span class="problema-icon" aria-hidden="true">{e(item["icone"])}</span>
                 <h3>{e(item["titulo"])}</h3>
                 <p>Encontre uma orientação inicial para esse sintoma e saiba quando pedir uma avaliação.</p>
@@ -43,7 +43,7 @@ def gerar_catalogos(ctx):
                 {link}
               </article>''')
         blocos.append(f'''
-        <section class="sec sec-grupo-problemas" id="grupo-{grupos.index(nome) + 1}">
+        <section class="sec sec-grupo-problemas" data-grupo-busca id="grupo-{grupos.index(nome) + 1}">
           <div class="wrap"><h2>{e(nome)}</h2><div class="grid g4">{''.join(cards)}</div></div>
         </section>''')
 
@@ -52,24 +52,28 @@ def gerar_catalogos(ctx):
              'Notebook lento, computador que não liga, tela quebrada, bateria, Wi-Fi e outros sintomas. Descubra cuidados iniciais e solicite avaliação técnica.',
              'problemas/', '../')
     h += f'''
-      <main>
+      <main data-lista-conteudo>
         <div class="artigo-hero"><div class="wrap">
           <div class="crumb"><a href="../">início</a> / problemas</div>
           <h1>O que aconteceu com seu computador?</h1>
           <p>Explore {total} situações comuns, leia explicações práticas ou converse com o Alvesinho sobre o sintoma. Nenhuma resposta substitui um diagnóstico técnico.</p>
+          <div class="busca-site"><label for="buscar-sintoma">Procure pelo sintoma do equipamento</label>
+          <div class="busca-site-campo"><input type="search" id="buscar-sintoma" maxlength="100" placeholder="Ex.: tela preta, notebook lento, bateria..." data-busca-conteudo autocomplete="off"><button type="button" data-busca-limpar hidden>Limpar</button></div>
+          <p class="busca-site-contagem" data-busca-contagem aria-live="polite"></p></div>
           <div class="hero-acoes"><a href="#fale-comigo" class="btn btn-pri" data-abrir-chat data-servico="Diagnóstico por sintomas">Conversar com Alvesinho</a>
             <a href="../ferramentas/checkup.html" class="btn">Fazer check-up gratuito</a></div>
         </div></div>
         <nav class="wrap categorias-problemas" aria-label="Categorias de problemas">
           {''.join(f'<a href="#grupo-{i+1}">{e(n)}</a>' for i, n in enumerate(grupos))}
         </nav>
+        <p class="busca-sem-resultados" data-busca-vazio hidden>Nenhum problema encontrado. <a href="#fale-comigo" data-abrir-chat data-servico="Diagnóstico por sintomas">Descreva seu caso ao Alvesinho</a>.</p>
         {''.join(blocos)}
         <section class="sec"><div class="wrap">
           <div class="callout alerta"><strong>Atenção:</strong> se houver cheiro de queimado, fumaça, bateria estufada ou líquido no aparelho, pare de utilizar e carregar se puder fazê-lo com segurança. Não tente desmontar componentes energizados.</div>
           {cta('Quer descobrir o que realmente causou o defeito?', 'Informe o modelo e os sintomas. O orçamento depende da avaliação técnica.')}
         </div></section>
       </main>
-    ''' + rodape('../')
+    ''' + rodape('../', '<script type="module" src="../assets/js/busca-conteudo.js?v=2.4.0"></script>')
     gravar('problemas/index.html', h)
 
     # Serviços, planos e opções de investimento deixam de ocupar a home.
