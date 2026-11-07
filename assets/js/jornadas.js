@@ -135,18 +135,18 @@ function iniciarEstimativa(){
 }
 
 const PLANOS={
- essencial:{titulo:'Essencial — até 5 máquinas',min:1,max:5,visitas:'1 revisão preventiva mensal',itens:['Cobertura de 1 a 5 computadores ou notebooks cadastrados','Uma revisão preventiva programada por mês para os equipamentos cobertos, conforme cronograma','Registro individual das intervenções e ordens de serviço','Verificações de desempenho, armazenamento, segurança e ventilação conforme necessidade','Garantia de 90 dias sobre os serviços efetivamente executados e registrados']},
- profissional:{titulo:'Profissional — 6 a 15 máquinas',min:6,max:15,visitas:'2 revisões preventivas mensais',itens:['Cobertura de 6 a 15 computadores ou notebooks cadastrados','Duas revisões preventivas programadas por mês conforme cronograma','Registro de chamados e histórico de manutenção por equipamento','Orientações de backup, segurança, rede e atualizações conforme escopo','Garantia de 90 dias dos serviços executados, registrada por ordem de serviço']},
- empresa:{titulo:'Empresarial — 16 a 30 máquinas',min:16,max:30,visitas:'Cronograma de visitas definido em proposta',itens:['Cobertura de 16 a 30 computadores ou notebooks cadastrados','Calendário de revisões periódicas definido com a empresa','Inventário, histórico por máquina e acompanhamento de chamados','Registro das ordens de serviço, ocorrências, recomendações e conclusão','Garantia de 90 dias sobre os serviços executados, documentada por OS']},
- personalizado:{titulo:'Personalizado — acima de 30 máquinas',min:31,max:2000,visitas:'Cronograma sob avaliação',itens:['Para mais de 30 máquinas, é preciso avaliar distribuição, localização e criticidade','Cronograma de revisões e suporte calculado conforme necessidade','Inventário, acompanhamento por equipamento e registro de intervenções','Garantias dos serviços executados documentadas em cada OS','Limites, disponibilidade, prazo de resposta e mensalidade definidos em proposta']}
+ essencial:{titulo:'Essencial — até 5 máquinas',min:1,max:5,visitas:'1 visita presencial e 1 ciclo de coleta/devolução mensal',itens:['Cobertura de 1 a 5 computadores ou notebooks cadastrados','Uma visita preventiva presencial por mês na empresa','Até 1 ciclo de retirada e devolução de um equipamento por mês','Registro individual das intervenções e ordens de serviço','Verificações de desempenho, armazenamento, segurança e ventilação conforme necessidade','Garantia de 90 dias sobre os serviços efetivamente executados e registrados']},
+ profissional:{titulo:'Profissional — 6 a 15 máquinas',min:6,max:15,visitas:'2 visitas presenciais e 2 ciclos de coleta/devolução mensais',itens:['Cobertura de 6 a 15 computadores ou notebooks cadastrados','Duas visitas preventivas presenciais por mês','Até 2 ciclos de retirada e devolução, um equipamento por ciclo','Registro de chamados e histórico de manutenção por equipamento','Orientações de backup, segurança, rede e atualizações conforme escopo','Garantia de 90 dias dos serviços executados, registrada por ordem de serviço']},
+ empresa:{titulo:'Empresarial — 16 a 30 máquinas',min:16,max:30,visitas:'Visitas conforme proposta e 3 ciclos de coleta/devolução mensais',itens:['Cobertura de 16 a 30 computadores ou notebooks cadastrados','Visitas presenciais planejadas com a empresa','Até 3 ciclos de retirada e devolução, um equipamento por ciclo','Inventário, histórico por máquina e acompanhamento de chamados','Registro das ordens de serviço, ocorrências, recomendações e conclusão','Garantia de 90 dias sobre os serviços executados, documentada por OS']},
+ personalizado:{titulo:'Personalizado — acima de 30 máquinas',min:31,max:2000,visitas:'Cronograma sob avaliação',itens:['Para mais de 30 máquinas, é preciso avaliar distribuição, localização e criticidade','Atendimento presencial e transporte definidos em proposta personalizada','Inventário, acompanhamento por equipamento e registro de intervenções','Garantias dos serviços executados documentadas em cada OS','Limites, disponibilidade, prazo de resposta e mensalidade definidos em proposta']}
 };
 // Preços iniciais de referência em reais, para contratos mensais sem infraestrutura especial.
 function cotarPlano(id,quantidade){
  if(id==='personalizado')return null;
  const politica={
-  essencial:{unitario:99,minimo:399},
-  profissional:{unitario:89,minimo:690},
-  empresa:{unitario:79,minimo:1490}
+  essencial:{unitario:119,minimo:499,ciclos:1},
+  profissional:{unitario:109,minimo:890,ciclos:2},
+  empresa:{unitario:99,minimo:1890,ciclos:3}
  }[id];
  return politica?{...politica,total:Math.max(politica.minimo,politica.unitario*quantidade)}:null;
 }
@@ -160,7 +160,7 @@ function iniciarPlanos(){
   const q=Number(quantidade.value);
   const estimativa=Number.isInteger(q)&&q>=1&&q<=2000?cotarPlano(escolhido,q):null;
   texto($('[data-plano-preco]'),estimativa?moeda(estimativa.total)+'/mês':'Valor sob consulta');
-  texto($('[data-plano-calculo]'),estimativa?(q+' '+(q===1?'máquina':'máquinas')+' × '+moeda(estimativa.unitario)+' · mínimo mensal de '+moeda(estimativa.minimo)):'Mais de 30 máquinas: avaliação e proposta personalizada.');
+  texto($('[data-plano-calculo]'),estimativa?(q+' '+(q===1?'máquina':'máquinas')+' × '+moeda(estimativa.unitario)+' · mínimo de '+moeda(estimativa.minimo)+' · '+estimativa.ciclos+' ciclos de coleta/devolução incluídos'):'Mais de 30 máquinas: avaliação e proposta personalizada.');
   box.replaceChildren();
   for(const item of p.itens){const li=document.createElement('li');li.textContent=item;box.append(li);}
   $$('[data-plano]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.plano===escolhido));b.classList.toggle('is-active',b.dataset.plano===escolhido);});
