@@ -29,12 +29,14 @@ jobs:
         with:
           node-version: '22'
       - name: Validar sintaxe do gerador
-        run: python -m py_compile tools/site/gerar.py tools/site/validar.py
+        run: python -m compileall -q tools/site
       - name: Gerar páginas e conferir links
         run: |
           python tools/site/gerar.py
           python tools/site/validar.py
           git diff --stat
+      - name: Conferir arquitetura por páginas, links e conteúdo
+        run: node tools/site/testar-arquitetura.mjs
       - name: Testar Alvesinho, diagnósticos e simulador de upgrade
         run: node tools/site/testar-alvesinho.mjs
       - name: Testar painel de conversões, coleta e privacidade
