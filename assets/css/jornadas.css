@@ -47,3 +47,12 @@
 .jornada-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 @media(max-width:900px){.jornada-body{grid-template-columns:1fr}.jornada-side{position:static}.jornada-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.jornada-page{padding:22px 0 45px}.jornada-hero{grid-template-columns:1fr 74px;padding:20px;gap:8px}.jornada-hero img{width:72px;height:72px}.jornada-grid,.jornada-grid.three,.jornada-inputs{grid-template-columns:1fr}.jornada-field.wide{grid-column:1}.jornada-controls .btn{width:100%;justify-content:center}}
+
+
+/* Formulários claros e acolhedores, sem efeitos decorativos excessivos */
+.jornada-hero{background:#0e2034;border-color:#28415b}
+.jornada-panel,.jornada-side{background:#101c2e}
+.jornada-step{letter-spacing:.015em;text-transform:none}
+.jornada-result{background:#102c3a}
+.jornada-kicker{letter-spacing:.025em;text-transform:none}
+.jornada-choice.is-active,.jornada-choice[aria-pressed="true"]{box-shadow:none}
