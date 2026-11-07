@@ -1,9 +1,11 @@
 // Simulador educativo de upgrade: sugere prioridades, sem prometer ganho percentual nem preço fechado.
 // Nenhuma resposta é enviada ao servidor até o visitante decidir pedir orçamento.
-import { enviarAoTecnico, copiar, esc } from './comum.js';
+import { enviarAoTecnico, copiar, esc, ambiente, ramTexto } from './comum.js';
 
 const el = document.querySelector('#app-ferramenta');
 const R = {};
+let leitura=null;
+let iniciado=false;
 const PASSOS = [
   { id:'equipamento', pergunta:'Qual é o seu equipamento?', opcoes:[['Notebook','Notebook'],['Desktop','Computador de mesa'],['All-in-one','All-in-one']] },
   { id:'uso', pergunta:'Para que você mais usa?', opcoes:[['estudo','Estudos, internet e documentos'],['trabalho','Trabalho, muitas abas e reuniões'],['jogos','Jogos ou edição de vídeos'],['outro','Um pouco de tudo']] },
@@ -29,7 +31,7 @@ export function recomendarUpgrade(respostas) {
 }
 
 function desenhar() {
-  if (!el) return;
+  if (!el||!iniciado) return;
   if (passo >= PASSOS.length) return mostrarResultado();
   const p = PASSOS[passo];
   el.innerHTML = `<div class="card"><span class="passo-ferr">etapa ${passo+1} de ${PASSOS.length}</span>
@@ -44,7 +46,7 @@ function desenhar() {
 function mostrarResultado() {
   window.MetricasSite?.registrar('ferramenta_concluida', 'upgrade');
   const itens = recomendarUpgrade(R);
-  const resumo = `Equipamento: ${R.equipamento}; uso: ${R.uso}; armazenamento: ${R.disco}; RAM: ${R.ram}; principal necessidade: ${R.sintoma}. Sugestões: ${itens.map(i=>i.titulo).join('; ')}.`;
+  const resumo = `Equipamento: ${R.equipamento}; uso: ${R.uso}; armazenamento declarado: ${R.disco}; RAM declarada: ${R.ram}; principal necessidade: ${R.sintoma}. ${leitura ? 'Navegador: '+leitura.soTexto+'; '+leitura.nucleos+' processadores lógicos; RAM estimada '+ramTexto(leitura.ramGB)+'. ' : ''}Sugestões: ${itens.map(i=>i.titulo).join('; ')}.`;
   el.innerHTML = `<div class="card">
     <span class="passo-ferr">seu resultado</span><h2>O upgrade que faz mais sentido investigar</h2>
     <p class="sub">Estas são prioridades iniciais, não uma lista de peças garantidamente compatíveis.</p>
@@ -61,4 +63,6 @@ function mostrarResultado() {
     detalhe:resumo.slice(0,900),
   });
 }
-desenhar();
+el.innerHTML='<div class="card"><h2>É este o computador do upgrade?</h2><p class="sub">Se quiser, o navegador informa dados gerais do aparelho. Modelo de CPU, SSD e compatibilidade precisam ser confirmados.</p><div class="ferr-nav"><button class="btn btn-pri" id="upgrade-identificar">Sim, identificar</button><button class="btn" id="upgrade-outro">É outro aparelho</button></div></div>';
+el.querySelector('#upgrade-outro').onclick=()=>{iniciado=true;desenhar();};
+el.querySelector('#upgrade-identificar').onclick=async()=>{el.querySelector('#upgrade-identificar').disabled=true;try{leitura=await ambiente();}catch(e){}iniciado=true;desenhar();};
