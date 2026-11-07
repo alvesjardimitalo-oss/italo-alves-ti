@@ -231,7 +231,11 @@ function iniciarAtendimentoPessoal(){
   const incluir=$('#incluir-analise')?.checked;
   let resumoAnterior='';
   try{const item=JSON.parse(sessionStorage.getItem('italoti-analise-pendente')||'null');if(incluir&&item&&item.validade>Date.now())resumoAnterior=String(item.relatorio||'').slice(0,850);}catch(e){}
-  const detalhe=('Sintoma informado: '+problema+'; Preferência: '+atendimento+'; Relato: '+relato+'; '+(resumoAnterior?'Resumo do analisador: '+resumoAnterior+'; ':'')+(identificado?'Informações do equipamento autorizadas: '+identificado+'; ':'')+'Solicitação sujeita à avaliação e aprovação do orçamento.').slice(0,1500);
+  const partes=['Sintoma: '+problema,'Preferência: '+atendimento,'Relato: '+relato];
+  if(resumoAnterior)partes.push('Análise orientativa autorizada: '+resumoAnterior);
+  if(identificado)partes.push('Dados do aparelho autorizados: '+identificado);
+  partes.push('Orçamento sujeito a avaliação e aprovação.');
+  const detalhe=partes.join('; ').slice(0,1500);
   await enviarPedido({contato,servico:'Atendimento pessoa física',equipamento,problema,detalhe,atendimento});
  });
 }
