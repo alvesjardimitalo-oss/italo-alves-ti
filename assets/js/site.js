@@ -190,7 +190,7 @@ $('#chat-form').addEventListener('submit', async (e) => {
 });
 
 async function inicio() {
-  await bot(`Olá! 👋 Eu sou o <b>Alvesinho</b>, assistente virtual da <b>${esc(SITE.nome)}</b>. Posso te orientar pelos sintomas e encaminhar seu pedido diretamente ao técnico.`, 250);
+  await bot(`Olá! 👋 Eu sou o <b>Alvesinho</b>, assistente virtual da <b>${esc(SITE.nome)}</b>. Posso ajudar a entender os sintomas e preparar sua mensagem para o atendimento.`, 250);
   if (lead.problema && lead.servico === 'Diagnóstico por sintomas') return diagnostico(lead.problema);
   const servicos = ['Conserto / orçamento', 'Diagnóstico por sintomas', 'Descrever meu problema', 'Suporte remoto', 'Upgrade ou montagem', 'Vale consertar ou trocar?', 'Acompanhar OS', 'Só tirar uma dúvida'];
   const esc1 = lead.servico || await opcoes(servicos);
@@ -223,14 +223,14 @@ async function inicio() {
 
 async function diagnostico(relato = '') {
   if (!lead.equipamento) {
-    await bot('Vamos entender o equipamento primeiro. Qual deles está apresentando o problema?');
+    await bot('Me diz uma coisa: qual equipamento está dando problema?');
     lead.equipamento = await opcoes(['Notebook', 'Computador (desktop)', 'All-in-one', 'Impressora', 'Outro']);
   }
   if (!relato) {
-    await bot('Em qual área está o sintoma? Se preferir, pode escrever o problema com suas palavras.');
+    await bot('Qual destas situações parece com a sua? Se preferir, pode descrever do seu jeito.');
     const grupo = await opcoes([...CATEGORIAS.map((g) => g.titulo), 'Descrever outro sintoma']);
     if (grupo === 'Descrever outro sintoma') {
-      await bot('Conte o que acontece quando tenta usar o equipamento.');
+      await bot('O que acontece quando você tenta usar o equipamento?');
       relato = await pergunta('Ex.: não carrega, tela piscando, Wi-Fi cai...', {
         validar: (t) => t.length < 4 ? 'Conte um pouco mais, por favor.' : t.length > 450 ? 'Resuma em até 450 caracteres.' : '',
       });
@@ -251,7 +251,7 @@ async function diagnostico(relato = '') {
   if (!orientacao.conhecido) lead.detalhe = String(relato).slice(0, 450);
   await bot(`<b>${esc(orientacao.titulo)}</b>\n${esc(orientacao.possiveis)}`, 350);
   await bot(`${orientacao.alerta ? '<b>Atenção:</b> ' : '<b>Primeiro cuidado:</b> '}${esc(orientacao.passo)}`, 330);
-  await bot('Isso é uma orientação preliminar: só uma avaliação técnica confirma a causa e o valor do reparo.', 200);
+  await bot('Essa é só uma pista. Para saber o defeito e o valor do conserto, preciso avaliar o equipamento.', 200);
   if (orientacao.dica) {
     await bot(`Se quiser entender melhor, veja também: <a href="${raiz}${esc(orientacao.dica)}">ler dica relacionada</a>.`, 150);
   }
@@ -304,13 +304,13 @@ async function fluxoPedido() {
   await bot('Como prefere o atendimento?');
   lead.atendimento = await opcoes([`Levo até a assistência (${SITE.cidade})`, 'Atendimento remoto (qualquer cidade)', 'Preciso que busquem o equipamento']);
 
-  await bot('Qual é o seu nome?');
+  await bot('Como você se chama?');
   lead.nome = await pergunta('Seu nome', { validar: (t) => (t.length < 2 ? 'Pode me dizer seu nome?' : '') });
 
-  await bot(`Prazer, ${esc(lead.nome.split(' ')[0])}! De qual cidade você fala? (ex.: Governador Valadares/MG)`);
+  await bot(`Prazer, ${esc(lead.nome.split(' ')[0])}! Você está em qual cidade? (ex.: Governador Valadares/MG)`);
   lead.cidade = await pergunta('Cidade / UF', { validar: (t) => (t.length < 2 ? 'Qual a sua cidade?' : '') });
 
-  await bot('Por último: qual o seu WhatsApp com DDD? É por ele que o técnico vai te responder.');
+  await bot('Qual é seu WhatsApp com DDD? É por lá que respondemos.');
   const wa = await pergunta('(33) 9 9999-9999', {
     tipo: 'tel',
     validar: (t) => { const d = t.replace(/\D/g, ''); return d.length < 10 || d.length > 13 ? 'Confere o número com DDD? Ex.: 33 99999-9999' : ''; },
@@ -336,7 +336,7 @@ function textoPedido() {
 }
 
 async function concluir() {
-  await bot('Perfeito! Confira o seu pedido:', 300);
+  await bot('Pronto! Confira se anotei tudo certinho:', 300);
   const r = document.createElement('div');
   r.className = 'resumo';
   r.textContent = textoPedido().replace(/\*/g, '');
@@ -358,9 +358,9 @@ async function concluir() {
   }
 
   if (registrado) {
-    await bot('Seu pedido foi registrado no sistema. ✅ O técnico poderá consultar seus dados de contato.', 250);
+    await bot('Recebi seu pedido pelo sistema. O próximo passo é conferir os detalhes e retornar o contato.', 250);
   } else {
-    await bot('Não foi possível confirmar o registro automático deste pedido. Para garantir o atendimento, envie a mensagem diretamente pelo WhatsApp.', 250);
+    await bot('Não consegui confirmar o envio pelo site. Pode me mandar essa mensagem pelo WhatsApp?', 250);
   }
 
   if (SITE.whatsapp) {
