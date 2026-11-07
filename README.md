@@ -225,3 +225,11 @@ Ao editar arquivos em `conteudo/` ou `tools/site/`, o GitHub Actions **Gerar sit
 **Diagnóstico de falhas:** se apenas uma área apresentar problema, verifique primeiro seu módulo específico. Os testes automáticos percorrem as páginas, conferem referências internas, URLs canônicas, catálogo, artigos e sitemap antes da publicação. O painel administrativo e a coleção de clientes não foram alterados nesta reorganização.
 
 **Produção:** não se alteram dados de clientes, Firestore, autenticação Google, App Check ou métricas nesta mudança. A integração de orçamento e acompanhamento de OS continua a mesma.
+
+## Busca local e navegação aprimorada
+
+- As páginas `problemas/` e `dicas/` oferecem filtro instantâneo: o texto é processado **inteiramente no navegador**, sem envio de consulta ao Firebase nem armazenamento.
+- O campo ignora diferença entre maiúsculas e minúsculas e acentos, aceita várias palavras e exibe quantidade de resultados; se nenhum resultado combina, apresenta caminho para atendimento via Alvesinho.
+- O menu do celular usa `aria-expanded`, fecha ao selecionar link, ao pressionar Escape ou ao tocar fora dele.
+- O componente isolado está em `assets/js/busca-conteudo.js`. A marcação fica em `tools/site/paginas/catalogos.py` e `dicas.py`. Estilos estão em `assets/css/site.css`.
+- Os testes de regressão estão em `tools/site/testar-busca.mjs`. Sem mudança no banco, regras Firebase, login, orçamentos ou OS.
