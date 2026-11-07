@@ -140,7 +140,7 @@ def gerar_home(ctx):
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// dicas</span><h2>Como fazer seu equipamento durar mais</h2></div>
       <div class="grid g4">
-        {''.join(f'<a class="card" href="dicas/{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["curto"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler dica →</span></a>' for a in ARTIGOS[:3])}
+        {''.join(f'<a class="card" href="dicas/{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["curto"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler dica →</span></a>' for a in sorted(ARTIGOS, key=lambda a: a.get('data', ''), reverse=True)[:3])}
       </div>
       <p class="pagina-link"><a class="btn" href="dicas/">Ver todos os {len(ARTIGOS)} artigos e tutoriais</a></p>
     </div>
