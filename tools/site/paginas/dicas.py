@@ -41,12 +41,15 @@ def gerar_dicas(ctx):
         gravar('dicas/' + a['slug'] + '.html', pg)
     idx = head(f'Dicas de manutenção de computadores e notebooks · {NOME}', 'Dicas práticas para cuidar do seu computador e notebook: superaquecimento, lentidão, bateria, SSD, Wi-Fi, impressora, backup, vírus e golpes.', 'dicas/', '../')
     idx += f'''
-  <main>
+  <main data-lista-conteudo>
     <div class="artigo-hero"><div class="wrap"><div class="crumb"><a href="../">início</a> / dicas</div>
-      <h1>Dicas e explicações</h1><p>Entenda o que está acontecendo com o seu equipamento e como fazer ele durar mais.</p></div></div>
+      <h1>Dicas e explicações</h1><p>Entenda o que está acontecendo com o seu equipamento e como fazer ele durar mais.</p>
+      <div class="busca-site"><label for="buscar-dica">Buscar uma dica ou tutorial</label>
+        <div class="busca-site-campo"><input type="search" id="buscar-dica" maxlength="100" placeholder="Ex.: limpeza, SSD, Wi-Fi..." data-busca-conteudo autocomplete="off"><button type="button" data-busca-limpar hidden>Limpar</button></div>
+        <p class="busca-site-contagem" data-busca-contagem aria-live="polite"></p></div></div></div>
     <section class="sec" style="padding-top:44px"><div class="wrap"><div class="grid g3">
-      {''.join(f'<a class="card" href="{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["titulo"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler →</span></a>' for a in sorted(ARTIGOS, key=lambda item: item.get('data', ''), reverse=True))}
-    </div></div></section>
+      {''.join(f'<a class="card" data-item-busca="{e(a["titulo"])} {e(a["resumo"])}" href="{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["titulo"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler →</span></a>' for a in sorted(ARTIGOS, key=lambda item: item.get('data', ''), reverse=True))}
+    </div><p class="busca-sem-resultados" data-busca-vazio hidden>Nenhuma dica encontrada. <a href="#fale-comigo" data-abrir-chat>Conte sua dúvida ao Alvesinho</a>.</p></div></section>
   </main>
-''' + rodape('../')
+''' + rodape('../', '<script type="module" src="../assets/js/busca-conteudo.js?v=2.4.0"></script>')
     gravar('dicas/index.html', idx)
