@@ -393,3 +393,24 @@ video.cam { width: 100%; max-width: 560px; border-radius: 12px; background: #000
 .metricas-preferencias { border:0;color:var(--text-3);background:none;cursor:pointer;font:inherit;font-size:.75rem;text-decoration:underline; }
 .metricas-preferencias:focus-visible,.metricas-acoes button:focus-visible { outline:3px solid #fbbf24;outline-offset:2px; }
 @media(max-width:720px){.metricas-aviso { left:8px;bottom:8px;max-width:calc(100vw - 16px);padding:13px; } }
+
+/* Arquitetura por páginas: destaques na home; catálogo completo em páginas internas. */
+.pagina-link { margin: 22px 0 0; }
+.pagina-link .btn { max-width:100%; white-space:normal; text-align:center; }
+.categorias-problemas { display:flex; gap:10px; flex-wrap:wrap; padding-top:28px; padding-bottom:10px; }
+.categorias-problemas a { display:inline-flex; align-items:center; min-height:38px; background:var(--surface); border:1px solid var(--border-strong); border-radius:100px; padding:7px 14px; color:var(--text); font-size:.86rem; }
+.categorias-problemas a:hover,.categorias-problemas a:focus-visible { border-color:var(--cyan); color:var(--cyan); text-decoration:none; }
+.sec-grupo-problemas { padding:38px 0; scroll-margin-top:80px; }
+.sec-grupo-problemas:nth-of-type(even) { background:var(--bg-2); }
+.sec-grupo-problemas h2 { margin-bottom:20px; }
+.sintoma-hub-card { display:flex; flex-direction:column; gap:12px; min-height:245px; }
+.sintoma-hub-card .problema-icon { flex:none; margin:0; }
+.sintoma-hub-card h3 { margin:0; font-size:1.06rem; }
+.sintoma-hub-card p { flex:1; margin:0; color:var(--text-2); font-size:.85rem; }
+.sintoma-hub-card .btn { align-self:flex-start; white-space:normal; padding:9px 11px; text-align:center; }
+.sintoma-hub-card .mais { display:block; font-size:.85rem; margin-top:4px; }
+@media(max-width:760px) {
+  .categorias-problemas { gap:7px; }
+  .categorias-problemas a { font-size:.78rem; padding:6px 11px; }
+  .sintoma-hub-card { min-height:auto; }
+}
