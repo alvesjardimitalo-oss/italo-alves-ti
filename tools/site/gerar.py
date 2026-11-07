@@ -24,7 +24,7 @@ SINTOMAS_HOME = C('sintomas.json')['itens']
 BASE = SITE['base'].rstrip('/') + '/'
 NOME = SITE['nome']
 HOJE = datetime.date.today().isoformat()
-V = '2.3.0'
+V = '2.4.0'
 e = html.escape
 
 
@@ -108,7 +108,7 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
   <header class="topo">
     <div class="wrap">
       <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
-      <nav class="menu" aria-label="Principal">
+      <nav class="menu" id="menu-principal" aria-label="Principal">
         <a href="{raiz}servicos/">Serviços</a>
         <a href="{raiz}problemas/">Problemas comuns</a>
         <a href="{raiz}ferramentas/">Ferramentas</a>
@@ -117,7 +117,7 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
         <a href="{raiz}acompanhar.html">Acompanhar OS</a>
       </nav>
       <a href="#fale-comigo" class="btn btn-pri btn-sm btn-topo" data-abrir-chat>Pedir orçamento</a>
-      <button class="menu-toggle" type="button" aria-label="Menu">☰</button>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-controls="menu-principal" aria-expanded="false">☰</button>
     </div>
   </header>
 '''
