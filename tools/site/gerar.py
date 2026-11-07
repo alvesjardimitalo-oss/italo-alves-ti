@@ -109,7 +109,8 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
     <div class="wrap">
       <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
       <nav class="menu" aria-label="Principal">
-        <a href="{raiz}#servicos">Serviços</a>
+        <a href="{raiz}servicos/">Serviços</a>
+        <a href="{raiz}problemas/">Problemas comuns</a>
         <a href="{raiz}ferramentas/">Ferramentas</a>
         <a href="{raiz}dicas/">Dicas</a>
         <a href="{raiz}empresas.html">Empresas</a>
@@ -141,6 +142,8 @@ def rodape(raiz, extra_js=''):
       <div><h4>Atendimento</h4><ul>
         <li><a href="#fale-comigo" data-abrir-chat>Fale comigo</a></li>
         <li><a href="{raiz}acompanhar.html">Acompanhar minha OS</a></li>
+        <li><a href="{raiz}problemas/">Sintomas e problemas comuns</a></li>
+        <li><a href="{raiz}servicos/">Todos os serviços</a></li>
         <li><a href="{raiz}ferramentas/checkup.html">Check-up do computador</a></li>
         <li><a href="{raiz}ferramentas/upgrade.html">Simulador de upgrade</a></li>
         <li><a href="{raiz}suporte-remoto.html">Suporte remoto</a></li>
@@ -314,6 +317,7 @@ def secao_plano(raiz):
 # Mudanças em uma página não exigem navegar por todo este gerador.
 from paginas.home import gerar_home as _gerar_home
 from paginas.dicas import gerar_dicas as _gerar_dicas
+from paginas.catalogos import gerar_catalogos as _gerar_catalogos
 
 
 def contexto_paginas():
@@ -332,6 +336,10 @@ def gerar_home():
 
 def gerar_dicas():
     return _gerar_dicas(contexto_paginas())
+
+
+def gerar_catalogos():
+    return _gerar_catalogos(contexto_paginas())
 
 
 # ==================================================================
@@ -560,7 +568,7 @@ def gerar_institucionais():
 # Arquivos de apoio
 # ==================================================================
 def gerar_apoio():
-    urls = ['', 'dicas/', 'ferramentas/', 'atendimento/', 'acompanhar.html', 'sobre.html', 'garantia.html', 'suporte-remoto.html', 'empresas.html', 'politica-de-privacidade.html']
+    urls = ['', 'dicas/', 'servicos/', 'problemas/', 'ferramentas/', 'atendimento/', 'acompanhar.html', 'sobre.html', 'garantia.html', 'suporte-remoto.html', 'empresas.html', 'politica-de-privacidade.html']
     urls += ['dicas/' + a['slug'] + '.html' for a in ARTIGOS]
     urls += ['ferramentas/' + f[3] for f in FERRAMENTAS]
     urls += [f'atendimento/{slug(c["cidade"])}-{c["uf"].lower()}.html' for c in CIDADES]
@@ -583,7 +591,8 @@ def gerar_apoio():
 if __name__ == '__main__':
     gerar_home()
     gerar_dicas()
+    gerar_catalogos()
     gerar_ferramentas()
     gerar_institucionais()
     gerar_apoio()
-    print(f'Site gerado: {len(ARTIGOS)} artigos, {len(CIDADES)} cidade(s), {len(FERRAMENTAS)} ferramentas.')
+    print(f'Site gerado: {len(ARTIGOS)} artigos, catálogo de problemas e serviços, {len(CIDADES)} cidade(s), {len(FERRAMENTAS)} ferramentas.')
