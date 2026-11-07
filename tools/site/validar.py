@@ -64,7 +64,7 @@ def resolver(page, link):
 
 
 errors = []
-pages = sorted(ROOT.glob('*.html')) + sorted((ROOT / 'dicas').glob('*.html')) + sorted((ROOT / 'atendimento').glob('*.html')) + sorted((ROOT / 'ferramentas').glob('*.html'))
+pages = sorted(ROOT.glob('*.html')) + sorted((ROOT / 'dicas').glob('*.html')) + sorted((ROOT / 'atendimento').glob('*.html')) + sorted((ROOT / 'ferramentas').glob('*.html')) + sorted((ROOT / 'servicos').glob('*.html')) + sorted((ROOT / 'problemas').glob('*.html'))
 for page in pages:
     html = page.read_text(encoding='utf-8')
     parsed = Links()
