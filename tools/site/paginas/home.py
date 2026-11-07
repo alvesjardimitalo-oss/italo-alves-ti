@@ -22,7 +22,7 @@ def gerar_home(ctx):
     rodape = ctx["rodape"]
     gravar = ctx["gravar"]
     cidades_txt = ', '.join(c['cidade'] for c in CIDADES if c.get('presencial'))
-    ld_faq = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in FAQ]}
+    ld_faq = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in FAQ[:4]]}
     h = head(f'{NOME} · Manutenção de computadores e notebooks', f'Manutenção de computadores e notebooks em {SITE["cidade"]}/{SITE["uf"]} e suporte remoto para todo o Brasil. Diagnóstico, limpeza, SSD, formatação, Windows 11 e troca de peças, com orçamento antes do serviço.', '', './', [ld_negocio(), ld_faq])
     fato24 = f'<div><b>24 horas</b>atendimento a qualquer hora</div>' if '24' in (SITE.get('horario') or '') else ''
     h += f'''
@@ -66,8 +66,9 @@ def gerar_home(ctx):
         <h2>Qual destes problemas parece com o seu?</h2>
         <p>Escolha um sintoma. O Alvesinho explica as causas possíveis, cuidados iniciais e como solicitar atendimento, sem prometer diagnóstico à distância.</p></div>
       <div class="problemas-rapidos">
-        {''.join(f'<button type="button" class="sintoma-card" data-abrir-chat data-sintoma="{e(item["id"])}"><span class="problema-icon" aria-hidden="true">{e(item["icone"])}</span><strong>{e(item["titulo"])}</strong><small>Ver orientação →</small></button>' for item in SINTOMAS_HOME)}
+        {''.join(f'<button type="button" class="sintoma-card" data-abrir-chat data-sintoma="{e(item["id"])}"><span class="problema-icon" aria-hidden="true">{e(item["icone"])}</span><strong>{e(item["titulo"])}</strong><small>Ver orientação →</small></button>' for item in SINTOMAS_HOME[:8])}
       </div>
+      <p class="pagina-link"><a href="problemas/" class="btn">Ver todos os 20 problemas e orientações →</a></p>
       <p class="sintoma-nota">Orientações educativas: problemas elétricos, líquidos ou baterias estufadas exigem cuidados especiais. Não abra fontes nem componentes energizados.</p>
     </div>
   </section>
@@ -76,8 +77,9 @@ def gerar_home(ctx):
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// serviços</span><h2>O que eu resolvo</h2><p>Do notebook que esquenta ao computador que não liga, com explicação do que foi feito e por quê.</p></div>
       <div class="grid g4">
-        {''.join(f'<a class="card" href="#fale-comigo" data-abrir-chat data-servico="{e(t)}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Pedir orçamento →</span></a>' for i, t, d in SERVICOS)}
+        {''.join(f'<a class="card" href="#fale-comigo" data-abrir-chat data-servico="{e(t)}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Pedir orçamento →</span></a>' for i, t, d in SERVICOS[:4])}
       </div>
+      <p class="pagina-link"><a href="servicos/" class="btn">Conhecer todos os serviços e opções de atendimento →</a></p>
     </div>
   </section>
 
@@ -85,8 +87,9 @@ def gerar_home(ctx):
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// ferramentas grátis</span><h2>Descubra o problema antes de sair de casa</h2><p>Testes que rodam direto no navegador. Sem instalar nada.</p></div>
       <div class="grid g5">
-        {''.join(f'<a class="card" href="ferramentas/{h_}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Usar →</span></a>' for i, t, d, h_ in FERRAMENTAS)}
+        {''.join(f'<a class="card" href="ferramentas/{h_}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Usar →</span></a>' for i, t, d, h_ in FERRAMENTAS[:3])}
       </div>
+      <p class="pagina-link"><a href="ferramentas/" class="btn">Explorar todas as ferramentas gratuitas →</a></p>
     </div>
   </section>
 
@@ -132,26 +135,14 @@ def gerar_home(ctx):
       </div>
     </div>
   </section>
-  {secao_precos('./')}
-  {secao_galeria('./')}
   {secao_avaliacoes()}
-  {secao_plano('./')}
-  <section class="sec alt" id="problemas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// problemas comuns</span><h2>O que pode estar acontecendo com o seu equipamento</h2><p>Explicações rápidas. Toque para abrir.</p></div>
-      <div class="acordeao">
-        {''.join(f'<details><summary>{e(t)}</summary><div class="resp"><p>{e(r)}</p><a href="dicas/{s}.html">Entender melhor →</a></div></details>' for t, r, s in PROBLEMAS)}
-      </div>
-    </div>
-  </section>
-
   <section class="sec" id="dicas">
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// dicas</span><h2>Como fazer seu equipamento durar mais</h2></div>
       <div class="grid g4">
-        {''.join(f'<a class="card" href="dicas/{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["curto"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler dica →</span></a>' for a in ARTIGOS[:8])}
+        {''.join(f'<a class="card" href="dicas/{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["curto"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler dica →</span></a>' for a in ARTIGOS[:3])}
       </div>
-      <p style="margin-top:22px"><a class="btn" href="dicas/">Ver todas as {len(ARTIGOS)} dicas</a></p>
+      <p class="pagina-link"><a class="btn" href="dicas/">Ver todos os {len(ARTIGOS)} artigos e tutoriais</a></p>
     </div>
   </section>
 
@@ -159,7 +150,7 @@ def gerar_home(ctx):
     <div class="wrap">
       <div class="sec-head"><span class="kicker">// dúvidas</span><h2>Perguntas frequentes</h2></div>
       <div class="acordeao">
-        {''.join(f'<details><summary>{e(q)}</summary><div class="resp"><p>{e(a)}</p></div></details>' for q, a in FAQ)}
+        {''.join(f'<details><summary>{e(q)}</summary><div class="resp"><p>{e(a)}</p></div></details>' for q, a in FAQ[:4])}
       </div>
     </div>
   </section>
