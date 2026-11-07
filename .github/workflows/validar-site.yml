@@ -37,6 +37,8 @@ jobs:
           git diff --stat
       - name: Conferir arquitetura por páginas, links e conteúdo
         run: node tools/site/testar-arquitetura.mjs
+      - name: Testar busca de conteúdo e navegação mobile
+        run: node tools/site/testar-busca.mjs
       - name: Testar Alvesinho, diagnósticos e simulador de upgrade
         run: node tools/site/testar-alvesinho.mjs
       - name: Testar painel de conversões, coleta e privacidade
