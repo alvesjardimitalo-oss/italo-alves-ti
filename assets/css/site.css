@@ -430,3 +430,33 @@ video.cam { width: 100%; max-width: 560px; border-radius: 12px; background: #000
 .busca-sem-resultados { max-width:780px; margin:28px auto; padding:25px 20px; text-align:center; color:var(--text-2); background:var(--surface); border:1px dashed var(--border-strong); border-radius:14px; }
 .busca-sem-resultados a { color:var(--cyan); text-decoration:underline; }
 @media(max-width:650px) {.busca-site { margin-top:22px; }.busca-site-campo { padding-left:11px; }.busca-site-campo input { font-size:.92rem; }}
+
+
+/* Componentes ilustrativos compactos da página inicial */
+.inicio-resumo,.inicio-atalhos,.inicio-contato{padding-top:56px;padding-bottom:56px}
+.exemplos-animados .exemplo-animado{display:flex;flex-direction:column;gap:12px}
+.exemplo-animado .mais{margin-top:auto}
+.demo-tela{height:148px;background:linear-gradient(145deg,#111d33,#09111e);border:1px solid rgba(139,170,216,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.demo-legenda{font-size:.78rem;letter-spacing:.09em;color:#76d7f0;text-transform:uppercase;font-weight:700}
+.demo-janela{width:70%;height:92px;background:#17233b;border:1px solid #4d668f;border-radius:9px;padding:12px;box-shadow:0 10px 26px #0005}
+.demo-luzes{display:flex;gap:5px}.demo-luzes i{width:6px;height:6px;border-radius:50%;background:#86a1c9}
+.demo-carregando{height:12px;margin:20px 0 8px;border:1px solid #41618d;border-radius:20px;overflow:hidden}
+.demo-carregando span{display:block;height:100%;width:75%;background:linear-gradient(90deg,#33bcda,#86f3b9);animation:demo-loading 3.5s ease-in-out infinite}
+.demo-status{font-size:10px;color:#afc3de}
+.demo-ventoinha{display:grid;place-items:center;width:84px;height:84px;border:8px solid #30405a;border-radius:50%;box-shadow:0 0 0 5px #10192a}
+.demo-ventoinha span{font-size:62px;line-height:1;color:#c1d0e8;animation:demo-spin 2s linear infinite}
+.demo-termometro{width:12px;height:75px;background:#34445b;border:2px solid #8da6c3;border-radius:10px;overflow:hidden;position:absolute;right:20%}
+.demo-termometro span{position:absolute;bottom:0;left:0;right:0;height:40%;background:#ff876c;animation:demo-heat 4s ease-in-out infinite}
+.demo-sinal{position:absolute;left:12px;bottom:9px;font-size:10px;color:#ffc3a6;letter-spacing:.13em}
+.demo-monitor{width:150px;position:relative}.demo-display{height:83px;border:8px solid #52637c;border-radius:8px;background:#06090f;display:grid;place-items:center}
+.demo-display span{color:#fda0a0;font-size:12px;letter-spacing:.18em;animation:demo-blink 2.5s infinite}
+.demo-base{width:55px;height:10px;margin:auto;border-bottom:5px solid #52637c}
+.demo-led{width:7px;height:7px;position:absolute;right:24%;bottom:18%;background:#70eab7;border-radius:50%;box-shadow:0 0 12px #70eab7}
+.inicio-alvesinho{display:block;margin:0 auto 14px;object-fit:contain}
+.inicio-botoes{justify-content:center;flex-wrap:wrap}
+@keyframes demo-loading{0%,100%{width:9%}55%{width:94%}}
+@keyframes demo-spin{to{transform:rotate(360deg)}}
+@keyframes demo-heat{0%,100%{height:35%}55%{height:90%}}
+@keyframes demo-blink{0%,100%{opacity:.22}45%,70%{opacity:1}}
+@media(max-width:700px){.inicio-resumo,.inicio-atalhos,.inicio-contato{padding-top:36px;padding-bottom:36px}.demo-tela{height:130px}.inicio-botoes .btn{width:100%;justify-content:center}}
+@media(prefers-reduced-motion:reduce){.demo-carregando span,.demo-ventoinha span,.demo-termometro span,.demo-display span{animation:none!important}.demo-carregando span{width:65%}}
