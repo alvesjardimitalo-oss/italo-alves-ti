@@ -41,7 +41,7 @@ export async function ambiente() {
   if (so === 'Windows' && /Windows NT 6\./.test(ua)) soVersao = '7/8';
   const movel = /Android|iPhone|iPad|Mobile/.test(ua);
   let armazenamento = '';
-  try { const est = await navigator.storage?.estimate?.(); if (est?.quota) armazenamento = (est.quota / 1e9).toFixed(0) + ' GB livres p/ o navegador (aprox.)'; } catch (e) { /* ignora */ }
+  try { const est = await navigator.storage?.estimate?.(); if (est?.quota) armazenamento = (est.quota / 1e9).toFixed(0) + ' GB de cota para armazenamento do site (não é espaço livre do HD)'; } catch (e) { /* ignora */ }
   let bateria = null;
   try { if (navigator.getBattery) { const b = await navigator.getBattery(); bateria = { nivel: Math.round(b.level * 100), carregando: b.charging }; } } catch (e) { /* ignora */ }
   const con = navigator.connection || {};
