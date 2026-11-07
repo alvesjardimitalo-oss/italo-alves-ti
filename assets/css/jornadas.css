@@ -74,3 +74,29 @@
 .plano-condicoes h3{font-size:1rem;margin:0 0 9px}
 .plano-condicoes p{font-size:.84rem;line-height:1.65;color:#b8cbdc;margin:9px 0}
 .plano-condicoes strong{color:#ecf8fc}
+
+/* Analisador de sintomas e informações opcionais do equipamento */
+.analise-opcoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:18px 0}
+.analise-check{display:flex;align-items:center;gap:10px;padding:13px 15px;border:1px solid #35546a;border-radius:12px;background:#0a1a2c;cursor:pointer;font-size:.9rem}
+.analise-check:has(input:checked){border-color:#4edbd8;background:#15364b}
+.analise-check input{accent-color:#3acbd3;width:17px;height:17px}
+.analise-achados{display:grid;gap:13px}
+.analise-achado{border:1px solid #325269;border-left:4px solid #3bb4c9;border-radius:12px;background:#102135;padding:16px}
+.analise-achado[data-nivel=urgente]{border-left-color:#f09a7b}
+.analise-achado[data-nivel=atencao]{border-left-color:#f1cb67}
+.analise-achado[data-nivel=melhoria]{border-left-color:#63dbb8}
+.analise-achado[data-nivel=ok]{border-left-color:#63dbb8}
+.analise-achado h3{font-size:1.02rem;margin:6px 0}
+.analise-achado p{font-size:.9rem;color:#becfe0;margin:7px 0 10px}
+.analise-achado small{font-size:.82rem;color:#95c9d3}
+.analise-nivel{font-size:.72rem;font-weight:700;color:#c7ebef}
+.identifica-box{border:1px solid #2a536b;border-radius:15px;padding:16px;background:#0b2032}
+.identifica-box h3{font-size:1.08rem;margin:9px 0}
+.identifica-box p{font-size:.85rem;color:#b6cbdc}
+.identifica-botoes,.identifica-acoes{display:flex;flex-wrap:wrap;gap:9px;margin:15px 0}
+.identifica-resultado{margin-top:12px;overflow-wrap:anywhere}
+.identifica-resultado strong{display:block;margin:7px 0}
+.identifica-resultado ul{padding-left:20px;font-size:.82rem;color:#bdcddd}
+.identifica-incorporada{padding:0;background:none;border:0}
+.analise-resumo-previo{font-size:.8rem;white-space:pre-wrap;overflow-wrap:anywhere;color:#d0e8ee}
+@media(max-width:630px){.analise-opcoes{grid-template-columns:1fr}}
