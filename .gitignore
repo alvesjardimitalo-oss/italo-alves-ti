@@ -9,3 +9,7 @@ Thumbs.db
 # O conteúdo editorial é versionado; backups de clientes continuam ignorados.
 !conteudo/
 !conteudo/*.json
+
+# Arquivos temporários gerados automaticamente pelo interpretador Python
+__pycache__/
+*.py[cod]
