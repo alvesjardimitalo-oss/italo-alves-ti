@@ -148,3 +148,47 @@
 @media(max-width:1100px){.alves-stage-content{grid-template-columns:minmax(130px,.8fr) minmax(0,1fr)}.alves-avatar-area>img{width:min(100%,240px)}}
 @media(max-width:600px){.alves-stage-content{grid-template-columns:110px minmax(0,1fr);gap:12px}.alves-avatar-area>img{width:106px}.alves-stage-message h3{font-size:1.12rem}.alves-stage-illustration .ani-visual{height:86px}}
 @media(prefers-reduced-motion:reduce){.alves-tip{transition:none}}
+
+
+/* Home enxuta: uma dobra de apresentação + banner com demonstrações */
+.hero.hero-compacta{padding:32px 0 26px;min-height:0}
+.hero-compacta .wrap{grid-template-columns:minmax(0,1.5fr) minmax(220px,.65fr);gap:20px;align-items:center}
+.hero-compacta h1{font-size:clamp(1.8rem,3vw,2.65rem);line-height:1.14;margin:12px 0}
+.hero-compacta p.lead{font-size:.99rem;line-height:1.6;margin:0 0 18px;max-width:660px}
+.hero-compacta .selo{font-size:.7rem}
+.hero-compacta .hero-acoes{gap:9px}
+.hero-compacta .hero-acoes .btn{padding:11px 17px}
+.hero-links-compactos{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;color:var(--text-2);font-size:.74rem}
+.hero-links-compactos span:before{content:"✓";color:#54e4c9;padding-right:5px}
+.hero-links-compactos a{color:#7ee8de}
+.hero-alves-personagem{position:relative;display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column;text-decoration:none;min-height:210px}
+.hero-alves-personagem img{position:relative;z-index:1;display:block;width:min(100%,190px);height:auto;aspect-ratio:1;border-radius:50%;border:2px solid #17eaf1;box-shadow:0 0 22px #08d2ef48;object-fit:cover}
+.hero-alves-efeito{position:absolute;inset:0;background:radial-gradient(circle at 50% 42%,#06dbf52a,transparent 60%)}
+.hero-alves-balao{z-index:1;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:9px 14px;border:1px solid #38a8c565;border-radius:14px;background:#071d35cc}
+.hero-alves-balao strong{color:#dffbff;font-size:.88rem}
+.hero-alves-balao small{color:#accfe0;font-size:.75rem}
+.alves-banner-section{padding:24px 0 30px}
+.alves-banner-head{margin-bottom:13px}
+.alves-banner-head h2{font-size:clamp(1.2rem,2.25vw,1.7rem);margin:5px 0}
+.alves-banner-head p{font-size:.84rem}
+.alves-main-stage{min-height:0;padding:17px}
+.alves-stage-content{padding:9px 0;grid-template-columns:minmax(120px,.6fr) minmax(0,1fr);gap:10px}
+.alves-avatar-area>img{width:min(100%,175px);max-width:175px}
+.alves-avatar-area:before{width:185px;max-width:100%}
+.alves-stage-message h3{font-size:clamp(1.2rem,2vw,1.65rem);margin:4px 0}
+.alves-stage-message>p{font-size:.8rem;margin:0 0 7px}
+.alves-stage-illustration{max-width:210px;margin-top:5px}
+.alves-stage-illustration .ani-visual{height:88px}
+.alves-stage-illustration .ani-window{height:66px}
+.alves-subtitle{padding:10px 13px;margin-bottom:11px}
+.alves-subtitle p{font-size:.78rem}
+.alves-showcase-aside{padding:16px;gap:8px}
+.alves-tip-header p{margin:2px 0 5px}
+.alves-tip{padding:9px}
+.alves-tip-icon{height:33px;width:33px}
+.alves-assist-card{padding:10px}
+.alves-other-tips{margin-top:10px}
+.alves-banner-disclaimer{margin-top:8px}
+@media(max-width:920px){.hero-compacta .wrap{grid-template-columns:minmax(0,1fr) 200px}.alves-showcase{grid-template-columns:1fr 300px}}
+@media(max-width:720px){.hero-compacta .wrap{grid-template-columns:1fr 125px;gap:8px}.hero-alves-personagem{min-height:130px}.hero-alves-personagem img{width:120px}.hero-alves-balao{display:none}.alves-showcase{grid-template-columns:1fr}.alves-avatar-area>img{width:145px}}
+@media(max-width:520px){.hero.hero-compacta{padding:24px 0 20px}.hero-compacta .wrap{grid-template-columns:1fr}.hero-alves-personagem{min-height:0;position:absolute;right:0;top:0;opacity:.16;pointer-events:none}.hero-alves-personagem img{width:115px}.hero-compacta .hero-copy{position:relative;z-index:1}.hero-compacta h1{font-size:1.9rem}.hero-compacta .hero-acoes .btn{flex:1;justify-content:center;font-size:.82rem}.alves-stage-content{grid-template-columns:100px minmax(0,1fr)}.alves-avatar-area>img{width:100px}.alves-avatar-area:before{width:110px}.alves-stage-illustration .ani-visual{height:76px}}
