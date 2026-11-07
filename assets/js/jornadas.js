@@ -49,8 +49,8 @@ async function enviarPedido({contato,servico,equipamento,problema,detalhe,atendi
  if(result){
    result.hidden=false;
    result.replaceChildren();
-   const h=document.createElement('h3');h.textContent=gravado?'Recebi seus dados':'Falta enviar pelo WhatsApp';
-   const p=document.createElement('p');p.textContent=gravado?'Seu pedido chegou ao sistema. Vou confirmar a disponibilidade e os detalhes antes de combinar o atendimento.':'Não consegui confirmar o registro pelo site. Envie a mensagem no WhatsApp para eu receber seu pedido.';
+   const h=document.createElement('h3');h.textContent=gravado?'Solicitação recebida':'Falta enviar pelo WhatsApp';
+   const p=document.createElement('p');p.textContent=gravado?'Recebemos sua solicitação. Se for um plano mensal, enviaremos a proposta e o contrato para análise antes de qualquer cobrança ou ativação.':'Não consegui confirmar o registro pelo site. Envie a mensagem no WhatsApp para eu receber seu pedido.';
    const a=document.createElement('a');a.className='btn btn-pri';a.href=whatsapp(msg);a.target='_blank';a.rel='noopener noreferrer';a.textContent='Enviar detalhes pelo WhatsApp';
    result.append(h,p,a);
    result.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -140,6 +140,16 @@ const PLANOS={
  empresa:{titulo:'Empresarial — 16 a 30 máquinas',min:16,max:30,visitas:'Cronograma de visitas definido em proposta',itens:['Cobertura de 16 a 30 computadores ou notebooks cadastrados','Calendário de revisões periódicas definido com a empresa','Inventário, histórico por máquina e acompanhamento de chamados','Registro das ordens de serviço, ocorrências, recomendações e conclusão','Garantia de 90 dias sobre os serviços executados, documentada por OS']},
  personalizado:{titulo:'Personalizado — acima de 30 máquinas',min:31,max:2000,visitas:'Cronograma sob avaliação',itens:['Para mais de 30 máquinas, é preciso avaliar distribuição, localização e criticidade','Cronograma de revisões e suporte calculado conforme necessidade','Inventário, acompanhamento por equipamento e registro de intervenções','Garantias dos serviços executados documentadas em cada OS','Limites, disponibilidade, prazo de resposta e mensalidade definidos em proposta']}
 };
+// Preços iniciais de referência em reais, para contratos mensais sem infraestrutura especial.
+function cotarPlano(id,quantidade){
+ if(id==='personalizado')return null;
+ const politica={
+  essencial:{unitario:99,minimo:399},
+  profissional:{unitario:89,minimo:690},
+  empresa:{unitario:79,minimo:1490}
+ }[id];
+ return politica?{...politica,total:Math.max(politica.minimo,politica.unitario*quantidade)}:null;
+}
 function iniciarPlanos(){
  const box=$('[data-plano-resumo]'),quantidade=$('#j-quantidade'),faixa=$('[data-plano-faixa]');
  let escolhido='essencial';
@@ -147,10 +157,13 @@ function iniciarPlanos(){
  function render(){
   const p=PLANOS[escolhido];
   texto($('[data-plano-titulo]'),p.titulo);
+  const q=Number(quantidade.value);
+  const estimativa=Number.isInteger(q)&&q>=1&&q<=2000?cotarPlano(escolhido,q):null;
+  texto($('[data-plano-preco]'),estimativa?moeda(estimativa.total)+'/mês':'Valor sob consulta');
+  texto($('[data-plano-calculo]'),estimativa?(q+' '+(q===1?'máquina':'máquinas')+' × '+moeda(estimativa.unitario)+' · mínimo mensal de '+moeda(estimativa.minimo)):'Mais de 30 máquinas: avaliação e proposta personalizada.');
   box.replaceChildren();
   for(const item of p.itens){const li=document.createElement('li');li.textContent=item;box.append(li);}
   $$('[data-plano]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.plano===escolhido));b.classList.toggle('is-active',b.dataset.plano===escolhido);});
-  const q=Number(quantidade.value);
   if(Number.isInteger(q)&&q>=1&&q<=2000){
    const ideal=recomendado(q);
    texto(faixa,ideal==='personalizado'?'Acima de 30 máquinas: orçamento personalizado.':('Para '+q+' '+(q===1?'máquina':'máquinas')+', a faixa indicada é '+PLANOS[ideal].titulo+'.'));
@@ -173,9 +186,13 @@ function iniciarPlanos(){
   if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de computadores ou notebooks, entre 1 e 2000.');quantidade.focus();return;}
   const ideal=recomendado(qtd);
   if(ideal!==escolhido){escolhido=ideal;render();}
+  const empresa=valor('j-empresa');
+  if(empresa.length<2){mostrarErro('Informe o nome da empresa.');$('#j-empresa').focus();return;}
+  const ciente=$('#j-condicoes');if(ciente&&!ciente.checked){mostrarErro('Confirme que deseja receber a proposta e o contrato para análise.');ciente.focus();return;}
   const contato=tratarContato();if(!contato)return;
-  const relato=valor('j-detalhe'),empresa=valor('j-empresa'),frequencia=valor('j-frequencia'),suporte=valor('j-suporte');
-  await enviarPedido({contato,servico:'Proposta de manutenção mensal',equipamento:'Computadores e notebooks',problema:PLANOS[ideal].titulo,detalhe:('Empresa: '+(empresa||'Não informada')+'; Plano: '+PLANOS[ideal].titulo+'; Máquinas: '+qtd+'; Periodicidade prevista: '+PLANOS[ideal].visitas+'; Visitas desejadas: '+frequencia+'; Suporte: '+suporte+'; Histórico individual e OS: solicitado; Garantia dos serviços: 90 dias conforme política e OS; Peças não incluídas; Necessidade: '+relato).slice(0,1500),atendimento:'Mensalidade sob proposta'});
+  const relato=valor('j-detalhe'),frequencia=valor('j-frequencia'),suporte=valor('j-suporte'),preco=cotarPlano(ideal,qtd);
+  const referencia=preco?moeda(preco.total)+'/mês (estimativa)':'sob consulta';
+  await enviarPedido({contato,servico:'Solicitação de contratação mensal',equipamento:'Computadores e notebooks',problema:PLANOS[ideal].titulo,detalhe:('Empresa: '+empresa+'; Plano: '+PLANOS[ideal].titulo+'; Máquinas: '+qtd+'; Mensalidade estimada: '+referencia+'; Periodicidade prevista: '+PLANOS[ideal].visitas+'; Visitas desejadas: '+frequencia+'; Suporte: '+suporte+'; Histórico por máquina e OS: previsto; Garantia dos serviços: 90 dias conforme política e OS; Peças não incluídas; Cliente solicita proposta e contrato, SEM assinatura ou cobrança automática; Necessidade: '+relato).slice(0,1500),atendimento:'Contratação pendente de proposta e assinatura'});
  });
 }
 if(tipo==='diagnostico')iniciarDiagnostico();
