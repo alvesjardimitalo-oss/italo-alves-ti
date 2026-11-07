@@ -66,3 +66,11 @@
 .plano-beneficios strong{color:#dff7f7;font-size:.9rem}
 .plano-beneficios p{color:#afc5d7;font-size:.82rem;line-height:1.55;margin:8px 0 0}
 @media(max-width:900px){.plano-beneficios{grid-template-columns:1fr}}
+
+/* Preços mensais e solicitação de contratação empresarial */
+.plano-tiers .jornada-choice{min-height:210px}
+.plano-preco{font-size:1.15rem!important;font-weight:800!important;color:#8bf4e8!important;line-height:1.15}
+.plano-condicoes{padding:17px;margin:19px 0 15px;border:1px solid #35556a;border-radius:14px;background:#10273a}
+.plano-condicoes h3{font-size:1rem;margin:0 0 9px}
+.plano-condicoes p{font-size:.84rem;line-height:1.65;color:#b8cbdc;margin:9px 0}
+.plano-condicoes strong{color:#ecf8fc}
