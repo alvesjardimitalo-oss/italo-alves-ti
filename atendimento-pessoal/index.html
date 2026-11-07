@@ -20,6 +20,9 @@
 <div class="jornada-field wide"><label for="j-detalhe">Pode contar mais sobre o problema? (opcional)</label><textarea id="j-detalhe" maxlength="450" placeholder="Ex.: meu notebook demora para ligar e trava quando abro o navegador."></textarea></div>
 <div class="jornada-field wide"><label for="j-atendimento">Como prefere ser atendido?</label><select id="j-atendimento"><option>Levar o equipamento à assistência</option><option>Suporte remoto, se possível</option><option>Consultar coleta ou visita em casa</option><option>Quero conversar antes de decidir</option></select></div>
 </div><div class="jornada-separator"></div>
+<div class="jornada-panel identifica-incorporada" data-identificacao-hardware id="identificacao-pessoal"></div>
+<div class="jornada-result" id="analise-recebida" hidden><h3>Resultado da análise anterior</h3><p class="jornada-note">Encontramos um resumo da análise feita nesta sessão. Confira o conteúdo e escolha se quer incluí-lo no pedido.</p><pre class="analise-resumo-previo" id="analise-resumo-previo"></pre><label class="jornada-toggle"><input type="checkbox" id="incluir-analise" checked> Incluir este relatório no pedido de orçamento</label><button class="btn" type="button" id="descartar-analise">Descartar relatório</button></div>
+<div class="jornada-separator"></div>
 <h2>Como entro em contato com você?</h2>
 <div class="jornada-inputs">
 <div class="jornada-field"><label for="j-nome">Seu nome</label><input id="j-nome" type="text" maxlength="80" autocomplete="name" required></div>
@@ -40,5 +43,6 @@
 </div>
 <nav class="jornada-bottomlinks" aria-label="Outros serviços"><a class="btn" href="../diagnostico/">Diagnóstico</a><a class="btn" href="../agendar/">Agendar</a><a class="btn" href="../servicos/">Serviços</a><a class="btn" href="../avaliacao-empresarial/">Atendimento para empresas</a></nav>
 </div></main><footer class="rodape"><div class="wrap"><div><a href="../" class="marca"><img src="../assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a><p>Manutenção de computadores e notebooks em Frei Inocêncio e região. Suporte remoto para todo o Brasil.</p><p>WhatsApp: <a href="https://wa.me/5533998556503" target="_blank" rel="noopener">(33) 99855-6503</a></p></div><div><h4>Para você</h4><ul><li><a href="../diagnostico/">Diagnóstico</a></li><li><a href="../atendimento-pessoal/">Agendar</a></li><li><a href="../estimativa/">Estimador</a></li><li><a href="../planos/">Planos</a></li></ul></div><div><h4>Atendimento</h4><ul><li><a href="../servicos/">Serviços</a></li><li><a href="../dicas/">Dicas</a></li><li><a href="../acompanhar.html">Acompanhar OS</a></li><li><a href="../politica-de-privacidade.html">Privacidade</a></li><li><a href="../garantia.html">Garantia</a></li></ul></div></div><div class="rodape-base"><span>© <span data-ano></span> Ítalo Alves TI · Frei Inocêncio/MG</span></div></footer>
-<script type="module" src="../assets/js/site.js?v=2.4.2"></script><script type="module" src="../assets/js/jornadas.js?v=6"></script>
+<script type="module" src="../assets/js/site.js?v=2.4.2"></script><script type="module" src="../assets/js/jornadas.js?v=8"></script>
+<script type="module" src="../assets/js/identificacao-hardware.js?v=1"></script>
 </body></html>
