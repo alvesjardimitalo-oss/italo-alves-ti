@@ -1,0 +1,164 @@
+// Jornadas comerciais Ítalo InfoTec: nenhuma solicitação equivale a agendamento confirmado.
+import { SITE } from './site-config.js';
+import { salvarLead } from './leads.js';
+import { CATEGORIAS, sintomasPorCategoria, orientarSintoma } from './alvesinho-conhecimento.js';
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+const body = document.body;
+const tipo = body.dataset.jornada;
+const moeda = n => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n);
+const formataData = d => { const [ano,mes,dia] = d.split('-');return dia+'/'+mes+'/'+ano; };
+function texto(el, value){ if(el) el.textContent=String(value); }
+function mostrarErro(msg){ const e=$('[data-erro]');if(e){texto(e,msg);e.hidden=!msg;}}
+function whatsapp(msg){return 'https://wa.me/'+SITE.whatsapp+'?text='+encodeURIComponent(msg);}
+function abrirChat(codigo){
+  const btn = $('[data-abrir-chat]');
+  if(btn){btn.dataset.servico=codigo;btn.click();return true;}
+  return false;
+}
+function valor(id){return ($('#'+id)?.value||'').trim();}
+function nomeOk(n){return n.length>=2&&n.length<=80;}
+function telefoneOk(n){return n.replace(/\D/g,'').length>=10&&n.replace(/\D/g,'').length<=13;}
+function tratarContato(){
+ const nome=valor('j-nome'), tel=valor('j-telefone'),cidade=valor('j-cidade');
+ if(!nomeOk(nome)){mostrarErro('Informe seu nome (pelo menos 2 letras).');$('#j-nome')?.focus();return null;}
+ if(!telefoneOk(tel)){mostrarErro('Informe WhatsApp com DDD válido.');$('#j-telefone')?.focus();return null;}
+ const aceite=$('#j-aceite');if(aceite&&!aceite.checked){mostrarErro('Marque a confirmação de leitura da política de privacidade.');aceite.focus();return null;}
+ mostrarErro('');
+ return {nome,whatsapp:tel.replace(/\D/g,''),cidade:cidade.slice(0,80)};
+}
+async function enviarPedido({contato,servico,equipamento,problema,detalhe,atendimento}){
+ const btn=$('[data-enviar]');if(btn){btn.disabled=true;btn.textContent='Preparando solicitação...';}
+ let gravado=false;
+ try{
+   gravado=await salvarLead({...contato,equipamento,problema,detalhe,atendimento,servico,origem:location.pathname,utm:new URLSearchParams(location.search).get('utm_source')||''});
+ }catch(e){gravado=false;}
+ const msg=[
+ 'Olá! Vim pelo site da Ítalo InfoTec.',
+ '*Solicitação:* '+servico,
+ '*Nome:* '+contato.nome,
+ '*Cidade:* '+(contato.cidade||'Não informada'),
+ '*WhatsApp:* '+contato.whatsapp,
+ '*Equipamento:* '+(equipamento||'Não informado'),
+ '*Assunto:* '+(problema||'Não informado'),
+ '*Detalhes:* '+detalhe,
+ '',
+ 'Aguardo retorno e confirmação do técnico.'
+ ].join('\n');
+ const result=$('[data-envio-resultado]');
+ if(result){
+   result.hidden=false;
+   result.replaceChildren();
+   const h=document.createElement('h3');h.textContent=gravado?'Solicitação recebida pelo sistema':'Envie sua solicitação para concluir';
+   const p=document.createElement('p');p.textContent=gravado?'Recebemos seus dados. A data, o preço e a disponibilidade ainda precisam ser confirmados pelo técnico.':'O registro automático não pôde ser confirmado. Envie os detalhes pelo WhatsApp para garantir o contato.';
+   const a=document.createElement('a');a.className='btn btn-pri';a.href=whatsapp(msg);a.target='_blank';a.rel='noopener noreferrer';a.textContent='Enviar detalhes pelo WhatsApp';
+   result.append(h,p,a);
+   result.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }
+ if(btn){btn.disabled=false;btn.textContent='Reenviar solicitação';}
+}
+
+function iniciarDiagnostico(){
+ const categoria=$('#j-categoria'), sintoma=$('#j-sintoma'), res=$('[data-diagnostico-resultado]'),equip=$('#j-equipamento');
+ for(const c of CATEGORIAS){const o=document.createElement('option');o.value=c.id;o.textContent=c.titulo;categoria.append(o);}
+ function atualizar(){sintoma.replaceChildren();for(const s of sintomasPorCategoria(categoria.value)){const o=document.createElement('option');o.value=s.id;o.textContent=s.titulo;sintoma.append(o);}}
+ categoria.addEventListener('change',atualizar);categoria.selectedIndex=0;atualizar();
+ $('#j-analisar')?.addEventListener('click',()=>{
+   const relato=valor('j-relato');
+   const categoriaItem=sintomasPorCategoria(categoria.value).find(x=>x.id===sintoma.value);
+   const info=orientarSintoma(relato.length>=5?relato:categoriaItem);
+   res.hidden=false;
+   texto($('[data-diag-titulo]'),info.titulo);
+   texto($('[data-diag-causa]'),info.possiveis);
+   texto($('[data-diag-passo]'),info.passo);
+   texto($('[data-diag-alerta]'),info.alerta?'Atenção: não continue usando o equipamento se houver risco elétrico, líquido ou bateria danificada.':'Orientação preliminar: o diagnóstico real depende de testes técnicos.');
+   const link=$('[data-diag-artigo]');
+   if(link){link.hidden=!info.dica;if(info.dica)link.href='../'+info.dica;}
+   const submit=$('[data-pedir-diagnostico]');
+   if(submit)submit.onclick=()=>abrirChat('Diagnóstico por sintomas');
+   res.scrollIntoView({behavior:'smooth',block:'nearest'});
+ });
+}
+
+function iniciarAgendamento(){
+ const data=$('#j-data'), now=new Date(),local=new Date(now.getTime()-now.getTimezoneOffset()*60000);
+ if(data)data.min=local.toISOString().slice(0,10);
+ const form=$('#j-form');
+ form?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const contato=tratarContato();if(!contato)return;
+  const dia=valor('j-data'),horario=valor('j-hora'),modo=valor('j-modo'),detalhes=valor('j-detalhe'),equip=valor('j-equipamento');
+  if(!dia||!horario){mostrarErro('Escolha uma data e uma faixa de horário.');return;}
+  const dataEscolhida=new Date(dia+'T12:00:00');
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  if(!Number.isFinite(dataEscolhida.getTime())||dataEscolhida<hoje){mostrarErro('Escolha uma data de hoje em diante.');return;}
+  const resumo='Data desejada: '+formataData(dia)+'; período: '+horario+'; modalidade: '+modo+'; relato: '+detalhes.slice(0,450);
+  await enviarPedido({contato,servico:'Solicitação de agendamento',equipamento:equip,problema:'Agendar atendimento',detalhe:resumo.slice(0,1500),atendimento:modo});
+ });
+}
+
+const SERVICOS = [
+ {id:'avaliacao',nome:'Avaliação inicial',min:60,max:140,observacao:'Faixa ilustrativa; avaliação pode ter outra política de cobrança.'},
+ {id:'limpeza',nome:'Limpeza e revisão térmica',min:140,max:280,observacao:'Dependente de modelo e condições.'},
+ {id:'sistema',nome:'Reinstalação/configuração de sistema',min:160,max:320,observacao:'Não inclui licenças, backup complexo ou peças.'},
+ {id:'ssd',nome:'Instalação de SSD (mão de obra)',min:90,max:210,observacao:'SSD e eventual adaptação cobrados à parte.'},
+ {id:'memoria',nome:'Upgrade de RAM (mão de obra)',min:70,max:170,observacao:'Memória não incluída.'},
+ {id:'tela',nome:'Troca de tela (mão de obra)',min:130,max:290,observacao:'Painel novo cobrado à parte.'},
+ {id:'software',nome:'Remoção de programas indesejados',min:100,max:240,observacao:'Procedimento depende do estado do sistema.'}
+];
+function iniciarEstimativa(){
+ const lista=$('[data-estimativa-itens]'), res=$('[data-estimativa-resultado]');
+ for(const s of SERVICOS){
+   const label=document.createElement('label');label.className='jornada-choice';
+   const box=document.createElement('input');box.type='checkbox';box.value=s.id;box.name='servico';box.style.marginRight='8px';
+   const head=document.createElement('b');head.append(box,document.createTextNode(s.nome));
+   const sub=document.createElement('span');sub.textContent='Referência simulada: '+moeda(s.min)+' a '+moeda(s.max);
+   label.append(head,sub);lista.append(label);
+   box.addEventListener('change',()=>label.classList.toggle('is-active',box.checked));
+ }
+ $('#j-calcular')?.addEventListener('click',()=>{
+   const ids=$$('input[name="servico"]:checked',lista).map(x=>x.value);
+   const selecionados=SERVICOS.filter(s=>ids.includes(s.id));
+   if(!selecionados.length){mostrarErro('Selecione pelo menos um serviço.');return;}
+   mostrarErro('');
+   const lo=selecionados.reduce((x,s)=>x+s.min,0), hi=selecionados.reduce((x,s)=>x+s.max,0);
+   const extra=valor('j-pecas'),pecas=extra===''?0:Number(extra.replace(',','.'));
+   if(!Number.isFinite(pecas)||pecas<0||pecas>50000){mostrarErro('Informe um valor de peças válido ou deixe em branco.');return;}
+   res.hidden=false;
+   texto($('[data-estimativa-valor]'),moeda(lo+pecas)+' — '+moeda(hi+pecas));
+   texto($('[data-estimativa-detalhes]'),selecionados.map(s=>s.nome+': '+moeda(s.min)+' a '+moeda(s.max)).join(' · '));
+   texto($('[data-estimativa-peças]'),pecas>0?'Peças informadas por você: '+moeda(pecas):'Peças, licenças e problemas não identificados não estão incluídos.');
+   const link=$('[data-estimativa-whatsapp]');
+   link.href=whatsapp('Olá! Fiz uma simulação no site para '+valor('j-equipamento')+'. Serviços: '+selecionados.map(s=>s.nome).join(', ')+'. Faixa ilustrativa: '+moeda(lo+pecas)+' a '+moeda(hi+pecas)+'. Gostaria de um orçamento após avaliação.');
+   res.scrollIntoView({behavior:'smooth',block:'nearest'});
+ });
+}
+
+const PLANOS={
+ essencial:{titulo:'Preventivo essencial',itens:['Avaliação periódica do equipamento','Recomendações de limpeza e segurança','Checklist de armazenamento e atualizações']},
+ familia:{titulo:'Casa e família',itens:['Orientação para vários dispositivos domésticos','Rotina de backup e proteção','Acompanhamento preventivo combinado']},
+ empresa:{titulo:'Suporte para empresas',itens:['Levantamento do parque de equipamentos','Plano de manutenção e prioridades','Atendimento e SLA definidos em proposta']}
+};
+function iniciarPlanos(){
+ let escolhido='essencial';
+ const box=$('[data-plano-resumo]');
+ function render(){
+  const p=PLANOS[escolhido];texto($('[data-plano-titulo]'),p.titulo);
+  box.replaceChildren();
+  for(const item of p.itens){const li=document.createElement('li');li.textContent=item;box.append(li);}
+  $$('[data-plano]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.plano===escolhido)));
+ }
+ $$('[data-plano]').forEach(b=>b.addEventListener('click',()=>{escolhido=b.dataset.plano;render();}));
+ render();
+ $('#j-form')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const contato=tratarContato();if(!contato)return;
+  const qtd=Number(valor('j-quantidade'));if(!Number.isInteger(qtd)||qtd<1||qtd>2000){mostrarErro('Informe a quantidade de equipamentos (1 a 2000).');return;}
+  const relato=valor('j-detalhe');
+  await enviarPedido({contato,servico:'Proposta de plano de manutenção',equipamento:'Computadores e notebooks',problema:PLANOS[escolhido].titulo,detalhe:('Plano: '+PLANOS[escolhido].titulo+'; Quantidade: '+qtd+'; necessidade: '+relato).slice(0,1500),atendimento:'Proposta sob consulta'});
+ });
+}
+if(tipo==='diagnostico')iniciarDiagnostico();
+if(tipo==='agendar')iniciarAgendamento();
+if(tipo==='estimativa')iniciarEstimativa();
+if(tipo==='planos')iniciarPlanos();
