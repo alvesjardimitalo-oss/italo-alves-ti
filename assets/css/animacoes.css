@@ -1,0 +1,55 @@
+
+/* Ilustrações originais criadas para Ítalo InfoTec. Sem imagens/vídeos externos. */
+.ani-home{padding:48px 0}.ani-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.ani-card{display:flex;flex-direction:column;padding:0;overflow:hidden;min-width:0;text-decoration:none}
+.ani-card .ani-info{padding:20px;display:flex;flex-direction:column;gap:8px;flex:1}
+.ani-info h3,.ani-info p{margin:0}.ani-info .mais{margin-top:auto}
+.ani-info p{font-size:.92rem;line-height:1.55}.ani-overline{text-transform:uppercase;color:#87ddef;font-size:.72rem;letter-spacing:.12em;font-weight:700}
+.ani-visual{height:180px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 50% 25%,#1e3657,#0a1426 80%);border-bottom:1px solid rgba(136,166,207,.2);color:#cceeff}
+.ani-visual:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent,rgba(120,212,242,.07),transparent);pointer-events:none}
+.ani-in-article .ani-visual{height:220px}.ani-article-section{margin:30px 0}.ani-article-section>h2{margin-bottom:14px}
+.ani-article-section .ani-info{padding:20px}.ani-note{font-size:.87rem;line-height:1.6;opacity:.85;margin:14px 0 0}
+.ani-home .pagina-link{margin-top:20px}
+.ani-window{width:65%;height:110px;background:#162744;border:1px solid #557394;border-radius:10px;padding:15px;box-shadow:0 15px 30px #0005}
+.ani-dots{display:flex;gap:5px}.ani-dots i{height:7px;width:7px;background:#7999c3;border-radius:50%}
+.ani-progress{height:13px;background:#293d5d;border-radius:20px;overflow:hidden;margin:24px 0 8px}
+.ani-progress i{display:block;height:100%;background:linear-gradient(90deg,#31c5e5,#8cf0c6);width:15%;animation:ani-load 4s ease-in-out infinite}
+.ani-window>span{font-size:.69rem;color:#a9c2e3}
+.ani-fan{height:98px;width:98px;display:grid;place-items:center;border:10px solid #344962;box-shadow:0 0 0 5px #13273e;border-radius:50%}
+.ani-fan span{font-size:75px;line-height:1;animation:ani-spin 1.6s linear infinite}
+.ani-thermo{position:absolute;right:21%;height:95px;width:14px;background:#253e5e;border:2px solid #8ca6c6;border-radius:20px;overflow:hidden}
+.ani-thermo i{position:absolute;bottom:0;left:0;right:0;background:#ff846a;height:25%;animation:ani-heat 3s ease-in-out infinite}
+.ani-monitor{width:185px;height:120px;position:relative}
+.ani-screen{background:#030916;border:8px solid #60799a;border-radius:10px;height:103px;display:grid;place-items:center;overflow:hidden}
+.ani-screen span{color:#f6abab;letter-spacing:.17em;font-size:.78rem;animation:ani-flash 2s infinite}
+.ani-monitor>i{display:block;margin:auto;width:65px;height:14px;border-bottom:7px solid #60799a}
+.ani-battery{width:160px;height:83px;border:7px solid #9cb4d2;border-radius:14px;position:relative;display:grid;place-items:center}
+.ani-battery:after{content:"";width:10px;height:28px;background:#9cb4d2;position:absolute;right:-17px;border-radius:0 5px 5px 0}
+.ani-charge-level{position:absolute;left:5px;top:5px;bottom:5px;width:17%;background:#ff8b76;border-radius:4px;animation:ani-battery 3s ease-in-out infinite}
+.ani-battery span{font-size:35px;font-weight:900;color:white;z-index:1}.ani-plug{position:absolute;right:16%;bottom:19px;color:#b4e6fa;font-size:2rem}
+.ani-cracked .ani-screen{background:linear-gradient(120deg,#0d233d,#493052)}
+.ani-cracked svg{width:100%;height:100%;animation:ani-crack 4s ease-in-out infinite}
+.ani-wifi{height:130px;width:170px;position:relative;transform:translateY(15px)}
+.ani-arc{position:absolute;left:50%;transform:translateX(-50%);border:10px solid transparent;border-top-color:#76d9f4;border-radius:50%;animation:ani-wifi 3s infinite}
+.arc-1{width:160px;height:160px;top:-14px}.arc-2{width:110px;height:110px;top:20px;animation-delay:.2s}.arc-3{width:60px;height:60px;top:52px;animation-delay:.4s}
+.ani-wifi b{height:15px;width:15px;border-radius:50%;background:#76d9f4;position:absolute;top:101px;left:calc(50% - 7px)}
+.ani-wifi-alert,.ani-print-alert{position:absolute;right:20%;top:20%;border-radius:50%;background:#e48d64;color:#081526;font-weight:900;width:30px;height:30px;display:grid;place-items:center;animation:ani-flash 2s infinite}
+.ani-bsod{background:#1263ac;width:74%;height:125px;padding:13px 16px;display:flex;flex-direction:column;gap:8px;color:white;border-radius:5px;font-size:.68rem;box-shadow:0 14px 25px #0004}
+.ani-bsod b{font-weight:400;font-size:2rem;line-height:1}.ani-bsod small{font-size:.56rem}
+.ani-bsod-progress{height:5px;background:#317ab8;border-radius:20px;overflow:hidden}.ani-bsod-progress i{display:block;background:#fff;height:100%;width:10%;animation:ani-load 4s infinite}
+.ani-printer{width:172px;height:116px;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.ani-paper{position:absolute;top:5px;background:#edf7ff;border-radius:3px 3px 0 0;width:95px;height:74px;animation:ani-print 4s ease-in-out infinite;display:grid;place-items:center;color:#4c7098}
+.ani-printer-body{width:158px;height:66px;background:#566f8b;border:5px solid #9db6d0;border-radius:12px;position:relative;z-index:1}
+.ani-printer-body:after{content:"";width:92px;height:10px;background:#182d48;position:absolute;bottom:10px;left:calc(50% - 46px);border-radius:4px}
+.ani-printer-body b{position:absolute;right:12px;top:12px;border-radius:50%;height:9px;width:9px;background:#fcaf76;animation:ani-flash 2s infinite}
+@keyframes ani-load{0%,100%{width:10%}60%{width:92%}}
+@keyframes ani-spin{to{transform:rotate(360deg)}}
+@keyframes ani-heat{0%,100%{height:25%}50%{height:90%}}
+@keyframes ani-flash{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes ani-battery{0%,100%{width:9%}55%{width:25%}}
+@keyframes ani-crack{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes ani-wifi{0%,100%{opacity:.2}55%{opacity:1}}
+@keyframes ani-print{0%,100%{transform:translateY(0)}50%{transform:translateY(-27px)}}
+@media(max-width:800px){.ani-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.ani-home{padding:32px 0}.ani-grid{grid-template-columns:1fr}.ani-visual{height:160px}.ani-in-article .ani-visual{height:180px}}
+@media(prefers-reduced-motion:reduce){.ani-visual *, .ani-visual *:before,.ani-visual *:after{animation:none!important;transition:none!important}}
