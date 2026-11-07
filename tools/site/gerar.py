@@ -24,7 +24,7 @@ SINTOMAS_HOME = C('sintomas.json')['itens']
 BASE = SITE['base'].rstrip('/') + '/'
 NOME = SITE['nome']
 HOJE = datetime.date.today().isoformat()
-V = '2.2.0'
+V = '2.3.0'
 e = html.escape
 
 
@@ -308,207 +308,30 @@ def secao_plano(raiz):
 # ==================================================================
 # Página inicial
 # ==================================================================
+# A home e os artigos agora ficam em ferramentas separadas:
+# - tools/site/paginas/home.py
+# - tools/site/paginas/dicas.py
+# Mudanças em uma página não exigem navegar por todo este gerador.
+from paginas.home import gerar_home as _gerar_home
+from paginas.dicas import gerar_dicas as _gerar_dicas
+
+
+def contexto_paginas():
+    # Dependências explícitas; cada módulo de página recebe somente o necessário.
+    return {nome: globals()[nome] for nome in (
+        "CIDADES", "SITE", "FAQ", "NOME", "head", "ld_negocio", "e",
+        "ico", "V", "SINTOMAS_HOME", "SERVICOS", "FERRAMENTAS",
+        "secao_precos", "secao_galeria", "secao_avaliacoes", "secao_plano",
+        "PROBLEMAS", "ARTIGOS", "rodape", "gravar", "BASE", "HOJE", "cta",
+    )}
+
+
 def gerar_home():
-    cidades_txt = ', '.join(c['cidade'] for c in CIDADES if c.get('presencial'))
-    ld_faq = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in FAQ]}
-    h = head(f'{NOME} · Manutenção de computadores e notebooks', f'Manutenção de computadores e notebooks em {SITE["cidade"]}/{SITE["uf"]} e suporte remoto para todo o Brasil. Diagnóstico, limpeza, SSD, formatação, Windows 11 e troca de peças, com orçamento antes do serviço.', '', './', [ld_negocio(), ld_faq])
-    fato24 = f'<div><b>24 horas</b>atendimento a qualquer hora</div>' if '24' in (SITE.get('horario') or '') else ''
-    h += f'''
-  <main>
-  <section class="hero">
-    <div class="wrap">
-      <div>
-        <span class="selo">assistência técnica em informática</span>
-        <h1>Seu notebook ou computador <span class="grad">deu problema?</span> Descubra o próximo passo.</h1>
-        <p class="lead">Está lento, não liga, esquentando ou com a tela quebrada? Converse com o Alvesinho, receba uma orientação inicial gratuita e peça uma avaliação técnica com orçamento antes do serviço. Atendimento em {e(SITE["regiao_presencial"])} e suporte remoto no Brasil.</p>
-        <div class="hero-acoes">
-          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Conversar com Alvesinho</a>
-          <a href="ferramentas/checkup.html" class="btn">{ico("pulse", 20)} Fazer check-up grátis</a>
-        </div>
-        <div class="hero-fatos">
-          <div><b>Orçamento antes</b>nada é feito sem sua aprovação</div>
-          <div><b>Garantia</b>descrita na nota de serviço</div>
-          <div><b>Brasil todo</b>por suporte remoto</div>
-          {fato24}
-        </div>
-      </div>
-      <a class="terminal" href="ferramentas/checkup.html" id="hero-checkup" aria-label="Fazer o check-up do meu computador">
-        <div class="terminal-top"><i></i><i></i><i></i><span>check-up · seu aparelho</span></div>
-        <div class="terminal-body">
-          <div class="diag"><span>Sistema</span><span class="ok" data-hc="so">…</span></div>
-          <div class="diag"><span>Navegador</span><span class="ok" data-hc="nav">…</span></div>
-          <div class="diag"><span>Processador</span><span data-hc="cpu">…</span></div>
-          <div class="diag"><span>Memória (aprox.)</span><span data-hc="ram">…</span></div>
-          <div class="diag"><span>Tela</span><span class="ok" data-hc="tela">…</span></div>
-          <div class="barra-diag"><span></span></div>
-          <div class="terminal-cta">→ faça o check-up completo e receba o laudo prévio</div>
-        </div>
-      </a>
-    </div>
-  </section>
+    return _gerar_home(contexto_paginas())
 
 
-  <section class="sec alt" id="sintomas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// o que aconteceu?</span>
-        <h2>Qual destes problemas parece com o seu?</h2>
-        <p>Escolha um sintoma. O Alvesinho explica as causas possíveis, cuidados iniciais e como solicitar atendimento, sem prometer diagnóstico à distância.</p></div>
-      <div class="problemas-rapidos">
-        {''.join(f'<button type="button" class="sintoma-card" data-abrir-chat data-sintoma="{e(item["id"])}"><span class="problema-icon" aria-hidden="true">{e(item["icone"])}</span><strong>{e(item["titulo"])}</strong><small>Ver orientação →</small></button>' for item in SINTOMAS_HOME)}
-      </div>
-      <p class="sintoma-nota">Orientações educativas: problemas elétricos, líquidos ou baterias estufadas exigem cuidados especiais. Não abra fontes nem componentes energizados.</p>
-    </div>
-  </section>
-
-  <section class="sec alt" id="servicos">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// serviços</span><h2>O que eu resolvo</h2><p>Do notebook que esquenta ao computador que não liga, com explicação do que foi feito e por quê.</p></div>
-      <div class="grid g4">
-        {''.join(f'<a class="card" href="#fale-comigo" data-abrir-chat data-servico="{e(t)}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Pedir orçamento →</span></a>' for i, t, d in SERVICOS)}
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="ferramentas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// ferramentas grátis</span><h2>Descubra o problema antes de sair de casa</h2><p>Testes que rodam direto no navegador. Sem instalar nada.</p></div>
-      <div class="grid g5">
-        {''.join(f'<a class="card" href="ferramentas/{h_}"><div class="ico-box">{ico(i)}</div><h3>{e(t)}</h3><p>{e(d)}</p><span class="mais">Usar →</span></a>' for i, t, d, h_ in FERRAMENTAS)}
-      </div>
-    </div>
-  </section>
-
-
-  <section class="sec alt" id="alvesinho">
-    <div class="wrap">
-      <div class="alvesinho-destaque">
-        <img src="assets/img/alvesinho.svg" width="160" height="160" loading="lazy" alt="Alvesinho, mascote técnico e atendente virtual da Ítalo InfoTec">
-        <div>
-          <span class="kicker">// atendimento guiado</span>
-          <h2>Conheça o Alvesinho, seu assistente virtual</h2>
-          <p>Ele conversa com você sobre os sintomas, sugere verificações seguras e organiza seu pedido para o técnico. É um assistente automatizado — não um diagnóstico humano ou orçamento definitivo.</p>
-          <div class="hero-acoes">
-            <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat data-servico="Diagnóstico por sintomas">Contar meu problema</a>
-            <a href="ferramentas/upgrade.html" class="btn">Qual upgrade vale mais?</a>
-            <a href="acompanhar.html" class="btn">Acompanhar OS</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec alt" id="como-funciona">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// como funciona</span><h2>Do problema à entrega, em 4 passos</h2></div>
-      <div class="grid g4 passos">
-        <div class="card passo"><h3>Conte o problema</h3><p>Pelo Alvesinho ou WhatsApp: informe o equipamento e o sintoma em poucos passos.</p></div>
-        <div class="card passo"><h3>Diagnóstico e orçamento</h3><p>O equipamento é avaliado e você recebe o orçamento detalhado, peça por peça.</p></div>
-        <div class="card passo"><h3>Aprovação e conserto</h3><p>Só depois do seu "pode fazer". Você acompanha o status pela página <a href="acompanhar.html">Acompanhar OS</a>.</p></div>
-        <div class="card passo"><h3>Entrega com garantia</h3><p>Você recebe a nota de serviço com tudo o que foi feito e o prazo de garantia.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="atendimento">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// atendimento</span><h2>Perto de você ou à distância</h2></div>
-      <div class="atend">
-        <div class="card"><div class="ico-box">{ico("pin")}</div><h3>Presencial</h3><p>Em {e(SITE["regiao_presencial"])}{f" ({e(cidades_txt)})" if cidades_txt and cidades_txt != SITE["cidade"] else ""}. <a href="atendimento/">Ver cidades e busca do equipamento</a></p>
-          <ul><li>Consertos de hardware e troca de peças</li><li>Limpeza, pasta térmica e upgrades</li><li>Formatação com backup</li><li>Montagem de computadores</li></ul></div>
-        <div class="card"><div class="ico-box">{ico("globe")}</div><h3>Remoto · todo o Brasil</h3><p>Você acompanha tudo pela tela. <a href="suporte-remoto.html">Como funciona</a></p>
-          <ul><li>Programas travando ou com erro</li><li>Configuração de impressora, e-mail e contas</li><li>Remoção de vírus e propagandas</li><li>Orientação antes de comprar peças ou um PC</li></ul></div>
-      </div>
-    </div>
-  </section>
-  {secao_precos('./')}
-  {secao_galeria('./')}
-  {secao_avaliacoes()}
-  {secao_plano('./')}
-  <section class="sec alt" id="problemas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// problemas comuns</span><h2>O que pode estar acontecendo com o seu equipamento</h2><p>Explicações rápidas. Toque para abrir.</p></div>
-      <div class="acordeao">
-        {''.join(f'<details><summary>{e(t)}</summary><div class="resp"><p>{e(r)}</p><a href="dicas/{s}.html">Entender melhor →</a></div></details>' for t, r, s in PROBLEMAS)}
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="dicas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// dicas</span><h2>Como fazer seu equipamento durar mais</h2></div>
-      <div class="grid g4">
-        {''.join(f'<a class="card" href="dicas/{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["curto"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler dica →</span></a>' for a in ARTIGOS[:8])}
-      </div>
-      <p style="margin-top:22px"><a class="btn" href="dicas/">Ver todas as {len(ARTIGOS)} dicas</a></p>
-    </div>
-  </section>
-
-  <section class="sec alt" id="duvidas">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// dúvidas</span><h2>Perguntas frequentes</h2></div>
-      <div class="acordeao">
-        {''.join(f'<details><summary>{e(q)}</summary><div class="resp"><p>{e(a)}</p></div></details>' for q, a in FAQ)}
-      </div>
-    </div>
-  </section>
-
-  <section class="sec">
-    <div class="wrap">
-      <div class="cta">
-        <h2>Seu equipamento está dando problema?</h2>
-        <p>Conte para o Alvesinho o que aconteceu. Ele orienta inicialmente e prepara seu pedido para atendimento pelo WhatsApp.</p>
-        <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>{ico("chat", 20)} Pedir ajuda ao Alvesinho</a>
-      </div>
-    </div>
-  </section>
-  </main>
-'''
-    h += rodape('./', '\n  <script type="module" src="assets/js/ferramentas/hero.js?v=' + V + '"></script>')
-    gravar('index.html', h)
-
-
-# ==================================================================
-# Dicas
-# ==================================================================
 def gerar_dicas():
-    for a in ARTIGOS:
-        ld = {"@context": "https://schema.org", "@type": "Article", "headline": a['titulo'], "description": a['resumo'],
-              "author": {"@type": "Organization", "name": NOME}, "publisher": {"@type": "Organization", "name": NOME},
-              "datePublished": a.get('data', HOJE), "dateModified": a.get('data', HOJE), "mainEntityOfPage": BASE + 'dicas/' + a['slug'] + '.html', "inLanguage": "pt-BR"}
-        outros = [x for x in ARTIGOS if x['slug'] != a['slug']][:6]
-        pg = head(f'{a["titulo"]} · {NOME}', a['resumo'], 'dicas/' + a['slug'] + '.html', '../', [ld], 'article')
-        pg += f'''
-  <main>
-    <div class="artigo-hero"><div class="wrap">
-      <div class="crumb"><a href="../">início</a> / <a href="./">dicas</a> / {e(a["curto"].lower())}</div>
-      <h1>{e(a["titulo"])}</h1><p>{e(a["resumo"])}</p>
-    </div></div>
-    <div class="wrap artigo">
-      <article class="conteudo">
-{a["corpo"]}
-        {cta()}
-      </article>
-      <aside class="lateral">
-        <div class="card"><h3>Precisa de ajuda?</h3><p>Atendimento presencial em {e(SITE["regiao_presencial"])} e remoto para todo o Brasil.</p>
-          <a href="#fale-comigo" class="btn btn-pri btn-sm" style="margin-top:14px;width:100%" data-abrir-chat>Pedir orçamento</a></div>
-        <div class="card"><h3>Faça o check-up</h3><p>Descubra em 1 minuto as causas prováveis do problema.</p><a class="btn btn-sm" style="margin-top:12px;width:100%" href="../ferramentas/checkup.html">Abrir check-up</a></div>
-        <div class="card"><h3>Outras dicas</h3><ul class="lista-links">{''.join(f'<li><a href="{x["slug"]}.html">{e(x["curto"])}</a></li>' for x in outros)}</ul></div>
-      </aside>
-    </div>
-  </main>
-''' + rodape('../')
-        gravar('dicas/' + a['slug'] + '.html', pg)
-    idx = head(f'Dicas de manutenção de computadores e notebooks · {NOME}', 'Dicas práticas para cuidar do seu computador e notebook: superaquecimento, lentidão, bateria, SSD, Wi-Fi, impressora, backup, vírus e golpes.', 'dicas/', '../')
-    idx += f'''
-  <main>
-    <div class="artigo-hero"><div class="wrap"><div class="crumb"><a href="../">início</a> / dicas</div>
-      <h1>Dicas e explicações</h1><p>Entenda o que está acontecendo com o seu equipamento e como fazer ele durar mais.</p></div></div>
-    <section class="sec" style="padding-top:44px"><div class="wrap"><div class="grid g3">
-      {''.join(f'<a class="card" href="{a["slug"]}.html"><div class="ico-box">{ico("book")}</div><h3>{e(a["titulo"])}</h3><p>{e(a["resumo"])}</p><span class="mais">Ler →</span></a>' for a in ARTIGOS)}
-    </div></div></section>
-  </main>
-''' + rodape('../')
-    gravar('dicas/index.html', idx)
+    return _gerar_dicas(contexto_paginas())
 
 
 # ==================================================================
