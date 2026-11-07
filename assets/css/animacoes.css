@@ -53,3 +53,61 @@
 @media(max-width:800px){.ani-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.ani-home{padding:32px 0}.ani-grid{grid-template-columns:1fr}.ani-visual{height:160px}.ani-in-article .ani-visual{height:180px}}
 @media(prefers-reduced-motion:reduce){.ani-visual *, .ani-visual *:before,.ani-visual *:after{animation:none!important;transition:none!important}}
+
+
+/* Banner de apresentação original do Alvesinho */
+.alves-banner-section{padding:52px 0 40px}
+.alves-banner-head{display:flex;gap:24px;align-items:flex-end;justify-content:space-between;margin-bottom:24px}
+.alves-banner-head h2{max-width:690px;margin:8px 0 9px;line-height:1.18}
+.alves-banner-head p{max-width:630px;margin:0;opacity:.86}
+.alves-banner-all{flex-shrink:0}
+.alves-showcase{display:grid;grid-template-columns:minmax(0,1.67fr) minmax(280px,.83fr);gap:18px;align-items:stretch}
+.alves-main-stage{position:relative;overflow:hidden;isolation:isolate;background:linear-gradient(135deg,#0e2848 0%,#071527 63%,#092d38 100%);border:1px solid #3a617d;border-radius:22px;color:#eaf8ff;box-shadow:0 14px 45px #0002;padding:22px;display:flex;flex-direction:column;min-height:490px}
+.alves-stage-glow{position:absolute;width:370px;height:370px;background:radial-gradient(circle,#26799c55,transparent 72%);top:-100px;left:-90px;pointer-events:none;z-index:-1}
+.alves-stage-top,.alves-stage-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.alves-onair{font-size:.72rem;font-weight:800;letter-spacing:.1em;color:#b6f6ed;display:flex;gap:7px;align-items:center}
+.alves-onair i{display:block;width:7px;height:7px;border-radius:50%;background:#65e6b7;box-shadow:0 0 10px #65e6b7}
+.alves-stage-count{color:#9ebbd3;font-size:.75rem;font-variant-numeric:tabular-nums}
+.alves-stage-content{display:grid;grid-template-columns: minmax(130px,.64fr) minmax(0,1fr);gap:18px;align-items:center;flex:1;padding:16px 0 8px}
+.alves-avatar-area{display:flex;flex-direction:column;align-items:center;position:relative}
+.alves-avatar-area>img{display:block;width:min(100%,215px);height:auto;filter:drop-shadow(0 14px 22px #0006);animation:alves-float 4s ease-in-out infinite;border-radius:50%}
+.alves-speaking{display:flex;align-items:flex-end;gap:3px;justify-content:center;height:21px;margin-top:-2px}
+.alves-speaking i{display:block;width:4px;height:7px;background:#66e5d8;border-radius:3px;animation:alves-bars 1s ease-in-out infinite}
+.alves-speaking i:nth-child(2),.alves-speaking i:nth-child(4){animation-delay:.2s}.alves-speaking i:nth-child(3){animation-delay:.4s}
+.alves-avatar-name{font-size:.8rem;font-weight:800;letter-spacing:.09em;text-align:center;margin-top:7px}.alves-avatar-name small{display:block;font-size:.69rem;font-weight:400;color:#a9c8d9;letter-spacing:0;margin-top:2px}
+.alves-stage-message{min-width:0}
+.alves-episode-label{font-size:.69rem;font-weight:800;letter-spacing:.12em;color:#84f2de}
+.alves-stage-message h3{font-size:clamp(1.3rem,2vw,1.9rem);line-height:1.2;margin:8px 0;color:white}
+.alves-stage-message>p{font-size:.88rem;color:#c4dbe8;line-height:1.55;margin:0 0 12px}
+.alves-stage-illustration{max-width:265px;margin:8px auto 0}
+.alves-stage-illustration .ani-visual{height:112px;border:1px solid #46647a;border-radius:12px;background:#071b30}
+.alves-stage-illustration .ani-window{height:80px;padding:8px}.alves-stage-illustration .ani-progress{margin:12px 0 5px}
+.alves-stage-illustration .ani-fan{width:65px;height:65px}.alves-stage-illustration .ani-fan span{font-size:47px}.alves-stage-illustration .ani-thermo{height:65px;width:11px}
+.alves-stage-illustration .ani-monitor{width:145px;height:97px}.alves-stage-illustration .ani-screen{height:82px}
+.alves-subtitle{border-left:3px solid #63e3c7;background:#ffffff0d;padding:12px 15px;border-radius:0 12px 12px 0;margin:0 0 17px}
+.alves-subtitle-label{font-size:.66rem;color:#85f1dc;letter-spacing:.1em;font-weight:800}
+.alves-subtitle p{color:#e4f5f8;font-size:.86rem;line-height:1.5;margin:4px 0 0}
+.alves-stage-bottom{border-top:1px solid #ffffff22;padding-top:15px;flex-wrap:wrap}
+.alves-stage-controls{display:flex;align-items:center;gap:7px}
+.alves-control{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:33px;height:32px;color:#e3f6ff;border:1px solid #ffffff44;background:#ffffff0a;border-radius:9px;font-size:1.2rem;cursor:pointer}
+.alves-control-play{padding:0 11px;font-size:.8rem;font-weight:700}
+.alves-control:hover,.alves-control:focus-visible{background:#ffffff24;outline:2px solid #83e5df;outline-offset:2px}
+.alves-stage-steps{display:flex;gap:6px;align-items:center}.alves-stage-steps button{height:8px;width:22px;border:0;background:#ffffff55;border-radius:20px;cursor:pointer}.alves-stage-steps button.is-active{background:#70eaca}
+.alves-learn-link{font-size:.79rem;color:#87f4dc;text-decoration:underline;text-underline-offset:4px}
+.alves-showcase-aside{border:1px solid #ffffff20;border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:10px;background:#ffffff04}
+.alves-tip-header h3{margin:5px 0;font-size:1.2rem}.alves-tip-header p{font-size:.84rem;opacity:.8;margin:4px 0 10px}
+.alves-tip{width:100%;display:grid;grid-template-columns:42px 1fr 12px;gap:10px;align-items:center;text-align:left;background:transparent;color:inherit;border:1px solid #ffffff29;border-radius:13px;padding:12px 10px;cursor:pointer}
+.alves-tip.is-selected{border-color:#55ccb9;background:#228a9120}
+.alves-tip:hover,.alves-tip:focus-visible{border-color:#68d4cf;outline:2px solid transparent}
+.alves-tip-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:10px;background:#3d89a323;color:#65dcd2;font-size:1.4rem}
+.alves-tip strong{display:block;font-size:.86rem}.alves-tip small{display:block;font-size:.72rem;opacity:.75;margin-top:4px}
+.alves-assist-card{margin-top:auto;border-radius:14px;padding:14px;background:linear-gradient(125deg,#174960,#102339);display:grid;grid-template-columns:45px 1fr;column-gap:10px;align-items:center}
+.alves-assist-card img{border-radius:50%}.alves-assist-card strong{font-size:.89rem}.alves-assist-card p{font-size:.75rem;margin:3px 0 0;color:#c3dce8}
+.alves-assist-card .btn{grid-column:1/-1;justify-content:center;margin-top:12px}
+.alves-other-tips{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:18px;font-size:.82rem}.alves-other-tips span{font-weight:700}.alves-other-tips a{border:1px solid #ffffff2d;border-radius:30px;padding:6px 11px;text-decoration:none}.alves-other-tips a:hover{border-color:#6be0cc}
+.alves-banner-disclaimer{font-size:.76rem;opacity:.72;line-height:1.5;margin:14px 0 0}
+@keyframes alves-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes alves-bars{0%,100%{height:5px}45%{height:19px}}
+@media(max-width:920px){.alves-showcase{grid-template-columns:1fr}.alves-showcase-aside{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.alves-tip-header,.alves-assist-card{grid-column:1/-1}.alves-main-stage{min-height:440px}}
+@media(max-width:600px){.alves-banner-section{padding:30px 0}.alves-banner-head{display:block}.alves-banner-all{margin-top:12px}.alves-main-stage{padding:16px;min-height:0}.alves-stage-content{grid-template-columns:110px minmax(0,1fr);gap:9px;padding:20px 0}.alves-avatar-area>img{width:100px}.alves-avatar-name{font-size:.64rem}.alves-stage-message h3{font-size:1.13rem}.alves-stage-message>p{font-size:.75rem}.alves-stage-illustration .ani-visual{height:82px}.alves-stage-illustration .ani-window{height:65px}.alves-stage-illustration .ani-monitor{transform:scale(.75)}.alves-stage-illustration .ani-fan{transform:scale(.8)}.alves-showcase-aside{display:flex;padding:15px}.alves-stage-bottom{gap:10px}.alves-learn-link{width:100%;text-align:center}.alves-other-tips{gap:7px}}
+@media(prefers-reduced-motion:reduce){.alves-avatar-area>img,.alves-speaking i{animation:none!important}}
