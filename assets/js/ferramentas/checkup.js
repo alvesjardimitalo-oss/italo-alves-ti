@@ -20,7 +20,7 @@ const PASSOS = [
   { id: 'tipo', titulo: 'Qual é o equipamento?', opcoes: [['Notebook', 'Notebook'], ['Desktop', 'Computador de mesa'], ['All-in-one', 'All-in-one']] },
   { id: 'idade', titulo: 'Quantos anos ele tem, mais ou menos?', opcoes: [['0', 'Menos de 2 anos'], ['3', '2 a 4 anos'], ['6', '5 a 7 anos'], ['9', '8 anos ou mais']] },
   { id: 'sintomas', titulo: 'O que está acontecendo?', sub: 'Marque tudo o que se aplica.', multi: true, opcoes: SINTOMAS },
-  { id: 'disco', titulo: 'Ele usa SSD ou HD?', sub: 'Na dúvida: se demora mais de 1 minuto para ligar, provavelmente é HD.', opcoes: [['SSD', 'SSD'], ['HD', 'HD (disco que gira)'], ['?', 'Não sei']] },
+  { id: 'disco', titulo: 'Ele usa SSD ou HD?', sub: 'Se não souber, escolha a última opção.', opcoes: [['SSD', 'SSD'], ['HD', 'HD (disco que gira)'], ['?', 'Não sei']] },
   { id: 'limpeza', titulo: 'Quando foi a última limpeza interna?', opcoes: [['nunca', 'Nunca / não sei'], ['2+', 'Mais de 2 anos'], ['1-2', 'Entre 1 e 2 anos'], ['<1', 'Menos de 1 ano']] },
   { id: 'evento', titulo: 'Aconteceu alguma destas coisas?', multi: true, opcoes: [['queda', 'Caiu ou levou pancada'], ['liquido', 'Molhou / derramou líquido'], ['energia', 'Queda ou pico de energia'], ['nada', 'Nada disso']] },
 ];
@@ -143,4 +143,11 @@ function laudo() {
   window.scrollTo({ top: app.offsetTop - 90, behavior: 'smooth' });
 }
 
-ambiente().then((a) => { A = a; desenhar(); });
+// Leitura opcional, ativada pelo visitante.
+app.innerHTML='<div class="card"><h2>Está neste computador?</h2><p class="sub">Se quiser, lemos algumas informações gerais do navegador. Não lemos arquivos, temperatura ou saúde das peças.</p><div class="ferr-nav"><button class="btn btn-pri" type="button" id="ler-ambiente">Sim, analisar este</button><button class="btn" type="button" id="pular-ambiente">É outro aparelho</button></div></div>';
+const iniciarSemLeitura=()=>{A={so:'',soVersao:'',soTexto:'Não identificado',navegador:'Não identificado',nucleos:0,ramGB:0,gpu:'',tela:'',bateria:null,conexao:'',movel:false};passo=0;R.mesmo='nao';desenhar();};
+app.querySelector('#pular-ambiente').onclick=iniciarSemLeitura;
+app.querySelector('#ler-ambiente').onclick=async()=>{
+ app.querySelector('#ler-ambiente').disabled=true;
+ try{A=await ambiente();passo=0;R.mesmo='sim';desenhar();}catch(e){iniciarSemLeitura();}
+};
