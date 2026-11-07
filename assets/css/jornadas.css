@@ -56,3 +56,13 @@
 .jornada-result{background:#102c3a}
 .jornada-kicker{letter-spacing:.025em;text-transform:none}
 .jornada-choice.is-active,.jornada-choice[aria-pressed="true"]{box-shadow:none}
+
+/* Pacotes mensais por quantidade de equipamentos */
+.plano-tiers .jornada-choice{min-height:174px}
+.plano-tiers .jornada-choice strong{font-size:1.14rem;color:#7de9dd}
+.plano-categoria{font-size:.72rem;color:#93b8c9;text-transform:none}
+.plano-beneficios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0 27px}
+.plano-beneficios>div{background:#0b2031;border:1px solid #28465a;border-radius:14px;padding:15px}
+.plano-beneficios strong{color:#dff7f7;font-size:.9rem}
+.plano-beneficios p{color:#afc5d7;font-size:.82rem;line-height:1.55;margin:8px 0 0}
+@media(max-width:900px){.plano-beneficios{grid-template-columns:1fr}}
