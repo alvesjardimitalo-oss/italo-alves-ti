@@ -175,7 +175,7 @@ O **Alvesinho** é o assistente virtual automatizado da Ítalo InfoTec. Não usa
 - possui avatar próprio em `assets/img/alvesinho.svg`;
 - usa aproximadamente 28 situações da base `assets/js/alvesinho-conhecimento.js` para responder por sintomas e orientar cuidados seguros;
 - permite selecionar categorias ou escrever uma descrição livre, encaminhando para o formulário de orçamento existente e WhatsApp;
-- a página inicial traz 20 cartões em `conteudo/sintomas.json` (não renomear seus IDs sem ajustar a base do Alvesinho);
+- a página inicial mostra 8 situações em destaque; o catálogo com 20 sintomas fica em `problemas/`, administrado em `conteudo/sintomas.json` (não renomear seus IDs sem ajustar a base do Alvesinho);
 - o simulador `ferramentas/upgrade.html` ajuda a avaliar SSD/RAM por uso e configuração, sem prometer ganho ou preço;
 - dados de contato só são enviados ao Firebase após o visitante preencher e concluir o fluxo de orçamento, preservando App Check e `?demo`.
 - em caso de líquidos, bateria estufada ou risco elétrico, o assistente prioriza cuidado e interromper o uso, em vez de ensinar intervenções arriscadas.
@@ -201,3 +201,27 @@ A nova regra de Firestore em `firebase/regras-ti.rules` deve ser **incorporada a
 O Firebase `high-os` é compartilhado. **Não ative enforcement geral do App Check** para o Firestore enquanto o High OS e os demais aplicativos não estiverem preparados. A API pública de métricas não possui limite de escrita imposto pelo Firestore Rules; monitore as cotas e eventuais abusos. Para alto tráfego, prefira mover a coleta para uma função server-side com App Check obrigatório e rate limiting.
 
 Quando a regra for publicada, abra o site, permita métricas, converse com o Alvesinho e confira depois `sistema.html#/conversoes`. No modo demo, utilize `?demo` em ambas as páginas para verificar os eventos sem gravar no Firebase.
+
+## Arquitetura modular do site (novembro de 2026)
+
+**A home é uma vitrine, não um catálogo inteiro.** Oferece oito sintomas, quatro serviços, três ferramentas, Alvesinho, passo a passo, informações de atendimento, avaliações, três artigos recentes e perguntas frequentes. As páginas internas apresentam o conteúdo completo.
+
+| Mudança desejada | Arquivo de origem |
+| --- | --- |
+| Texto, blocos e links da **home** | `tools/site/paginas/home.py` |
+| Catálogo **Problemas comuns** e **Serviços** | `tools/site/paginas/catalogos.py` |
+| Geração de páginas de artigos | `tools/site/paginas/dicas.py` |
+| Criar/alterar artigos | `conteudo/artigos.json` |
+| Sintomas do catálogo, categoria, vínculo com artigo | `conteudo/sintomas.json` |
+| Respostas técnicas do Alvesinho | `assets/js/alvesinho-conhecimento.js` |
+| Chat e botões do site | `assets/js/site.js` |
+| Aparência e responsividade | `assets/css/site.css` |
+| Layout compartilhado, páginas administrativas e sitemap | `tools/site/gerar.py` |
+| Verificação de links e arquivos | `tools/site/validar.py` |
+| Testes de conteúdo e arquitetura | `tools/site/testar-arquitetura.mjs` |
+
+Ao editar arquivos em `conteudo/` ou `tools/site/`, o GitHub Actions **Gerar site** recria as páginas e sitemap automaticamente após o merge na branch principal. Não edite `index.html`, `dicas/*.html`, `servicos/index.html` ou `problemas/index.html` manualmente: são arquivos gerados.
+
+**Diagnóstico de falhas:** se apenas uma área apresentar problema, verifique primeiro seu módulo específico. Os testes automáticos percorrem as páginas, conferem referências internas, URLs canônicas, catálogo, artigos e sitemap antes da publicação. O painel administrativo e a coleção de clientes não foram alterados nesta reorganização.
+
+**Produção:** não se alteram dados de clientes, Firestore, autenticação Google, App Check ou métricas nesta mudança. A integração de orçamento e acompanhamento de OS continua a mesma.
