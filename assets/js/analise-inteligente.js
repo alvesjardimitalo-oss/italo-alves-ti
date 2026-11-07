@@ -89,20 +89,20 @@ function resumo(f){
 function resultado(){
  const findings=avaliar(), urgentes=findings.filter(x=>x.nivel==='urgente');
  const up=findings.filter(x=>x.tipo==='upgrade');
- app.innerHTML=`<div class="jornada-panel"><span class="jornada-step">Resultado preliminar</span><h2 style="margin:10px 0">O que vale investigar no seu computador</h2>
- <p class="jornada-note">Baseado nas suas respostas; nada foi diagnosticado como defeito confirmado. ${urgentes.length?'Existem sinais de risco: não continue usando o equipamento até avaliar.':'Você pode decidir se quer seguir alguma recomendação.'}</p>
+ app.innerHTML=`<div class="jornada-panel"><span class="jornada-step">Resultado preliminar</span><h2 style="margin:10px 0">Resultado da análise</h2>
+ <p class="jornada-note">Possíveis causas, não um diagnóstico confirmado. ${urgentes.length?'Existem sinais de risco: não continue usando o equipamento até avaliar.':'Você escolhe o próximo passo.'}</p>
  <div class="analise-achados">${findings.map(f=>`<article class="analise-achado" data-nivel="${f.nivel}"><span class="analise-nivel">${{urgente:'Atenção imediata',atencao:'Vale investigar',melhoria:'Upgrade possível',preventiva:'Revisão opcional',ok:'Sem alerta'}[f.nivel]}</span><h3>${esc(f.titulo)}</h3><p>${esc(f.texto)}</p><small>Próximo passo: ${esc(f.acao)}</small></article>`).join('')}</div>
  <div class="jornada-separator"></div>
- <h3>Quer completar a identificação?</h3>
- <p class="jornada-small">Você pode informar marca e modelo. Se estiver neste computador, o navegador consegue ler poucos dados gerais, mas não mede o desgaste de peças.</p>
+ <h3>Qual é o modelo?</h3>
+ <p class="jornada-small">Opcional. O navegador não mede desgaste de componentes.</p>
  <div class="jornada-inputs"><div class="jornada-field"><label for="a-modelo">Marca / modelo (opcional)</label><input id="a-modelo" maxlength="100" placeholder="Ex.: Lenovo Ideapad 3" value="${esc(dadosManuais.modelo)}"></div>
  <div class="jornada-field"><label for="a-cpu">CPU, se souber (opcional)</label><input id="a-cpu" maxlength="100" placeholder="Ex.: Ryzen 5 5500U" value="${esc(dadosManuais.cpu)}"></div></div>
- <div class="jornada-controls"><button class="btn" id="a-ler" type="button">Ler informações deste aparelho</button><button class="btn" id="a-voltar" type="button">Refazer respostas</button></div>
+ <div class="jornada-controls"><button class="btn" id="a-ler" type="button">Ler dados deste PC</button><button class="btn" id="a-voltar" type="button">Refazer respostas</button></div>
  <p class="jornada-small" data-hw-status role="status" aria-live="polite"></p>
  <div class="jornada-result" data-hw-resultado hidden></div>
  <div class="jornada-separator"></div>
- <p class="jornada-note">Você não precisa contratar nada para usar a ferramenta. ${up.length?'Há possibilidades de upgrade, mas a compra só faz sentido depois de verificar a compatibilidade.':'A ferramenta não encontrou uma indicação clara de upgrade; não recomendamos comprar peças sem avaliação.'}</p>
- <div class="jornada-controls"><button class="btn btn-pri" type="button" id="a-orcamento">Quero conversar sobre este resultado</button><button class="btn" type="button" id="a-copiar">Copiar relatório</button><a class="btn" href="../ferramentas/velocidade.html">Testar internet</a></div></div>`;
+ <p class="jornada-note">Sem obrigação de contratar. ${up.length?'Confira a compatibilidade antes de comprar peças.':'Não há upgrade evidente neste resultado.'}</p>
+ <div class="jornada-controls"><button class="btn btn-pri" type="button" id="a-orcamento">Pedir orçamento</button><button class="btn" type="button" id="a-copiar">Copiar relatório</button><a class="btn" href="../ferramentas/velocidade.html">Testar internet</a></div></div>`;
  const $=s=>app.querySelector(s);
  const getReport=()=>{dadosManuais.modelo=fmt($('#a-modelo').value).slice(0,100);dadosManuais.cpu=fmt($('#a-cpu').value).slice(0,100);return resumo(findings)};
  $('#a-voltar').onclick=()=>{pagina=0;tela()};
