@@ -198,6 +198,7 @@ function iniciarPlanos(){
 
 function iniciarAvaliacaoEmpresarial(){
  const form=$('#j-form');if(!form)return;
+ exibirAnalisePendente();
  form.addEventListener('submit',async e=>{
   e.preventDefault();
   const empresa=valor('j-empresa');
@@ -212,6 +213,13 @@ function iniciarAvaliacaoEmpresarial(){
 }
 
 
+function exibirAnalisePendente(){
+ let item=null;try{item=JSON.parse(sessionStorage.getItem('italoti-analise-pendente')||'null');}catch(e){}
+ const area=$('#analise-recebida');if(!area)return;
+ if(!item||!item.relatorio||item.validade<Date.now()){try{sessionStorage.removeItem('italoti-analise-pendente')}catch(e){}return;}
+ area.hidden=false;texto($('#analise-resumo-previo'),String(item.relatorio).slice(0,1450));
+ $('#descartar-analise')?.addEventListener('click',()=>{area.hidden=true;$('#incluir-analise').checked=false;try{sessionStorage.removeItem('italoti-analise-pendente')}catch(e){}});
+}
 function iniciarAtendimentoPessoal(){
  const form=$('#j-form');if(!form)return;
  form.addEventListener('submit',async e=>{
@@ -219,7 +227,11 @@ function iniciarAtendimentoPessoal(){
   const contato=tratarContato();if(!contato)return;
   const equipamento=valor('j-equipamento'),problema=valor('j-prioridade'),atendimento=valor('j-atendimento'),relato=valor('j-detalhe');
   if(!equipamento||!problema||!atendimento){mostrarErro('Escolha o equipamento, o problema e a forma de atendimento.');return;}
-  const detalhe=('Sintoma informado: '+problema+'; Preferência: '+atendimento+'; Relato: '+relato+'; Solicitação sujeita à avaliação e aprovação do orçamento.').slice(0,1500);
+  const identificado=$('#identificacao-pessoal')?.dataset.relatorio||'';
+  const incluir=$('#incluir-analise')?.checked;
+  let resumoAnterior='';
+  try{const item=JSON.parse(sessionStorage.getItem('italoti-analise-pendente')||'null');if(incluir&&item&&item.validade>Date.now())resumoAnterior=String(item.relatorio||'').slice(0,850);}catch(e){}
+  const detalhe=('Sintoma informado: '+problema+'; Preferência: '+atendimento+'; Relato: '+relato+'; '+(resumoAnterior?'Resumo do analisador: '+resumoAnterior+'; ':'')+(identificado?'Informações do equipamento autorizadas: '+identificado+'; ':'')+'Solicitação sujeita à avaliação e aprovação do orçamento.').slice(0,1500);
   await enviarPedido({contato,servico:'Atendimento pessoa física',equipamento,problema,detalhe,atendimento});
  });
 }
