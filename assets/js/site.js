@@ -78,9 +78,9 @@ const ICO_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const ICO_ENV = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>';
 
 document.body.insertAdjacentHTML('beforeend', `
-  <button class="chat-fab" id="chat-fab" type="button" aria-label="Conversar com Alvesinho"><img src="${raiz}assets/img/alvesinho.svg" alt="" width="30" height="30"><span class="txt">Fale com o Alvesinho</span><span class="pulso"></span></button>
+  <button class="chat-fab" id="chat-fab" type="button" aria-label="Conversar com Alvesinho"><img src="${raiz}assets/img/alvesinho-premium.svg" alt="" width="30" height="30"><span class="txt">Fale com o Alvesinho</span><span class="pulso"></span></button>
   <div class="chat" id="chat" role="dialog" aria-label="Assistente de atendimento" aria-hidden="true">
-    <div class="chat-head"><img class="alvesinho-avatar" src="${raiz}assets/img/alvesinho.svg" alt="Avatar do Alvesinho"><div><b>Alvesinho</b><small>Assistente virtual · ${esc(SITE.nome)}</small></div>
+    <div class="chat-head"><img class="alvesinho-avatar" src="${raiz}assets/img/alvesinho-premium.svg" alt="Avatar do Alvesinho"><div><b>Alvesinho</b><small>Assistente virtual · ${esc(SITE.nome)}</small></div>
       <button type="button" id="chat-fechar" aria-label="Fechar">×</button></div>
     <div class="chat-msgs" id="chat-msgs" aria-live="polite"></div>
     <form class="chat-form" id="chat-form" autocomplete="on">
@@ -129,7 +129,7 @@ function bot(texto, ms = 450) {
     const linha = document.createElement('div');
     linha.className = 'alvesinho-resposta';
     const avatar = document.createElement('img');
-    avatar.src = raiz + 'assets/img/alvesinho.svg';
+    avatar.src = raiz + 'assets/img/alvesinho-premium.svg';
     avatar.alt = '';
     avatar.width = 27;
     avatar.height = 27;
