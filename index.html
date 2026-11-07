@@ -26,7 +26,7 @@
   <link rel="stylesheet" href="./assets/css/site.css?v=2.4.2">
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "ComputerStore", "name": "Ítalo Alves TI", "url": "https://italoinfotec.com.br/", "image": "https://italoinfotec.com.br/assets/img/logo.svg", "email": "alvesjardim.italo@gmail.com", "address": {"@type": "PostalAddress", "streetAddress": "Rua Agostinho Moreira de Lima, 45 - Planalto", "addressLocality": "Frei Inocêncio", "addressRegion": "MG", "postalCode": "35112-000", "addressCountry": "BR"}, "areaServed": [{"@type": "City", "name": "Frei Inocêncio"}, {"@type": "Country", "name": "Brasil"}], "makesOffer": [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico técnico"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Limpeza e pasta térmica"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Upgrade de SSD e memória"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Formatação e Windows 11"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Programas e configuração"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Troca de peças"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Montagem de computadores"}}, {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Suporte remoto"}}], "telephone": "+5533998556503", "openingHours": "Mo-Su 00:00-23:59"}</script>
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Vou pagar só para saber o defeito?", "acceptedAnswer": {"@type": "Answer", "text": "O diagnóstico vem antes de tudo e o orçamento é passado para você aprovar. Nenhum serviço é feito sem a sua autorização."}}, {"@type": "Question", "name": "Vou perder meus arquivos?", "acceptedAnswer": {"@type": "Answer", "text": "Sempre que possível, os arquivos são preservados. Antes de formatar, fazemos a cópia dos seus documentos, fotos e pastas importantes, combinado com você."}}, {"@type": "Question", "name": "Quanto tempo demora?", "acceptedAnswer": {"@type": "Answer", "text": "Depende do defeito e da disponibilidade de peças. Serviços como limpeza, formatação e troca de SSD costumam ser rápidos. O prazo é informado junto com o orçamento."}}, {"@type": "Question", "name": "Como acompanho o meu conserto?", "acceptedAnswer": {"@type": "Answer", "text": "Pela página \"Acompanhar OS\": digite o código da ordem de serviço e o seu telefone para ver o status, sem precisar ligar."}}]}</script>
-  <link rel="stylesheet" href="assets/css/animacoes.css?v=3.0">
+  <link rel="stylesheet" href="assets/css/animacoes.css?v=4.0">
 </head>
 <body>
   <header class="topo">
@@ -46,75 +46,29 @@
   </header>
 
   <main>
-  <section class="hero">
-    <div class="wrap">
-      <div>
-        <span class="selo">assistência técnica em informática</span>
-        <h1>Seu notebook ou computador <span class="grad">deu problema?</span> Descubra o próximo passo.</h1>
-        <p class="lead">Está lento, não liga, esquentando ou com a tela quebrada? Converse com o Alvesinho, receba uma orientação inicial gratuita e peça uma avaliação técnica com orçamento antes do serviço. Atendimento em Frei Inocêncio e região e suporte remoto no Brasil.</p>
-        <div class="hero-acoes">
-          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg> Conversar com Alvesinho</a>
-          <a href="ferramentas/checkup.html" class="btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg> Fazer check-up grátis</a>
-        </div>
-        <div class="hero-fatos">
-          <div><b>Orçamento antes</b>nada é feito sem sua aprovação</div>
-          <div><b>Garantia</b>descrita na nota de serviço</div>
-          <div><b>Brasil todo</b>por suporte remoto</div>
-          <div><b>24 horas</b>atendimento a qualquer hora</div>
-        </div>
+  <section class="hero hero-compacta" aria-label="Assistência técnica Ítalo InfoTec">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="selo">ASSISTÊNCIA TÉCNICA · FREI INOCÊNCIO E REGIÃO</span>
+      <h1>Seu computador deu problema? <span class="grad">O Alvesinho te ajuda.</span></h1>
+      <p class="lead">Notebook lento, sem imagem ou esquentando? Descubra possíveis causas e peça seu orçamento antes do conserto.</p>
+      <div class="hero-acoes">
+        <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat data-servico="Diagnóstico por sintomas">Conversar com Alvesinho</a>
+        <a href="ferramentas/checkup.html" class="btn">Check-up gratuito</a>
       </div>
-      <a class="terminal" href="ferramentas/checkup.html" id="hero-checkup" aria-label="Fazer o check-up do meu computador">
-        <div class="terminal-top"><i></i><i></i><i></i><span>check-up · seu aparelho</span></div>
-        <div class="terminal-body">
-          <div class="diag"><span>Sistema</span><span class="ok" data-hc="so">…</span></div>
-          <div class="diag"><span>Navegador</span><span class="ok" data-hc="nav">…</span></div>
-          <div class="diag"><span>Processador</span><span data-hc="cpu">…</span></div>
-          <div class="diag"><span>Memória (aprox.)</span><span data-hc="ram">…</span></div>
-          <div class="diag"><span>Tela</span><span class="ok" data-hc="tela">…</span></div>
-          <div class="barra-diag"><span></span></div>
-          <div class="terminal-cta">→ faça o check-up completo e receba o laudo prévio</div>
-        </div>
-      </a>
+      <div class="hero-links-compactos"><span>Orçamento antes do serviço</span><span>Atendimento remoto</span><a href="acompanhar.html">Acompanhar OS →</a></div>
     </div>
-  </section>
+    <a href="#videos" class="hero-alves-personagem" aria-label="Conheça as animações e dicas do Alvesinho">
+      <span class="hero-alves-efeito" aria-hidden="true"></span>
+      <img src="assets/img/alvesinho-premium.svg" width="190" height="190" alt="Alvesinho, seu assistente virtual de informática">
+      <span class="hero-alves-balao"><strong>Oi! Eu sou o Alvesinho.</strong><small>Vamos descobrir o que aconteceu?</small></span>
+    </a>
+  </div>
+</section>
 
 
 
-  <section class="sec inicio-resumo" id="sintomas">
-    <div class="wrap">
-      <div class="sec-head">
-        <span class="kicker">// entenda o sintoma</span>
-        <h2>O que está acontecendo com seu computador?</h2>
-        <p>Veja três exemplos ilustrados. Cada situação pode ter causas diferentes; o diagnóstico depende de uma avaliação.</p>
-      </div>
-      <div class="grid g3 exemplos-animados">
-        <a class="card exemplo-animado" href="dicas/computador-lento.html">
-          <div class="demo-tela demo-lento" aria-hidden="true"><div class="demo-janela"><span class="demo-luzes"><i></i><i></i><i></i></span><div class="demo-carregando"><span></span></div><span class="demo-status">Carregando...</span></div></div>
-          <span class="demo-legenda">01 · Desempenho</span>
-          <h3>Computador muito lento</h3>
-          <p>Demora para iniciar e abrir programas? Entenda o papel do SSD, da memória e do sistema.</p>
-          <span class="mais">Ver causas e soluções →</span>
-        </a>
-        <a class="card exemplo-animado" href="dicas/notebook-esquentando.html">
-          <div class="demo-tela demo-calor" aria-hidden="true"><div class="demo-ventoinha"><span>✣</span></div><div class="demo-termometro"><span></span></div><span class="demo-sinal">CALOR</span></div>
-          <span class="demo-legenda">02 · Temperatura</span>
-          <h3>Notebook esquentando</h3>
-          <p>Calor excessivo e desligamentos podem indicar problemas de ventilação ou refrigeração.</p>
-          <span class="mais">Ver cuidados e soluções →</span>
-        </a>
-        <a class="card exemplo-animado" href="dicas/notebook-liga-sem-imagem.html">
-          <div class="demo-tela demo-video" aria-hidden="true"><div class="demo-monitor"><div class="demo-display"><span>SEM SINAL</span></div><div class="demo-base"></div></div><span class="demo-led"></span></div>
-          <span class="demo-legenda">03 · Imagem</span>
-          <h3>Liga, mas não aparece imagem</h3>
-          <p>Luzes acesas com tela preta? Veja como diferenciar possíveis falhas de vídeo e inicialização.</p>
-          <span class="mais">Ver primeiros testes →</span>
-        </a>
-      </div>
-      <p class="pagina-link"><a href="problemas/" class="btn">Explorar os 20 problemas comuns →</a></p>
-    </div>
-  </section>
-
-<section class="sec alt alves-banner-section" id="videos" aria-labelledby="alves-banner-titulo">
+  <section class="sec alt alves-banner-section" id="videos" aria-labelledby="alves-banner-titulo">
   <div class="wrap">
     <div class="alves-banner-head">
       <div><span class="kicker">// o Alvesinho explica</span><h2 id="alves-banner-titulo">Seu computador está com problema? Entenda em segundos.</h2><p>Uma apresentação animada com dicas práticas para reconhecer sintomas e encontrar o próximo passo.</p></div>
@@ -148,31 +102,7 @@
   </div>
 </section>
 
-<section class="sec alt inicio-atalhos" id="servicos">
-    <div class="wrap">
-      <div class="sec-head"><span class="kicker">// acesso rápido</span><h2>Como posso ajudar?</h2></div>
-      <div class="grid g3">
-        <a class="card" href="servicos/"><h3>Serviços de manutenção</h3><p>Diagnóstico, limpeza, formatação, troca de peças e suporte.</p><span class="mais">Ver serviços →</span></a>
-        <a class="card" href="ferramentas/"><h3>Ferramentas gratuitas</h3><p>Check-up inicial, simulador de upgrade e outros testes.</p><span class="mais">Explorar ferramentas →</span></a>
-        <a class="card" href="dicas/"><h3>Guias e orientações</h3><p>Artigos práticos sobre defeitos e cuidados com seu equipamento.</p><span class="mais">Ler as dicas →</span></a>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec inicio-contato" id="atendimento">
-    <div class="wrap">
-      <div class="cta">
-        <img class="inicio-alvesinho" src="assets/img/alvesinho-premium.svg" width="96" height="96" loading="lazy" alt="Alvesinho, atendente virtual">
-        <h2>Seu computador precisa de ajuda?</h2>
-        <p>Converse com o Alvesinho, descreva o sintoma e encaminhe seu pedido. Atendimento presencial em Frei Inocêncio e região e remoto para todo o Brasil.</p>
-        <div class="hero-acoes inicio-botoes">
-          <a href="#fale-comigo" class="btn btn-pri" data-abrir-chat>Conversar com Alvesinho</a>
-          <a href="acompanhar.html" class="btn">Acompanhar minha OS</a>
-        </div>
-      </div>
-    </div>
-  </section>
-  </main>
+</main>
 
   <footer class="rodape">
     <div class="wrap">
