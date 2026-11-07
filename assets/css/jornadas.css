@@ -1,0 +1,49 @@
+
+/* Área comercial — quatro jornadas independentes; não altera as páginas antigas */
+.jornada-page{padding:44px 0 70px;min-height:65vh}
+.jornada-hero{border:1px solid #214867;border-radius:23px;background:radial-gradient(circle at 95% 5%,#124c64 0%,transparent 38%),linear-gradient(145deg,#0c1c32,#071120);padding:clamp(22px,4vw,43px);display:grid;grid-template-columns:1fr 126px;align-items:center;gap:20px}
+.jornada-hero h1{font-size:clamp(1.65rem,3.3vw,2.8rem);max-width:730px;margin:7px 0 12px}
+.jornada-hero p{color:var(--text-2);max-width:680px;margin:0}
+.jornada-kicker{font-size:.73rem;text-transform:uppercase;letter-spacing:.14em;color:#65e9da;font-weight:700}
+.jornada-hero img{width:126px;height:126px;object-fit:cover;border:2px solid #1cbad3;border-radius:50%;box-shadow:0 0 30px #00c3e436}
+.jornada-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,.7fr);gap:20px;margin-top:22px;align-items:start}
+.jornada-panel,.jornada-side,.jornada-card{border:1px solid #253858;border-radius:18px;background:#0f1a2d;padding:clamp(18px,2.6vw,27px)}
+.jornada-panel h2,.jornada-side h2{font-size:1.23rem;margin:0 0 12px}
+.jornada-side{position:sticky;top:100px}
+.jornada-side p,.jornada-small{color:var(--text-2);font-size:.86rem}
+.jornada-side a{display:block;margin:10px 0}
+.jornada-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.jornada-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.jornada-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.jornada-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.jornada-field>label{font-weight:600;font-size:.84rem}
+.jornada-field>input,.jornada-field>select,.jornada-field>textarea{width:100%;border:1px solid #345174;border-radius:11px;padding:11px 13px;background:#071322;color:#e7f4ff;font:inherit;font-size:.95rem;min-height:45px}
+.jornada-field>textarea{min-height:106px;resize:vertical}
+.jornada-field>input:focus-visible,.jornada-field>select:focus-visible,.jornada-field>textarea:focus-visible{outline:2px solid #30c8e7;outline-offset:2px}
+.jornada-field.wide{grid-column:1/-1}
+.jornada-step{display:inline-flex;padding:5px 9px;border:1px solid #2b8d9a;border-radius:20px;color:#75f1e0;font-size:.7rem;font-weight:700;letter-spacing:.08em}
+.jornada-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.jornada-controls .btn{cursor:pointer}
+.jornada-result{border:1px solid #307e88;border-radius:15px;padding:20px;background:linear-gradient(140deg,#0a3442,#10233b);margin-top:18px}
+.jornada-result h3{font-size:1.18rem;margin:0 0 10px}
+.jornada-result p{margin:8px 0;line-height:1.65}
+.jornada-result[hidden],.jornada-error[hidden]{display:none}
+.jornada-error{color:#ffb5ab;font-size:.85rem;margin:12px 0}
+.jornada-pill{display:inline-flex;align-items:center;background:#153c52;border:1px solid #267b91;border-radius:50px;padding:6px 12px;font-size:.76rem;color:#bdf7ec;font-weight:600}
+.jornada-choice{cursor:pointer;text-align:left;border:1px solid #36516a;border-radius:14px;padding:15px;background:#0b1d31;color:#f1fbff;display:flex;flex-direction:column;gap:6px;min-height:110px}
+.jornada-choice b{font-size:.97rem}.jornada-choice span{font-size:.82rem;color:#adc4d6}
+.jornada-choice.is-active,.jornada-choice[aria-pressed="true"]{background:#104355;border-color:#28dad8;box-shadow:0 0 0 1px #32ddca40}
+.jornada-choice:focus-visible{outline:2px solid #45e3d7}
+.jornada-note{font-size:.83rem;color:#bdcede;margin-top:15px;line-height:1.55}
+.jornada-note strong{color:#effaff}
+.jornada-summary{white-space:pre-wrap;overflow-wrap:anywhere;background:#071a2a;border:1px solid #254460;border-radius:12px;padding:15px;font-size:.88rem;line-height:1.6;margin:14px 0}
+.jornada-stat{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;color:#7df4e2;letter-spacing:-.03em}
+.jornada-bottomlinks{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.jornada-toggle{display:flex;align-items:flex-start;gap:9px;font-size:.83rem;color:#c8d9e8;margin:14px 0}
+.jornada-toggle input{margin-top:4px;accent-color:#41c6dc}
+.jornada-separator{height:1px;background:#253c58;margin:20px 0}
+.jornada-list{padding-left:20px;color:#c7d9ec;line-height:1.8;font-size:.9rem}
+.jornada-status{font-size:.83rem;color:#93edda}
+.jornada-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+@media(max-width:900px){.jornada-body{grid-template-columns:1fr}.jornada-side{position:static}.jornada-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.jornada-page{padding:22px 0 45px}.jornada-hero{grid-template-columns:1fr 74px;padding:20px;gap:8px}.jornada-hero img{width:72px;height:72px}.jornada-grid,.jornada-grid.three,.jornada-inputs{grid-template-columns:1fr}.jornada-field.wide{grid-column:1}.jornada-controls .btn{width:100%;justify-content:center}}
