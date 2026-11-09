@@ -34,8 +34,14 @@ const arteSacola = (indice) => {
     '<span class="paperbag__glint">✧</span></span></div>';
 };
 function selecionar(id) {
-  seletor.value = id;
   const secao = document.getElementById('pedido');
+  if (!seletor || !secao) {
+    const url = new URL('/sacola-misteriosa/pedido/', window.location.origin);
+    url.searchParams.set('sacola', id);
+    window.location.assign(url.href);
+    return;
+  }
+  seletor.value = id;
   secao.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'});
   const formCard = secao.querySelector('.form-card');
   if (formCard) {
@@ -46,8 +52,8 @@ function selecionar(id) {
 }
 function desenhar() {
   const ativos = itens.filter(s => s.ativo !== false && valido(s));
-  vitrine.replaceChildren();
-  seletor.replaceChildren(new Option(ativos.some(s => Number(s.estoque) > 0) ?
+  if (vitrine) vitrine.replaceChildren();
+  if (seletor) seletor.replaceChildren(new Option(ativos.some(s => Number(s.estoque) > 0) ?
     'Selecione sua sacola' : 'Nenhuma sacola disponível', ''));
   ativos.forEach((s,i) => {
     const disponivel = Number(s.estoque) > 0;
@@ -87,7 +93,7 @@ function desenhar() {
     btn.textContent = disponivel ? 'Essa é a minha surpresa ↗' : 'Sacola esgotada';
     btn.disabled = !disponivel;
     if (disponivel) {
-      seletor.appendChild(new Option(s.titulo + ' · ' + brl(s.valor), s.id));
+      if (seletor) seletor.appendChild(new Option(s.titulo + ' · ' + brl(s.valor), s.id));
       art.addEventListener('click', () => selecionar(s.id));
       btn.addEventListener('click', () => selecionar(s.id));
     }
@@ -97,11 +103,15 @@ function desenhar() {
     nota.textContent = disponivel ? 'Você sabe o valor. O conteúdo é surpresa! ♡' : 'Confira outras opções disponíveis.';
     body.appendChild(nota);
     card.appendChild(body);
-    vitrine.appendChild(card);
+    if (vitrine) vitrine.appendChild(card);
   });
-  aviso.hidden = ativos.length > 0;
-  vitrine.style.display = ativos.length ? '' : 'none';
-  enviar.disabled = !ativos.some(s => Number(s.estoque) > 0);
+  if (aviso) aviso.hidden = ativos.length > 0;
+  if (vitrine) vitrine.style.display = ativos.length ? '' : 'none';
+  if (enviar) enviar.disabled = !ativos.some(s => Number(s.estoque) > 0);
+  if (seletor) {
+    const pedidoId = new URLSearchParams(window.location.search).get('sacola');
+    if (pedidoId && ativos.some(s => s.id === pedidoId && Number(s.estoque) > 0)) seletor.value = pedidoId;
+  }
 }
 function mostrar(texto, erro=false, waUrl='') {
   retorno.hidden = false;
@@ -120,7 +130,7 @@ function mostrar(texto, erro=false, waUrl='') {
   }
 }
 async function carregar() {
-  aviso.innerHTML = '<strong>Carregando as sacolas…</strong>Verificando a disponibilidade.';
+  if (aviso) aviso.innerHTML = '<strong>Carregando as sacolas…</strong>Verificando a disponibilidade.';
   try {
     const [{initializeApp}, F] = await Promise.all([
       import(FB + 'firebase-app.js'),
@@ -137,16 +147,16 @@ async function carregar() {
     if (telefoneKaren.length < 12 || telefoneKaren.length > 13) telefoneKaren = '';
     desenhar();
     if (!itens.length) {
-      aviso.innerHTML = '<strong>Em preparação 💝</strong>As opções serão divulgadas aqui assim que a Karen publicar as sacolas.';
+      if (aviso) aviso.innerHTML = '<strong>Em preparação 💝</strong>As opções serão divulgadas aqui assim que a Karen publicar as sacolas.';
     }
   } catch (e) {
     console.warn('Não foi possível carregar a vitrine:', e);
     itens = [];
     desenhar();
-    aviso.innerHTML = '<strong>Não foi possível consultar as sacolas.</strong>Atualize a página para tentar novamente.';
+    if (aviso) aviso.innerHTML = '<strong>Não foi possível consultar as sacolas.</strong>Atualize a página para tentar novamente.';
   }
 }
-form.addEventListener('submit', async (ev) => {
+if (form) form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const id = seletor.value;
   const s = itens.find((i) => i.id === id && i.ativo !== false && Number(i.estoque) > 0);
@@ -185,4 +195,4 @@ form.addEventListener('submit', async (ev) => {
   enviar.disabled = false;
   enviar.textContent = 'Quero confirmar minha surpresa 💝';
 });
-carregar();
+if (vitrine || seletor) carregar();
