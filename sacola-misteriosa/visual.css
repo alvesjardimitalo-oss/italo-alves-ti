@@ -136,3 +136,58 @@ footer{padding-bottom:calc(98px + env(safe-area-inset-bottom))}
 }
 @media(max-width:370px){.hero h1{font-size:2.73rem}.features{grid-template-columns:1fr}.feature{display:flex;gap:13px;align-items:flex-start}.feature .symbol{flex:none}.scene{height:275px}.scene:before{width:265px;height:265px}.scene .paperbag--plum{left:26%}}
 @media(prefers-reduced-motion:reduce){.scene .paperbag,.sparkle{animation:none!important}.card,.card-art .paperbag,.btn{transition:none!important}html{scroll-behavior:auto!important}}
+
+/* Navegação organizada em páginas, com respiro e leitura confortável */
+body{overflow-x:hidden}
+.page-intro{background:linear-gradient(120deg,#fffaf3,#f8e8ec);padding:52px 0 42px;border-bottom:1px solid #efdce2}
+.page-intro .wrap{max-width:900px}
+.page-intro h1{max-width:750px;font-size:clamp(2.8rem,5vw,4.7rem);margin:12px 0 17px}
+.page-intro h1 em{color:var(--rose)}
+.page-intro p{font-size:1.06rem;color:var(--muted);max-width:670px;margin:0}
+.back-link{display:inline-flex;font-size:.88rem;font-weight:700;color:#794b60;margin-bottom:27px;text-underline-offset:4px}
+.back-link:hover{text-decoration:underline}
+.page-intro .eyebrow{display:block}
+.home-how{background:#fffaf7}
+.home-how .feature{text-align:left}
+.home-detail{text-align:center;margin:25px 0 0;font-weight:700;color:var(--wine)}
+.home-detail a{text-decoration:underline;text-underline-offset:4px}
+.page-bottom{background:#fffaf7;text-align:center;padding:25px 0 46px;color:var(--muted)}
+.page-bottom a{color:var(--wine);font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.faq-section{background:#fffaf7}
+.faq-list{max-width:790px;margin:0 auto;display:grid;gap:14px}
+.faq-list details{border:1px solid var(--line);background:white;border-radius:18px;padding:19px 23px}
+.faq-list summary{cursor:pointer;font-weight:700;color:var(--ink);padding-right:14px}
+.faq-list details p{color:var(--muted);margin:12px 0 0;font-size:.94rem}
+.faq-cta{text-align:center;margin-top:29px}
+.checkout-page #pedido{scroll-margin-top:20px}
+.checkout-page #pedido .order-text .step a{color:var(--wine);text-decoration:underline;text-underline-offset:3px}
+.checkout-page #pedido .order-text{max-width:460px}
+.checkout-page #pedido .order{align-items:start}
+.checkout-page .form-card.sacola-selecionada{outline:3px solid #c987a3;outline-offset:3px}
+@media(max-width:690px){
+header .wrap{flex-wrap:wrap;gap:9px;padding-top:12px;padding-bottom:11px}
+header nav{display:flex;width:100%;justify-content:space-between;gap:6px;align-items:center}
+header nav a{display:block!important;font-size:.79rem;padding:6px 0;white-space:nowrap}
+.page-intro{padding:32px 0 31px}
+.page-intro h1{font-size:clamp(2.4rem,10vw,3.2rem);line-height:1.09}
+.page-intro p{font-size:.96rem}
+.back-link{margin-bottom:21px}
+.features{grid-template-columns:1fr;gap:13px}
+.feature{padding:22px;display:flex;align-items:flex-start;gap:17px}
+.feature .symbol{flex:none;width:51px;height:51px;font-size:1.55rem;margin:0}
+.feature h3{font-size:1.24rem;line-height:1.25;margin:0 0 7px}
+.feature p{font-size:.89rem;line-height:1.55}
+.center h2{font-size:clamp(1.9rem,8vw,2.5rem)}
+section.pad{padding:45px 0}
+.card-art{height:220px}
+.home-how .center{margin-bottom:23px}
+.checkout-page .order-text h2{font-size:2.2rem}
+.faq-list details{padding:16px 18px}
+.faq-section .center{margin-bottom:22px}
+}
+@media(max-width:390px){
+header nav a{font-size:.71rem}
+.page-intro h1{font-size:2.25rem}
+.hero h1{font-size:2.65rem}
+.hero-kicker{font-size:.6rem;letter-spacing:.07em}
+}
