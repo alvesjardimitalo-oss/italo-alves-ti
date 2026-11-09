@@ -10,6 +10,10 @@
 
   let enabled = false;
   try { enabled = localStorage.getItem(STORE) === 'ligado'; } catch {}
+  if (!enabled) try { enabled = sessionStorage.getItem(STORE) === 'ligado'; } catch {}
+  if (!enabled) {
+    try { enabled = document.cookie.split('; ').includes(STORE + '=ligado'); } catch {}
+  }
   let ctx, master, timer, nextTime = 0, index = 0;
   let active = false;
   const beat = 60 / 98;
@@ -120,7 +124,12 @@
     if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
   }
   function persist() {
-    try { localStorage.setItem(STORE, enabled ? 'ligado' : 'desligado'); } catch {}
+    const state = enabled ? 'ligado' : 'desligado';
+    try { localStorage.setItem(STORE, state); } catch {}
+    try { sessionStorage.setItem(STORE, state); } catch {}
+    try {
+      document.cookie = STORE + '=' + state + '; path=/sacola-misteriosa; max-age=2592000; SameSite=Lax; Secure';
+    } catch {}
   }
   button.addEventListener('click', () => {
     enabled = !enabled;
