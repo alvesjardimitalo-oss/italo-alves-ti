@@ -21,43 +21,87 @@ const normalizeWhatsApp = (v) => {
   return (d.length === 10 || d.length === 11) ? '55' + d : d;
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const icons = ['🎁','💝','✨','🌷','🎀','🌺'];
+const paletas = ['plum', 'rose', 'cream'];
 const valido = (s) => s && typeof s.id === 'string' && typeof s.titulo === 'string'
   && Number.isFinite(Number(s.valor)) && Number(s.valor) > 0 && Number.isFinite(Number(s.estoque));
-
+const arteSacola = (indice) => {
+  const cor = paletas[indice % paletas.length];
+  return '<div class="paperbag paperbag--' + cor + '">' +
+    '<span class="paperbag__handle"></span><span class="paperbag__side"></span>' +
+    '<span class="paperbag__front"><span class="paperbag__motif">✦</span>' +
+    '<span class="paperbag__monogram">KC</span><span class="paperbag__name">Karen</span>' +
+    '<span class="paperbag__type">COSMÉTICOS</span><span class="paperbag__line"></span>' +
+    '<span class="paperbag__glint">✧</span></span></div>';
+};
 function selecionar(id) {
   seletor.value = id;
-  document.getElementById('pedido').scrollIntoView({behavior:'smooth',block:'start'});
+  const secao = document.getElementById('pedido');
+  secao.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'});
+  const formCard = secao.querySelector('.form-card');
+  if (formCard) {
+    formCard.classList.add('sacola-selecionada');
+    window.setTimeout(() => formCard.classList.remove('sacola-selecionada'), 1300);
+  }
   seletor.focus({preventScroll:true});
 }
 function desenhar() {
-  const ativos = itens.filter((s) => s.ativo !== false && valido(s));
-  vitrine.innerHTML = '';
-  seletor.replaceChildren(new Option(ativos.some((s) => s.estoque > 0) ? 'Selecione uma sacola' : 'Nenhuma sacola disponível', ''));
-  ativos.forEach((s, i) => {
+  const ativos = itens.filter(s => s.ativo !== false && valido(s));
+  vitrine.replaceChildren();
+  seletor.replaceChildren(new Option(ativos.some(s => Number(s.estoque) > 0) ?
+    'Selecione sua sacola' : 'Nenhuma sacola disponível', ''));
+  ativos.forEach((s,i) => {
     const disponivel = Number(s.estoque) > 0;
+    const poucaQuantidade = disponivel && Number(s.estoque) <= 4;
     const card = document.createElement('article');
     card.className = 'card';
-    card.innerHTML = '<div class="card-art" aria-hidden="true">' + icons[i % icons.length] + '</div>' +
-      '<div class="card-body"><h3>' + esc(s.titulo.slice(0,100)) + '</h3><p>' +
-      esc(String(s.descricaoPublica || 'Produtos de beleza surpresa, selecionados com carinho.').slice(0,260)) + '</p>' +
+    const ribbon = document.createElement('span');
+    ribbon.className = 'card-ribbon';
+    ribbon.textContent = 'SACOLA SURPRESA';
+    card.appendChild(ribbon);
+    const art = document.createElement('button');
+    art.type = 'button';
+    art.className = 'card-art';
+    art.setAttribute('aria-label', disponivel ?
+      'Escolher ' + s.titulo + ', ' + brl(s.valor) : s.titulo + ' esgotada');
+    art.innerHTML = arteSacola(i) +
+      '<span class="card-art__spark" aria-hidden="true">✦</span>' +
+      '<span class="card-art__spark" aria-hidden="true">✧</span>' +
+      '<span class="card-art__hint" aria-hidden="true">' +
+      (disponivel ? 'Toque para escolher ↗' : 'Esgotada no momento') + '</span>';
+    art.disabled = !disponivel;
+    card.appendChild(art);
+    const body = document.createElement('div');
+    body.className = 'card-body';
+    body.innerHTML = '<div class="card-tag">O SEGREDO ESTÁ DENTRO ✦</div>' +
+      '<h3>' + esc(s.titulo.slice(0,100)) + '</h3>' +
+      '<p>' + esc(String(s.descricaoPublica ||
+        'Uma seleção de cosméticos surpresa preparada com carinho. Qual será o seu presente?').slice(0,260)) + '</p>' +
       '<div class="price">' + brl(s.valor) + '</div>' +
-      '<div class="availability">' + (disponivel ? 'Disponível para solicitar' : 'Temporariamente esgotada') + '</div></div>';
+      '<div class="availability ' + (disponivel ? (poucaQuantidade ? 'low' : '') : 'soldout') + '">' +
+      (disponivel ? (poucaQuantidade ?
+        ('Restam ' + Number(s.estoque) + ' ' + (Number(s.estoque) === 1 ? 'unidade' : 'unidades')) :
+        'Disponível para solicitar') : 'Temporariamente esgotada') + '</div>';
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn';
-    btn.textContent = disponivel ? 'Quero esta sacola' : 'Esgotada';
+    btn.textContent = disponivel ? 'Essa é a minha surpresa ↗' : 'Sacola esgotada';
     btn.disabled = !disponivel;
     if (disponivel) {
       seletor.appendChild(new Option(s.titulo + ' · ' + brl(s.valor), s.id));
+      art.addEventListener('click', () => selecionar(s.id));
       btn.addEventListener('click', () => selecionar(s.id));
     }
-    card.querySelector('.card-body').appendChild(btn);
+    body.appendChild(btn);
+    const nota = document.createElement('div');
+    nota.className = 'card-teaser';
+    nota.textContent = disponivel ? 'Você sabe o valor. O conteúdo é surpresa! ♡' : 'Confira outras opções disponíveis.';
+    body.appendChild(nota);
+    card.appendChild(body);
     vitrine.appendChild(card);
   });
   aviso.hidden = ativos.length > 0;
   vitrine.style.display = ativos.length ? '' : 'none';
-  enviar.disabled = !ativos.some((s) => Number(s.estoque) > 0);
+  enviar.disabled = !ativos.some(s => Number(s.estoque) > 0);
 }
 function mostrar(texto, erro=false, waUrl='') {
   retorno.hidden = false;
@@ -139,6 +183,6 @@ form.addEventListener('submit', async (ev) => {
     mostrar('Não foi possível registrar a solicitação. Tente novamente.' + (url ? ' Você também pode entrar em contato diretamente:' : ''), true, url);
   }
   enviar.disabled = false;
-  enviar.textContent = 'Enviar solicitação 💝';
+  enviar.textContent = 'Quero confirmar minha surpresa 💝';
 });
 carregar();
