@@ -38,7 +38,11 @@ function selecionar(id) {
   if (!seletor || !secao) {
     const url = new URL('/sacola-misteriosa/pedido/', window.location.origin);
     url.searchParams.set('sacola', id);
-    window.location.assign(url.href);
+    if (window.KarenSound?.isEnabled()) {
+      window.setTimeout(() => window.location.assign(url.href), 190);
+    } else {
+      window.location.assign(url.href);
+    }
     return;
   }
   seletor.value = id;
