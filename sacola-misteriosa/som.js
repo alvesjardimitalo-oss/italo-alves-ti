@@ -1,8 +1,8 @@
-/* Karen Cosméticos — identidade sonora original, sintetizada localmente.
-   Sem arquivos de áudio, downloads ou música de terceiros. Opt-in por padrão. */
+/* Karen Cosméticos — atmosfera original: lounge moderno / beleza premium.
+   Sem melodia aguda repetitiva. Áudio sempre opcional e desligado por padrão. */
 (() => {
   'use strict';
-  const STORE = 'karen-sacolas-som-v1';
+  const STORE = 'karen-sacolas-som-v2';
   const AudioEngine = window.AudioContext || window.webkitAudioContext;
   const wrap = document.querySelector('header .wrap');
   const nav = wrap?.querySelector('nav');
@@ -11,164 +11,195 @@
   let enabled = false;
   try { enabled = localStorage.getItem(STORE) === 'ligado'; } catch {}
   if (!enabled) try { enabled = sessionStorage.getItem(STORE) === 'ligado'; } catch {}
-  if (!enabled) {
-    try { enabled = document.cookie.split('; ').includes(STORE + '=ligado'); } catch {}
-  }
-  let ctx, master, timer, nextTime = 0, index = 0;
-  let active = false;
-  const beat = 60 / 98;
-  const stepLength = beat / 2;
-  const progressions = [
-    { chord: [53, 57, 60, 64], bass: 41, melody: [72, 76, 79, 76, 72, 69, 72, 76] },
-    { chord: [57, 60, 64, 69], bass: 45, melody: [76, 79, 81, 79, 76, 72, 69, 72] },
-    { chord: [60, 64, 67, 71], bass: 48, melody: [79, 76, 72, 76, 79, 81, 79, 76] },
-    { chord: [55, 59, 62, 67], bass: 43, melody: [74, 79, 81, 79, 74, 71, 74, 79] }
+  // A versão anterior do áudio foi descartada. Não herdar sua preferência.
+  let ctx, master, noiseBuffer, timer, active = false;
+  let step = 0, nextTime = 0;
+  const BPM = 88;
+  const BEAT = 60 / BPM;
+  const STEP = BEAT / 2;
+  // Progressão original com acordes de jazz/soul, sem melodia em primeiro plano.
+  const bars = [
+    {bass: 38, chord:[53,57,60,64]}, // Dm9
+    {bass: 34, chord:[50,53,57,60]}, // Bbmaj7
+    {bass: 41, chord:[53,57,60,64]}, // Fmaj9
+    {bass: 36, chord:[52,55,59,62]}  // Cmaj9
   ];
-  const midi = (n) => 440 * 2 ** ((n - 69) / 12);
+  const hz = (n) => 440 * (2 ** ((n-69)/12));
+
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'sound-toggle';
+  button.title = 'Ativar ou desligar a trilha lounge suave e os sons discretos da página';
   button.innerHTML = '<span class="sound-toggle-icon" aria-hidden="true">♫</span><span class="sound-toggle-label"></span>';
-  button.title = 'Trilha ambiente original e sons suaves de navegação. Você controla o áudio.';
   wrap.insertBefore(button, nav);
 
   function sync() {
     button.classList.toggle('is-on', enabled);
     button.setAttribute('aria-pressed', String(enabled));
-    button.setAttribute('aria-label', enabled ? 'Desligar sons e trilha ambiente' : 'Ligar sons e trilha ambiente');
+    button.setAttribute('aria-label', enabled ? 'Desligar trilha ambiente' : 'Ligar trilha ambiente');
     button.querySelector('.sound-toggle-label').textContent = enabled ? 'Som ligado' : 'Ativar som';
   }
   function setup() {
     if (ctx) return;
     ctx = new AudioEngine();
     master = ctx.createGain();
-    master.gain.value = 0.32;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 2500;
-    filter.Q.value = 0.3;
-    master.connect(filter);
-    filter.connect(ctx.destination);
+    master.gain.value = 0.19;
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 20;
+    compressor.ratio.value = 2;
+    master.connect(compressor);
+    compressor.connect(ctx.destination);
+    const length = Math.round(ctx.sampleRate * 0.5);
+    noiseBuffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const samples = noiseBuffer.getChannelData(0);
+    for (let i=0;i<length;i++) samples[i]=Math.random()*2-1;
   }
-  function tone(note, at, duration, vol = 0.07, waveform = 'sine') {
-    if (!ctx || !master) return;
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.type = waveform;
-    oscillator.frequency.setValueAtTime(midi(note), at);
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), at + 0.024);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + duration);
-    oscillator.connect(gain);
-    gain.connect(master);
-    oscillator.start(at);
-    oscillator.stop(at + duration + 0.02);
-    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+  function envelope(g, t, attack, hold, release, peak) {
+    const q = Math.max(0.0001, peak);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(q, t+attack);
+    g.gain.setValueAtTime(q, t+attack+hold);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+attack+hold+release);
   }
-  function play(type = 'tap') {
-    if (!enabled || document.hidden) return;
-    setup();
-    // Acionar somente após interação do visitante, conforme política dos navegadores.
-    ctx.resume().catch(() => {});
-    const at = ctx.currentTime + 0.008;
-    if (type === 'surprise') {
-      tone(76, at, 0.21, 0.105, 'sine');
-      tone(79, at + 0.08, 0.28, 0.09, 'sine');
-      tone(84, at + 0.17, 0.35, 0.075, 'triangle');
-    } else if (type === 'navigate') {
-      tone(72, at, 0.13, 0.072, 'sine');
-      tone(79, at + 0.065, 0.21, 0.065, 'sine');
+  function synth(frequency, time, duration, peak, kind='sine', cutoff=0, detune=0) {
+    if (!ctx) return;
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.type=kind;
+    osc.frequency.setValueAtTime(frequency,time);
+    osc.detune.value=detune;
+    const attack=kind==='sawtooth'?0.22:0.012;
+    const release=kind==='sawtooth'?0.4:0.1;
+    envelope(gain,time,attack,Math.max(0,duration-attack-release),release,peak);
+    if(cutoff) {
+      const f=ctx.createBiquadFilter();
+      f.type='lowpass';
+      f.frequency.value=cutoff;
+      f.Q.value=0.4;
+      osc.connect(f);f.connect(gain);
+      osc.onended=()=>{osc.disconnect();f.disconnect();gain.disconnect();};
     } else {
-      tone(79, at, 0.15, 0.045, 'sine');
+      osc.connect(gain);
+      osc.onended=()=>{osc.disconnect();gain.disconnect();};
+    }
+    gain.connect(master);
+    osc.start(time);
+    osc.stop(time+duration+0.08);
+  }
+  function pad(chord,time) {
+    // Camada aveludada e discreta: sem sininhos, sem arpejos.
+    chord.forEach((n,i)=>{
+      synth(hz(n),time,BEAT*3.9,0.022,'sawtooth',360+(i*22),-3);
+      synth(hz(n),time,BEAT*3.9,0.016,'sine',0,3);
+    });
+  }
+  function kick(time, volume=0.13) {
+    const osc=ctx.createOscillator(),g=ctx.createGain();
+    osc.type='sine';
+    osc.frequency.setValueAtTime(130,time);
+    osc.frequency.exponentialRampToValueAtTime(49,time+0.15);
+    g.gain.setValueAtTime(0.0001,time);
+    g.gain.linearRampToValueAtTime(volume,time+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001,time+0.24);
+    osc.connect(g);g.connect(master);
+    osc.start(time);osc.stop(time+0.26);
+    osc.onended=()=>{osc.disconnect();g.disconnect();};
+  }
+  function noise(time, seconds, level, cutoff, mode='highpass') {
+    if(!noiseBuffer) return;
+    const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+    source.buffer=noiseBuffer;
+    filter.type=mode;filter.frequency.value=cutoff;
+    envelope(gain,time,0.004,0.001,Math.max(0.01,seconds-0.005),level);
+    source.connect(filter);filter.connect(gain);gain.connect(master);
+    source.start(time);source.stop(time+seconds+0.01);
+    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};
+  }
+  function bass(note,time,volume=0.05) {
+    synth(hz(note),time,BEAT*0.72,volume,'sine');
+  }
+  function schedule(t,n) {
+    const bar=bars[Math.floor(n/8)%bars.length], pos=n%8;
+    if(pos===0) {
+      pad(bar.chord,t);
+      kick(t,0.13);
+      bass(bar.bass,t,0.075);
+    }
+    if(pos===4) {
+      kick(t,0.11);
+      bass(bar.bass+7,t,0.052);
+    }
+    // Pulso eletrônico macio, aveludado. Sem melodia étnica ou aguda.
+    if(pos===2 || pos===6) noise(t,0.09,0.018,1300,'highpass');
+    if(pos===3 || pos===7) noise(t,0.038,0.008,6000);
+  }
+  function tick() {
+    if(!enabled||!active||!ctx||ctx.state!=='running'||document.hidden) return;
+    while(nextTime<ctx.currentTime+0.21) {
+      schedule(nextTime,step);
+      step=(step+1)%32;
+      nextTime+=STEP;
     }
   }
-  function scheduleStep(at, n) {
-    const bar = Math.floor(n / 8) % progressions.length;
-    const step = n % 8;
-    const pattern = progressions[bar];
-    if (step === 0) {
-      // Acordes aveludados, sem batidas invasivas.
-      pattern.chord.forEach((key) => tone(key, at, stepLength * 7.6, 0.013, 'sine'));
-      tone(pattern.bass, at, 0.40, 0.07, 'sine');
-    }
-    if (step === 4) tone(pattern.bass + 7, at, 0.28, 0.04, 'sine');
-    if ([0, 2, 3, 5, 6].includes(step)) {
-      tone(pattern.melody[step], at + 0.03, stepLength * 0.68, 0.037, 'triangle');
-    }
-  }
-  function scheduler() {
-    if (!enabled || !active || !ctx || ctx.state !== 'running' || document.hidden) return;
-    while (nextTime < ctx.currentTime + 0.22) {
-      scheduleStep(nextTime, index);
-      index = (index + 1) % 32;
-      nextTime += stepLength;
-    }
+  function clickSound(type='tap') {
+    if(!enabled||document.hidden) return;
+    setup();
+    const t=ctx.currentTime+0.009;
+    // Cliques curtos de UI, sem sinos/palhetadas ou sequências de notas.
+    synth(type==='bag'?260:235,t,type==='bag'?0.10:0.07,type==='bag'?0.055:0.035,'sine');
+    if(type==='bag') noise(t+0.03,0.11,0.025,1800);
   }
   function start() {
-    if (!enabled || document.hidden) return;
+    if(!enabled||document.hidden) return;
     setup();
-    const attempt = ctx.resume();
-    Promise.resolve(attempt).then(() => {
-      if (!enabled || document.hidden || ctx.state !== 'running' || active) return;
-      active = true;
-      index = 0;
-      nextTime = ctx.currentTime + 0.06;
-      scheduler();
-      timer = window.setInterval(scheduler, 110);
-    }).catch(() => {});
+    Promise.resolve(ctx.resume()).then(()=>{
+      if(!enabled||document.hidden||ctx.state!=='running'||active) return;
+      active=true; step=0; nextTime=ctx.currentTime+0.04;
+      tick();
+      timer=setInterval(tick,120);
+    }).catch(()=>{});
   }
   function stop() {
-    active = false;
-    window.clearInterval(timer);
-    timer = undefined;
-    if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+    active=false;
+    clearInterval(timer);
+    timer=undefined;
+    if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{});
   }
   function persist() {
-    const state = enabled ? 'ligado' : 'desligado';
-    try { localStorage.setItem(STORE, state); } catch {}
-    try { sessionStorage.setItem(STORE, state); } catch {}
-    try {
-      document.cookie = STORE + '=' + state + '; path=/sacola-misteriosa; max-age=2592000; SameSite=Lax; Secure';
-    } catch {}
+    const state=enabled?'ligado':'desligado';
+    try{localStorage.setItem(STORE,state);}catch{}
+    try{sessionStorage.setItem(STORE,state);}catch{}
   }
-  button.addEventListener('click', () => {
-    enabled = !enabled;
+  button.addEventListener('click',()=>{
+    enabled=!enabled;
     persist();
     sync();
-    if (enabled) {
-      start();
-      play('surprise');
-    } else stop();
+    if(enabled){start();clickSound('tap');}
+    else stop();
   });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) stop();
-    else if (enabled) start();
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)stop();else if(enabled)start();
   });
-  document.addEventListener('pointerdown', () => {
-    // A configuração pode persistir, mas o navegador exige uma nova interação.
-    if (enabled && !active) start();
-  }, { capture: true });
-  document.addEventListener('keydown', (event) => {
-    if (enabled && !active && (event.key === 'Enter' || event.key === ' ')) start();
-  }, { capture: true });
-  document.addEventListener('click', (event) => {
-    if (!enabled || event.defaultPrevented) return;
-    const a = event.target.closest('a[href]');
-    if (a) {
-      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || a.target === '_blank' || a.hasAttribute('download')) return;
-      const destination = new URL(a.href, location.href);
-      if (destination.origin !== location.origin || !destination.pathname.startsWith('/sacola-misteriosa/')) return;
-      if (destination.href === location.href) return;
-      event.preventDefault();
-      play('navigate');
-      window.setTimeout(() => { location.assign(destination.href); }, 145);
+  document.addEventListener('pointerdown',()=>{if(enabled&&!active)start();},{capture:true});
+  document.addEventListener('keydown',(e)=>{
+    if(enabled&&!active&&(e.key==='Enter'||e.key===' '))start();
+  },{capture:true});
+  document.addEventListener('click',(e)=>{
+    if(!enabled||e.defaultPrevented)return;
+    const a=e.target.closest('a[href]');
+    if(a){
+      if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
+      const url=new URL(a.href,location.href);
+      if(url.origin!==location.origin||!url.pathname.startsWith('/sacola-misteriosa/')||url.href===location.href)return;
+      e.preventDefault();
+      clickSound('tap');
+      setTimeout(()=>{location.assign(url.href);},110);
       return;
     }
-    if (event.target.closest('.card-art, .card .btn')) { play('surprise'); return; }
-    if (event.target.closest('summary, select')) play('tap');
-  }, { capture: true });
-  window.KarenSound = { isEnabled: () => enabled, play };
+    if(e.target.closest('.card-art, .card .btn'))clickSound('bag');
+    else if(e.target.closest('summary, select'))clickSound('tap');
+  },{capture:true});
+  window.KarenSound={isEnabled:()=>enabled,play:clickSound};
   sync();
-  // Se houve consentimento numa página anterior, retoma somente quando permitido.
-  if (enabled) start();
+  if(enabled)start();
 })();
