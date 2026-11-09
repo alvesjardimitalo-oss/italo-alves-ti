@@ -1,0 +1,37 @@
+/* Ítalo InfoTec | serviços digitais e desenvolvimento de sistemas — mobile-first */
+.solucoes-novas{position:relative;padding:72px 0 78px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:radial-gradient(circle at 12% 20%,rgba(34,211,238,.08),transparent 37%),radial-gradient(circle at 87% 52%,rgba(99,102,241,.1),transparent 36%),#0b1220}
+.solucoes-intro{max-width:780px}.solucoes-kicker{display:inline-block;font-family:var(--mono);font-weight:700;color:#65dbed;text-transform:uppercase;font-size:.76rem;letter-spacing:.12em;margin-bottom:14px}
+.solucoes-novas h2{font-size:clamp(2rem,4.4vw,3.15rem);letter-spacing:-.045em;font-weight:800;margin:0 0 16px;line-height:1.13}
+.solucoes-intro>p{color:var(--text-2);font-size:1.04rem;line-height:1.75;margin:0 0 32px}
+.solucoes-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.solucao-card{display:flex;flex-direction:column;gap:11px;padding:25px 20px;background:linear-gradient(160deg,#141e32,#101929);border:1px solid #2b3850;border-radius:18px;min-height:260px;transition:transform .2s,border-color .2s}
+.solucao-card:hover{transform:translateY(-5px);border-color:#467c9b}
+.solucao-card.primary{background:linear-gradient(160deg,#19364a,#17213e);border-color:#366e88}
+.solucao-icone{font-size:1.85rem;display:grid;place-items:center;background:#1c3551;border:1px solid #375675;border-radius:14px;width:55px;height:55px}
+.solucao-card h3{font-size:1.12rem;color:#fff;line-height:1.27}
+.solucao-card p{margin:0;color:#a9b8cd;font-size:.88rem;line-height:1.62;flex:1}
+.solucao-card a{display:inline-flex;align-items:center;gap:6px;color:#75e0f2;font-size:.87rem;font-weight:750;margin-top:6px;align-self:flex-start}
+.solucao-card a:hover{text-decoration:underline}
+.solucoes-fim{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-top:26px;padding:22px 24px;border-radius:16px;border:1px solid #344566;background:#111d31}
+.solucoes-fim p{margin:0;color:#abbad0;font-size:.92rem}.solucoes-fim strong{display:block;color:#fff;font-size:1rem;margin-bottom:4px}
+.solucoes-fim .btn{flex:none}
+.dev-hero{padding:78px 0 62px;background:radial-gradient(ellipse at 80% 20%,rgba(90,82,235,.19),transparent 47%),radial-gradient(ellipse at 7% 72%,rgba(34,211,238,.09),transparent 38%),#0a1120}
+.dev-hero .dev-grid{display:grid;grid-template-columns:1fr .86fr;gap:52px;align-items:center}
+.dev-hero h1{font-size:clamp(2.65rem,5vw,4.35rem);line-height:1.08;letter-spacing:-.05em;margin:14px 0 21px}
+.dev-hero p{color:var(--text-2);font-size:1.05rem;line-height:1.8;max-width:590px;margin:0 0 26px}
+.dev-hero .dev-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+.dev-tags span{padding:7px 11px;border-radius:99px;background:#172438;border:1px solid #35465e;color:#b7cce0;font-size:.74rem;font-weight:650}
+.dev-display{border:1px solid #3f526e;background:linear-gradient(150deg,#1b2b47,#0c1629);border-radius:24px;padding:20px;box-shadow:0 35px 65px #0005;transform:rotate(2deg)}
+.dev-window{background:#0d1423;border:1px solid #42516c;border-radius:15px;overflow:hidden}
+.dev-bar{padding:11px 15px;background:#1a273b;border-bottom:1px solid #33425a;display:flex;gap:6px;align-items:center;color:#9caec5;font:.7rem var(--mono)}
+.dev-bar i{width:7px;height:7px;border-radius:50%;background:#e4838b}.dev-bar i:nth-child(2){background:#d9ac65}.dev-bar i:nth-child(3){background:#66bda4}.dev-bar span{margin-left:9px}
+.dev-workspace{display:grid;grid-template-columns:54px 1fr;min-height:240px}.dev-aside{border-right:1px solid #283c54;background:#121d30;display:flex;flex-direction:column;gap:11px;align-items:center;padding:21px 12px}.dev-aside b{width:18px;height:18px;border-radius:6px;background:#24c5e4}.dev-aside i{width:18px;height:9px;border-radius:3px;background:#425574}
+.dev-metrics{padding:20px}.dev-metrics>span{display:block;color:#8da3ba;font-size:.72rem;margin-bottom:12px}.dev-kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}.dev-kpis div{background:#17273d;border:1px solid #324c65;border-radius:10px;padding:12px;font-size:.62rem;color:#a9bfd5}.dev-kpis strong{display:block;color:#fff;font-size:1rem}.dev-chart{margin-top:14px;border-radius:9px;background:#182840;min-height:88px;padding:15px 10px 9px;display:flex;align-items:end;justify-content:space-around;gap:6px}.dev-chart i{width:10%;height:var(--bar);border-radius:5px 5px 0 0;background:linear-gradient(#32d5e5,#6d6aee)}
+.dev-processo{padding:70px 0}.dev-processo h2,.dev-ofertas h2{font-size:clamp(1.9rem,3vw,2.7rem);margin:0 0 15px}.dev-ofertas{padding:65px 0;background:#0b1423}.dev-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px}
+.dev-steps div{padding:23px;background:#111c2d;border:1px solid #273950;border-radius:15px}.dev-steps b{display:block;color:#61dceb;font:.8rem var(--mono);margin-bottom:9px}.dev-steps h3{margin-bottom:9px;font-size:1.08rem}.dev-steps p{margin:0;color:#9dafc5;font-size:.9rem}
+.dev-cta{padding:65px 0;background:linear-gradient(130deg,#133b55,#1c2851);border-top:1px solid #3f6783;text-align:center}
+.dev-cta h2{font-size:clamp(2rem,4vw,3rem);max-width:720px;margin:0 auto 15px}.dev-cta p{max-width:610px;margin:0 auto 22px;color:#c9d5e6}
+@media(max-width:1060px){.solucoes-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.solucao-card{min-height:226px}.dev-hero .dev-grid{gap:25px}}
+@media(max-width:690px){.solucoes-novas{padding:47px 0 51px}.solucoes-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.solucao-card{padding:17px 14px;gap:9px;min-height:240px;border-radius:15px}.solucao-card h3{font-size:.97rem}.solucao-card p{font-size:.76rem}.solucao-card a{font-size:.77rem}.solucao-icone{height:43px;width:43px;font-size:1.45rem}.solucoes-novas h2{font-size:2.25rem}.solucoes-intro>p{font-size:.93rem;margin-bottom:23px}.solucoes-fim{padding:17px;flex-direction:column;align-items:stretch}.solucoes-fim .btn{width:100%}.dev-hero{padding:49px 0}.dev-hero .dev-grid{grid-template-columns:1fr}.dev-hero h1{font-size:2.65rem}.dev-display{max-width:440px;margin:0 auto;transform:none;width:100%}.dev-processo,.dev-ofertas,.dev-cta{padding:49px 0}.dev-steps{grid-template-columns:1fr;gap:12px}}
+@media(max-width:370px){.solucoes-grid{grid-template-columns:1fr}.solucao-card{min-height:175px}}
+@media(prefers-reduced-motion:reduce){.solucao-card{transition:none}.solucao-card:hover{transform:none}}
