@@ -16,6 +16,7 @@ import * as vLeads from './views/leads.js';
 import * as vConversoes from './views/conversoes.js';
 import * as vDiv from './views/divulgacao.js';
 import * as vLemb from './views/lembretes.js';
+import * as vSacolas from './views/sacolas.js';
 
 const $ = (s) => document.querySelector(s);
 $('#versao').textContent = VERSAO;
@@ -31,6 +32,7 @@ const ROTAS = [
   ['/leads', vLeads.lista],
   ['/conversoes', vConversoes.tela],
   ['/divulgacao', vDiv.tela],
+  ['/sacolas', vSacolas.tela],
   ['/lembretes', vLemb.lista],
   ['/catalogo', vCat.lista],
   ['/config', vCfg.tela],
@@ -50,6 +52,7 @@ const MENU = [
   ['/lembretes', 'clock', 'Lembretes de manutenção', () => lembretesManutencao().length],
   ['/financeiro', 'financeiro', 'Financeiro', () => aReceber().length],
   ['/divulgacao', 'globe', 'Divulgação e indicação'],
+  ['/sacolas', 'catalogo', 'Sacolas Misteriosas'],
   ['/catalogo', 'catalogo', 'Produtos e serviços'],
   ['/config', 'config', 'Configurações'],
 ];
