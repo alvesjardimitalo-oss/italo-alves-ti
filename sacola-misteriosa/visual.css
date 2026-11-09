@@ -191,3 +191,30 @@ header nav a{font-size:.71rem}
 .hero h1{font-size:2.65rem}
 .hero-kicker{font-size:.6rem;letter-spacing:.07em}
 }
+
+/* Controle discreto da identidade sonora da campanha */
+.sound-toggle{
+  flex:0 0 auto;display:inline-flex;gap:7px;align-items:center;justify-content:center;
+  border-radius:50px;padding:9px 13px;min-height:39px;white-space:nowrap;
+  font:700 .76rem/1.1 "DM Sans",sans-serif;
+  background:#fff7f4;color:#7a5366;border:1px solid #e7cad5;
+  cursor:pointer;transition:background .2s,transform .2s,color .2s;
+}
+.sound-toggle:hover{background:#fce7ef;transform:translateY(-1px)}
+.sound-toggle.is-on{background:#65334f;color:#fff6ea;border-color:#65334f}
+.sound-toggle .sound-toggle-icon{font-size:1rem;line-height:1}
+.sound-toggle.is-on .sound-toggle-icon{animation:soundPulse 2.2s ease-in-out infinite}
+.sound-toggle:focus-visible{outline:3px solid #d58aaf;outline-offset:3px}
+@keyframes soundPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.2);opacity:1}}
+@media(min-width:691px){header nav{margin-left:auto}}
+@media(max-width:690px){
+  header .wrap{display:flex;justify-content:space-between}
+  .sound-toggle{margin-left:auto;padding:8px 11px;font-size:.72rem}
+  .sound-toggle .sound-toggle-icon{font-size:.92rem}
+  header nav{margin-left:0}
+}
+@media(max-width:340px){
+  .sound-toggle{font-size:.65rem;padding:7px 9px}
+  .brand{font-size:.88rem}
+}
+@media(prefers-reduced-motion:reduce){.sound-toggle.is-on .sound-toggle-icon{animation:none}}
