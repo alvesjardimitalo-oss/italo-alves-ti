@@ -72,12 +72,12 @@ function desenhar() {
     art.type = 'button';
     art.className = 'card-art';
     art.setAttribute('aria-label', disponivel ?
-      'Escolher ' + s.titulo + ', ' + brl(s.valor) : s.titulo + ' esgotada');
+      'Sacudir a ' + s.titulo + ', ' + brl(s.valor) : s.titulo + ' esgotada');
     art.innerHTML = arteSacola(i) +
       '<span class="card-art__spark" aria-hidden="true">✦</span>' +
       '<span class="card-art__spark" aria-hidden="true">✧</span>' +
       '<span class="card-art__hint" aria-hidden="true">' +
-      (disponivel ? 'Toque para escolher ↗' : 'Esgotada no momento') + '</span>';
+      (disponivel ? 'Toque para sacudir ✦' : 'Esgotada no momento') + '</span>';
     art.disabled = !disponivel;
     card.appendChild(art);
     const body = document.createElement('div');
@@ -98,7 +98,8 @@ function desenhar() {
     btn.disabled = !disponivel;
     if (disponivel) {
       if (seletor) seletor.appendChild(new Option(s.titulo + ' · ' + brl(s.valor), s.id));
-      art.addEventListener('click', () => selecionar(s.id));
+      // Tocar na sacola sacode (encanto.js); o botão escolhe.
+      art.addEventListener('click', () => { if (!window.KarenEncanto) selecionar(s.id); });
       btn.addEventListener('click', () => selecionar(s.id));
     }
     body.appendChild(btn);
@@ -116,7 +117,17 @@ function desenhar() {
     const pedidoId = new URLSearchParams(window.location.search).get('sacola');
     if (pedidoId && ativos.some(s => s.id === pedidoId && Number(s.estoque) > 0)) seletor.value = pedidoId;
   }
+  // Ganchos para as animações (sacola-misteriosa/encanto.js).
+  document.dispatchEvent(new CustomEvent('karen:vitrine', {detail:{itens:ativos}}));
+  avisarEscolha();
 }
+function avisarEscolha() {
+  if (!seletor) return;
+  const ativos = itens.filter(s => s.ativo !== false && valido(s));
+  const i = ativos.findIndex(s => s.id === seletor.value);
+  document.dispatchEvent(new CustomEvent('karen:escolha', {detail: i < 0 ? null : {...ativos[i], indice:i, preco:brl(ativos[i].valor)}}));
+}
+if (seletor) seletor.addEventListener('change', avisarEscolha);
 function mostrar(texto, erro=false, waUrl='') {
   retorno.hidden = false;
   retorno.style.color = erro ? '#a12b41' : '#276044';
@@ -191,7 +202,9 @@ if (form) form.addEventListener('submit', async (ev) => {
       (obs ? '\nObservação: ' + obs : '') + '\nQuero confirmar disponibilidade e pagamento.';
     const url = telefoneKaren ? 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(mensagem) : '';
     mostrar('Solicitação recebida! A equipe entrará em contato para confirmar a disponibilidade, pagamento e entrega.', false, url);
+    document.dispatchEvent(new CustomEvent('karen:pedido-ok', {detail:{nome, sacola:s.titulo, waUrl:url}}));
     form.reset();
+    avisarEscolha();
   } else {
     const mensagem = 'Olá, Karen! Quero solicitar a sacola ' + s.titulo + ' (' + brl(s.valor) + '). Meu nome é ' + nome + '.';
     const url = telefoneKaren ? 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(mensagem) : '';
