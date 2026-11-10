@@ -1,4 +1,4 @@
-# Ítalo Alves TI · site + sistema da assistência técnica
+# Ítalo InfoTec · site + sistema da assistência técnica
 
 O projeto tem duas partes:
 

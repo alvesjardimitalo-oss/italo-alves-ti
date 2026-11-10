@@ -1,6 +1,6 @@
 // GERADO AUTOMATICAMENTE a partir de conteudo/site.json — edite lá, não aqui.
 export const SITE = {
-  "nome": "Ítalo Alves TI",
+  "nome": "Ítalo InfoTec",
   "whatsapp": "5533998556503",
   "email": "alvesjardim.italo@gmail.com",
   "cidade": "Frei Inocêncio",
