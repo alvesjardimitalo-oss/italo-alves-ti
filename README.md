@@ -29,7 +29,7 @@ Não edite `index.html`, `dicas/`, `ferramentas/` e as outras páginas geradas: 
 
 **Proteção de páginas editadas à mão:** o gerador guarda em `tools/site/gerado.json` o que ele mesmo gravou. Se uma página foi alterada direto no HTML (como a página inicial, serviços, empresas e problemas), ele **não a sobrescreve** e lista essa página no log do *Gerar site*. Para forçar a regeneração completa (descarta edições manuais): `python tools/site/gerar.py --forcar`.
 
-O `sitemap.xml` é montado varrendo todas as páginas públicas com URL canônica (inclusive as criadas à mão, como `desenvolvimento/` e `planos/`); o `lastmod` só muda quando a página muda. A pasta `sacola-misteriosa/` fica fora do sitemap.
+O `sitemap.xml` é montado varrendo todas as páginas públicas com URL canônica (inclusive as criadas à mão, como `desenvolvimento/` e `planos/`); o `lastmod` só muda quando a página muda. A promoção `sacola-misteriosa/` também entra.
 
 ### Ferramentas do site
 Check-up do computador, Consertar ou trocar?, Monte seu PC, Teste de velocidade e Teste de teclado/tela/som/microfone/câmera. O resultado de cada uma pode ser enviado ao técnico pelo "Fale comigo".

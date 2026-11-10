@@ -24,7 +24,7 @@
   "politica-de-privacidade.html": "480f60c91e458329e36e0e31a6b7edd38e5bfa4e092c4f0b4c43df9fc96f136a",
   "robots.txt": "105133b1be3661610b966a5e12897f6a0811f91c29d7a16f5fac1d4545e922cd",
   "site.webmanifest": "2bc3f5606fa5a6c797863e577e638ac4f160818979e65dc75c7294b7626bef4e",
-  "sitemap.xml": "548857d4597c478a501b0442f66cb4d66795141c550ceffcb8b8876644c7d805",
+  "sitemap.xml": "c64d8f4f28f03df0095974f1ca07812ca9454d0c34d0e97122be0e2498aad9e6",
   "sobre.html": "2189ff008e9c0f002c7fdd0007dc178afe3655c0dc8246717008fd3b1f19d138",
   "suporte-remoto.html": "2c37773ea08ede407484d3c1f408316883e8581f6099344f6900888b59882bf6"
  },
@@ -71,6 +71,10 @@
   "https://italoinfotec.com.br/planos/": "f28bf05865a38c3e4e2d8edd1f8783665b81b29cd34286887c2e07d20a5dcf70",
   "https://italoinfotec.com.br/politica-de-privacidade.html": "480f60c91e458329e36e0e31a6b7edd38e5bfa4e092c4f0b4c43df9fc96f136a",
   "https://italoinfotec.com.br/problemas/": "c4b343dc16324e1adc860c73b3f0ecc61cf4656098984e37e97b1919789e3da1",
+  "https://italoinfotec.com.br/sacola-misteriosa/": "1a4e1f9bbfd40d84b705cf843fa84d0b638aa75858b92734fec9ec03a160c230",
+  "https://italoinfotec.com.br/sacola-misteriosa/como-funciona/": "80416098d3709ee13576b742864efd6a42817d7cfb77cf45c44db7cc0673de81",
+  "https://italoinfotec.com.br/sacola-misteriosa/pedido/": "89b9a44a994efcfac17763ba3e52b2635d765f923b32768a49ce7f2d2e707f2c",
+  "https://italoinfotec.com.br/sacola-misteriosa/sacolas/": "3c366ae2a0a6e4d8b5b3538f69373b1fc9b03776a1d2736046a8038b1bd4acba",
   "https://italoinfotec.com.br/servicos/": "9fd10d2c29dbfb214d435442e8d3b682f2aa01cc94b6185a4e64b0fd60cdab40",
   "https://italoinfotec.com.br/sobre.html": "2189ff008e9c0f002c7fdd0007dc178afe3655c0dc8246717008fd3b1f19d138",
   "https://italoinfotec.com.br/suporte-remoto.html": "2c37773ea08ede407484d3c1f408316883e8581f6099344f6900888b59882bf6"
