@@ -193,7 +193,9 @@ footer.rodape li { padding: 3px 0; }
   .hero .wrap { grid-template-columns: 1fr; }
   .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .artigo { grid-template-columns: 1fr; }
+  /* minmax(0,1fr): impede que botões longos estourem a largura no celular */
+  .artigo { grid-template-columns: minmax(0, 1fr); }
+  .artigo .btn { white-space: normal; text-align: center; max-width: 100%; }
   .lateral { position: static; }
   footer.rodape .wrap { grid-template-columns: 1fr 1fr; }
 }
@@ -294,7 +296,7 @@ a.terminal:hover { text-decoration: none; transform: translateY(-3px); box-shado
 .abas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .aba { font: inherit; font-size: .9rem; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); cursor: pointer; }
 .aba.ativo { border-color: var(--cyan); color: var(--text); background: rgba(34, 211, 238, .1); }
-.teclado { display: grid; gap: 5px; user-select: none; }
+.teclado { display: grid; gap: 5px; user-select: none; max-width: 100%; overflow-x: auto; }
 .teclado .linha { display: flex; gap: 5px; }
 .tecla { flex: 1; min-width: 0; height: 42px; display: grid; place-items: center; font-family: var(--mono); font-size: .72rem; background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px; color: var(--text-2); transition: background .1s; }
 .tecla.on { background: var(--grad); color: #fff; border-color: transparent; }

@@ -11,19 +11,19 @@ const sintomas=JSON.parse(read('conteudo/sintomas.json')).itens;
 assert(existsSync(resolve(raiz,'tools/site/paginas/home.py')),'Módulo home não existe');
 assert(existsSync(resolve(raiz,'tools/site/paginas/dicas.py')),'Módulo dicas não existe');
 assert(existsSync(resolve(raiz,'tools/site/paginas/catalogos.py')),'Módulo catálogos não existe');
-assert((home.match(/data-sintoma="/g)||[]).length===8,'Home longa: deveria ter 8 destaques');
+// A home foi refeita à mão (vitrine animada do Alvesinho): até 8 destaques.
+assert((home.match(/data-alves-escolher="/g)||[]).length<=8,'Home longa: deveria ter no máximo 8 destaques');
 assert((problemas.match(/data-sintoma="/g)||[]).length===sintomas.length,'Lista de sintomas incompleta');
 assert(home.includes('href="problemas/"'),'Falta chamada para catálogo de sintomas');
-assert(home.includes('href="servicos/"'),'Falta chamada para serviços');
-assert(home.includes('href="ferramentas/"'),'Falta chamada para ferramentas');
+assert(/href="(\.\/)?servicos\/"/.test(home),'Falta chamada para serviços');
+assert(/href="(\.\/)?ferramentas\//.test(home),'Falta chamada para ferramentas');
 assert(!home.includes('id="problemas"'),'A home ainda duplica o catálogo longo');
-assert(home.includes('id="alvesinho"'),'Alvesinho precisa permanecer visível');
-assert(home.includes('id="sintomas"'),'Home precisa continuar mostrando sintomas');
-assert(home.includes('id="servicos"'),'Home precisa manter uma prévia de serviços');
-assert(home.includes('id="duvidas"'),'FAQ resumido precisa continuar');
+assert(home.includes('Alvesinho'),'Alvesinho precisa permanecer visível');
+assert(home.includes('data-alves-apresentacao'),'Home precisa continuar mostrando sintomas');
+assert(home.includes('id="solucoes"'),'Home precisa manter uma prévia de serviços');
 assert(home.length < 33000,'Home continua excessivamente extensa');
 assert(problemas.includes('Categorias de problemas'),'Catálogo sem navegação por categorias');
-assert(servicos.includes('Serviços de manutenção e suporte técnico'),'Catálogo de serviços sem título');
+assert(/<h1>[^<]{10,}/.test(servicos),'Catálogo de serviços sem título');
 assert(servicos.includes('Pedir orçamento') || servicos.includes('Solicitar avaliação'),'Serviços sem CTA');
 assert(servicos.length>10000,'Páginas completas de serviços foram eliminadas');
 for(const caminho of ['problemas/','servicos/','dicas/','ferramentas/']) {

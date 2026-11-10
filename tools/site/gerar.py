@@ -6,10 +6,12 @@ Roda sozinho no GitHub Actions a cada alteração em conteudo/ (workflow "Gerar 
 Para rodar no PC (opcional): python tools/site/gerar.py
 """
 import datetime
+import hashlib
 import html
 import json
 import os
 import re
+import sys
 import unicodedata
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -33,11 +35,58 @@ def slug(t):
     return re.sub(r'[^a-z0-9]+', '-', t.lower()).strip('-')
 
 
+# ------------------------------------------------------------------
+# Proteção de páginas editadas à mão
+# ------------------------------------------------------------------
+# Várias páginas (início, serviços, empresas, problemas...) foram refeitas
+# direto no HTML depois de geradas. Sem esta proteção, qualquer commit em
+# conteudo/ faria o "Gerar site" sobrescrevê-las com a versão antiga.
+# O gerador só reescreve um arquivo se ele ainda é exatamente o que o próprio
+# gerador gravou da última vez (hash em tools/site/gerado.json).
+# Para forçar a regeneração de tudo: python tools/site/gerar.py --forcar
+FORCAR = '--forcar' in sys.argv
+MANIFESTO = os.path.join(RAIZ, 'tools', 'site', 'gerado.json')
+SEMPRE = {'sitemap.xml', 'robots.txt', 'assets/js/site-config.js', 'site.webmanifest'}
+try:
+    with open(MANIFESTO, encoding='utf-8') as _f:
+        _m = json.load(_f)
+except (FileNotFoundError, ValueError):
+    _m = {}
+DONO = _m.get('gerador', {})          # arquivo -> hash do que o gerador gravou
+PAGINAS_HASH = _m.get('sitemap', {})  # URL -> hash da página (controla o lastmod)
+PRESERVADAS = []
+GRAVADAS = set()
+
+
+def _hash(texto):
+    return hashlib.sha256(texto.encode('utf-8')).hexdigest()
+
+
 def gravar(caminho, conteudo):
     p = os.path.join(RAIZ, caminho)
+    atual = None
+    if os.path.exists(p):
+        with open(p, encoding='utf-8') as f:
+            atual = f.read()
+    if atual == conteudo:
+        DONO[caminho] = _hash(conteudo)
+        return
+    editada_a_mao = atual is not None and DONO.get(caminho) != _hash(atual)
+    if editada_a_mao and caminho not in SEMPRE and not FORCAR:
+        PRESERVADAS.append(caminho)
+        DONO.pop(caminho, None)
+        return
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, 'w', encoding='utf-8') as f:
         f.write(conteudo)
+    DONO[caminho] = _hash(conteudo)
+    GRAVADAS.add(caminho)
+
+
+def salvar_manifesto():
+    with open(MANIFESTO, 'w', encoding='utf-8') as f:
+        json.dump({'gerador': dict(sorted(DONO.items())), 'sitemap': dict(sorted(PAGINAS_HASH.items()))}, f, ensure_ascii=False, indent=1)
+        f.write('\n')
 
 
 ICO = {
@@ -101,7 +150,9 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
   <link rel="manifest" href="{raiz}site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
   <link rel="stylesheet" href="{raiz}assets/css/site.css?v={V}">
 {lds}</head>
 <body>
@@ -240,7 +291,7 @@ FAQ = [
 def ld_negocio():
     d = {
         "@context": "https://schema.org", "@type": "ComputerStore", "name": NOME, "url": BASE,
-        "image": BASE + "assets/img/logo.svg", "email": SITE.get('email'),
+        "image": BASE + "assets/img/icon-512.png", "logo": BASE + "assets/img/icon-512.png", "email": SITE.get('email'),
         "address": {"@type": "PostalAddress", "streetAddress": SITE['endereco'], "addressLocality": SITE['cidade'],
                     "addressRegion": SITE['uf'], "postalCode": SITE.get('cep', ''), "addressCountry": "BR"},
         "areaServed": [{"@type": "City", "name": c['cidade']} for c in CIDADES] + [{"@type": "Country", "name": "Brasil"}],
@@ -567,13 +618,52 @@ def gerar_institucionais():
 # ==================================================================
 # Arquivos de apoio
 # ==================================================================
+
+# Pastas que não entram no sitemap (campanha de cliente hospedada no domínio).
+FORA_DO_SITEMAP = ('sacola-misteriosa/', 'tools/', 'assets/')
+
+
+def montar_sitemap():
+    anterior = {}
+    sp = os.path.join(RAIZ, 'sitemap.xml')
+    if os.path.exists(sp):
+        anterior = dict(re.findall(r'<loc>([^<]+)</loc><lastmod>([^<]+)</lastmod>', open(sp, encoding='utf-8').read()))
+    urls = []
+    for pasta, _, arquivos in os.walk(RAIZ):
+        rel_pasta = os.path.relpath(pasta, RAIZ).replace(os.sep, '/')
+        if rel_pasta.startswith('.') and rel_pasta != '.':
+            continue
+        for nome in arquivos:
+            if not nome.endswith('.html'):
+                continue
+            rel = nome if rel_pasta == '.' else f'{rel_pasta}/{nome}'
+            if rel.startswith(FORA_DO_SITEMAP):
+                continue
+            texto = open(os.path.join(pasta, nome), encoding='utf-8').read()
+            if 'noindex' in texto:
+                continue
+            m = re.search(r'<link rel="canonical" href="([^"]+)"', texto)
+            if not m or not m.group(1).startswith(BASE):
+                continue
+            urls.append((m.group(1), _hash(texto)))
+    urls.sort(key=lambda u: (u[0] != BASE, u[0]))
+    hashes_antigos = PAGINAS_HASH.copy()
+    linhas = []
+    for loc, h in urls:
+        mudou = hashes_antigos.get(loc) != h or loc not in anterior
+        data = HOJE if mudou else anterior[loc]
+        PAGINAS_HASH[loc] = h
+        linhas.append(f'  <url><loc>{loc}</loc><lastmod>{data}</lastmod></url>\n')
+    for loc in set(PAGINAS_HASH) - {u[0] for u in urls}:
+        PAGINAS_HASH.pop(loc)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(linhas) + '</urlset>\n'
+
+
 def gerar_apoio():
-    urls = ['', 'dicas/', 'servicos/', 'problemas/', 'ferramentas/', 'atendimento/', 'acompanhar.html', 'sobre.html', 'garantia.html', 'suporte-remoto.html', 'empresas.html', 'politica-de-privacidade.html']
-    urls += ['dicas/' + a['slug'] + '.html' for a in ARTIGOS]
-    urls += ['ferramentas/' + f[3] for f in FERRAMENTAS]
-    urls += [f'atendimento/{slug(c["cidade"])}-{c["uf"].lower()}.html' for c in CIDADES]
-    gravar('sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-           + ''.join(f'  <url><loc>{BASE}{u}</loc><lastmod>{HOJE}</lastmod></url>\n' for u in urls) + '</urlset>\n')
+    # Varre todas as páginas públicas (inclusive as criadas à mão, como
+    # desenvolvimento/, planos/ e agendar/) em vez de usar uma lista fixa.
+    # lastmod só muda quando a página muda de verdade.
+    gravar('sitemap.xml', montar_sitemap())
     caminho = '/' + BASE.split('/', 3)[3] if BASE.count('/') > 3 else '/'
     gravar('robots.txt', f'User-agent: *\nAllow: /\nDisallow: {caminho}sistema.html\nDisallow: {caminho}imprimir.html\nDisallow: {caminho}tools/\nSitemap: {BASE}sitemap.xml\n')
     gravar('assets/js/site-config.js', '// GERADO AUTOMATICAMENTE a partir de conteudo/site.json — edite lá, não aqui.\nexport const SITE = '
@@ -595,4 +685,10 @@ if __name__ == '__main__':
     gerar_ferramentas()
     gerar_institucionais()
     gerar_apoio()
+    salvar_manifesto()
+    if PRESERVADAS:
+        print('Páginas editadas à mão PRESERVADAS (o gerador não as sobrescreveu):')
+        for c in PRESERVADAS:
+            print('  -', c)
+        print('Para incorporar mudanças de conteudo/ nelas, edite o HTML ou rode com --forcar (sobrescreve).')
     print(f'Site gerado: {len(ARTIGOS)} artigos, catálogo de problemas e serviços, {len(CIDADES)} cidade(s), {len(FERRAMENTAS)} ferramentas.')

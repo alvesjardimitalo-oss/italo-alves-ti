@@ -7,6 +7,8 @@ on:
     paths:
       - 'conteudo/**'
       - 'tools/site/**'
+      # Páginas editadas à mão também atualizam o sitemap (lastmod e páginas novas).
+      - '**/*.html'
   workflow_dispatch:
 
 permissions:
