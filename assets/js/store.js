@@ -68,6 +68,18 @@ export const store = {
     if (!semGatilho) disparar(col, id);
     return r;
   },
+  /**
+   * Lê documentos e grava alterações numa única transação (tudo ou nada).
+   * leituras = [{col, id}]; calcular(docs) recebe os documentos atuais (ou null)
+   * e devolve [{col, id, dados}]. Lançar erro em calcular() cancela tudo.
+   */
+  async transacao(leituras, calcular) {
+    const carimbo = { atualizadoEm: new Date().toISOString(), atualizadoPor: estado.usuario?.email || '' };
+    const preparar = (docs) => (calcular(docs) || []).map((a) => ({ ...a, dados: { ...limpar(a.dados), ...carimbo } }));
+    const feitas = await motor.transacao(leituras, preparar);
+    feitas.forEach((a) => disparar(a.col, a.id));
+    return feitas;
+  },
   /** Grava um documento com ID definido (fora das coleções carregadas, ex.: rastreio público). */
   async definir(col, id, dados) { return motor.definir(col, id, limpar(dados)); },
   async apagarDoc(col, id) { return motor.remover(col, id); },
@@ -185,6 +197,16 @@ async function motorFirebase() {
       return { id: ref.id, ...dados, numero, ...(extra ? extra(numero) : {}) };
     },
     atualizar: (col, id, dados) => F.updateDoc(F.doc(colRef(col), id), dados),
+    async transacao(leituras, preparar) {
+      let feitas = [];
+      await F.runTransaction(db, async (tx) => {
+        const snaps = await Promise.all(leituras.map(({ col, id }) => tx.get(F.doc(colRef(col), id))));
+        const docs = snaps.map((sn) => (sn.exists() ? { id: sn.id, ...normalizar(sn.data()) } : null));
+        feitas = preparar(docs);
+        feitas.forEach(({ col, id, dados }) => tx.update(F.doc(colRef(col), id), dados));
+      });
+      return feitas;
+    },
     remover: (col, id) => F.deleteDoc(F.doc(colRef(col), id)),
     definir: (col, id, dados) => F.setDoc(F.doc(colRef(col), id), dados),
     salvarConfig: (dados) => F.setDoc(cfgRef, dados, { merge: true }),
@@ -234,6 +256,13 @@ function motorDemo() {
       return { id: k, ...novo };
     },
     async atualizar(col, k, dados) { db[col][k] = { ...db[col][k], ...dados }; mudou(); },
+    async transacao(leituras, preparar) {
+      const docs = leituras.map(({ col, id: k }) => (db[col] && db[col][k] ? { id: k, ...db[col][k] } : null));
+      const feitas = preparar(docs);
+      feitas.forEach(({ col, id: k, dados }) => { db[col][k] = { ...db[col][k], ...dados }; });
+      mudou();
+      return feitas;
+    },
     async remover(col, k) { if (db[col]) delete db[col][k]; mudou(); },
     async definir(col, k, dados) { db[col] = db[col] || {}; db[col][k] = dados; gravar(); },
     async salvarConfig(dados) { db.config = { ...db.config, ...dados }; mudou(); },

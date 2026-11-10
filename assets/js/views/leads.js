@@ -3,6 +3,9 @@ import { icon } from '../icons.js';
 import { esc, norm, dataBR, formatFone, whatsapp, badge, toast, confirmar, modal, vazio } from '../util.js';
 import { empresa } from '../negocio.js';
 
+/** Remove o código interno [ref:...] que o pedido da sacola grava no detalhe. */
+export const semRef = (t) => String(t || '').replace(/\s*\[ref:[^\]]*\]/g, '');
+
 export const STATUS_LEAD = { 'Novo': 'info', 'Em contato': 'warn', 'Virou cliente': 'ok', 'Perdido': 'muted' };
 
 export function lista(el, _p, query) {
@@ -39,7 +42,7 @@ export function lista(el, _p, query) {
       ${itens.map((l) => `<tr>
         <td class="nowrap">${dataBR(l.criadoEm, true)}<div class="sub">${esc(l.origem || '')}${l.utm ? ' · ' + esc(l.utm) : ''}</div>${l.indicacao ? `<div class="sub" style="color:var(--ok)">indicação: ${esc(l.indicacao)}</div>` : ''}</td>
         <td><div class="forte">${esc(l.nome)}</div><div class="sub">${esc(formatFone(l.whatsapp))} · ${esc(l.cidade)}</div></td>
-        <td>${esc(l.equipamento)} · ${esc(l.problema)}<div class="sub">${esc(l.servico || '')}${l.detalhe ? ' — ' + esc(l.detalhe.slice(0, 90)) + (l.detalhe.length > 90 ? '…' : '') : ''}</div></td>
+        <td>${esc(l.equipamento)} · ${esc(l.problema)}<div class="sub">${esc(l.servico || '')}${l.detalhe ? ' — ' + esc(semRef(l.detalhe).slice(0, 90)) + (semRef(l.detalhe).length > 90 ? '…' : '') : ''}</div></td>
         <td class="sub">${esc(l.atendimento)}</td>
         <td>${badge(l.status || 'Novo', STATUS_LEAD)}</td>
         <td><div class="acoes">
@@ -66,7 +69,7 @@ function detalhe(l) {
         <dt>Recebido</dt><dd>${dataBR(l.criadoEm, true)}</dd><dt>WhatsApp</dt><dd>${esc(formatFone(l.whatsapp))}</dd><dt>Cidade</dt><dd>${esc(l.cidade)}</dd>
         <dt>Pedido</dt><dd>${esc(l.servico)}</dd><dt>Equipamento</dt><dd>${esc(l.equipamento)}</dd><dt>Problema</dt><dd>${esc(l.problema)}</dd>
         <dt>Atendimento</dt><dd>${esc(l.atendimento)}</dd>${l.indicacao ? `<dt>Indicação</dt><dd>${esc(l.indicacao)}</dd>` : ''}${l.origem ? `<dt>Origem</dt><dd>${esc(l.origem)}${l.utm ? ' · ' + esc(l.utm) : ''}</dd>` : ''}</dl>
-      ${l.detalhe ? `<div class="texto-bloco" style="margin-top:12px">${esc(l.detalhe)}</div>` : ''}
+      ${l.detalhe ? `<div class="texto-bloco" style="margin-top:12px">${esc(semRef(l.detalhe))}</div>` : ''}
       <form id="fl" class="form" style="margin-top:16px">
         <div class="campo c6"><label>Status</label><select name="status">${Object.keys(STATUS_LEAD).map((s) => `<option ${l.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="campo c12"><label>Anotações</label><textarea name="anotacao" maxlength="1000">${esc(l.anotacao || '')}</textarea></div>

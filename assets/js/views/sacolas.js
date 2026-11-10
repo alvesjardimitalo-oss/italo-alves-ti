@@ -2,7 +2,8 @@
 // Conteúdo interno fica somente em ti/base/sacolas (acesso restrito).
 // Vitrine é uma cópia limitada em ti/base/rastreio/sacolas-publicas.
 import { store } from '../store.js';
-import { esc, money, parseMoney, toast, confirmar, dataBR, whatsapp } from '../util.js';
+import { esc, money, parseMoney, toast, confirmar, dataBR, whatsapp, modal } from '../util.js';
+import { semRef } from './leads.js';
 import { icon } from '../icons.js';
 
 const URL_LOJA = 'https://italoinfotec.com.br/sacola-misteriosa/';
@@ -17,6 +18,40 @@ const publicos = (xs) => xs.map((s) => ({
   valor: Number(s.valor) || 0, estoque: Math.max(0, Number(s.estoque) || 0), ativo: s.ativo !== false,
 })).filter((s) => s.id && s.titulo && s.valor > 0);
 const sacolasAtuais = () => store.lista('sacolas');
+
+/** Descobre qual sacola o cliente pediu: pelo código [ref:...] ou, em pedidos antigos, pelo título. */
+function sacolaDoPedido(p) {
+  const ref = /\[ref:([^\]]+)\]/.exec(p.detalhe || '');
+  if (ref && store.get('sacolas', ref[1])) return store.get('sacolas', ref[1]);
+  const t = /Sacola:\s*(.+?)\s*(\||\[|$)/.exec(p.detalhe || '');
+  if (!t) return null;
+  const iguais = sacolasAtuais().filter((s) => (s.titulo || '').trim().toLowerCase() === t[1].trim().toLowerCase());
+  return iguais.length === 1 ? iguais[0] : null;
+}
+const pago = (p) => Boolean(p.pagamentoConfirmadoEm);
+
+/** Pergunta qual sacola foi vendida quando o pedido não identifica (pedidos antigos). */
+function escolherSacola(p) {
+  return new Promise((ok) => {
+    const opcoes = sacolasAtuais().filter((s) => Number(s.estoque) > 0);
+    if (!opcoes.length) { toast('Nenhuma sacola com estoque para dar baixa.', 'erro'); ok(null); return; }
+    let escolhida = null;
+    const m = modal({
+      titulo: 'Qual sacola foi paga?',
+      conteudo: '<p class="sub">Não consegui identificar a sacola deste pedido. Escolha qual vai sair do estoque.</p>' +
+        '<p class="sub" style="margin-top:6px">' + esc(semRef(p.detalhe || '')) + '</p>' +
+        '<div class="campo" style="margin-top:12px"><select id="sacola-baixa">' +
+        opcoes.map((s) => '<option value="' + esc(s.id) + '">' + esc(s.titulo) + ' · ' + money(s.valor) + ' · estoque ' + (Number(s.estoque) || 0) + '</option>').join('') +
+        '</select></div><div class="form-acoes"><button class="btn" data-fechar>Cancelar</button>' +
+        '<button class="btn btn-primary" id="ok-sacola-baixa">Continuar</button></div>',
+      aoFechar: () => ok(escolhida),
+    });
+    m.el.querySelector('#ok-sacola-baixa').onclick = () => {
+      escolhida = store.get('sacolas', m.el.querySelector('#sacola-baixa').value);
+      m.fechar();
+    };
+  });
+}
 async function publicar(xs=sacolasAtuais(), tel=store.config.sacolasWhatsapp || '') {
   await store.definir('rastreio', 'sacolas-publicas', {
     itens: publicos(xs),
@@ -102,13 +137,84 @@ export function tela(el) {
       '<table class="tabela"><thead><tr><th>Data</th><th>Cliente</th><th>Sacola solicitada</th><th>Status</th><th>Ação</th></tr></thead><tbody>' +
       pedidos.map((p) => '<tr><td class="nowrap">' + esc(dataBR(p.criadoEm, true)) +
       '</td><td><b>' + esc(p.nome) + '</b><div class="sub">' + esc(p.whatsapp) + '</div></td>' +
-      '<td>' + esc(p.detalhe || '') + '</td><td>' + esc(p.status || 'Novo') + '</td><td>' +
+      '<td>' + esc(semRef(p.detalhe || '')) + '</td><td>' +
+      (pago(p) ? '<span class="badge b-ok">Pago · saiu do estoque</span><div class="sub">' + esc(dataBR(p.pagamentoConfirmadoEm, true)) + '</div>'
+        : esc(p.status || 'Novo')) + '</td><td class="nowrap">' +
+      (pago(p)
+        ? '<button type="button" class="btn btn-sm" data-desfazer="' + esc(p.id) + '" title="Devolve 1 unidade ao estoque">Desfazer</button> '
+        : '<button type="button" class="btn btn-sm btn-primary" data-pago="' + esc(p.id) + '">Confirmar pagamento</button> ') +
       '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
       esc(whatsapp(p.whatsapp, 'Olá, ' + (p.nome || '').split(' ')[0] +
       '! Aqui é da Karen Cosméticos. Recebemos sua solicitação de Sacola Misteriosa. Podemos confirmar seu pedido?')) +
       '">Responder</a></td></tr>').join('') + '</tbody></table>' :
       '<div class="sub" style="padding:28px">Ainda não há solicitações de sacolas.</div>';
+    el.querySelectorAll('[data-pago]').forEach((b) => b.onclick = () => confirmarPagamento(b, store.get('leads', b.dataset.pago)));
+    el.querySelectorAll('[data-desfazer]').forEach((b) => b.onclick = () => desfazerPagamento(b, store.get('leads', b.dataset.desfazer)));
   };
+
+  // Pagamento confirmado: marca o pedido como pago e tira 1 unidade do estoque,
+  // tudo na mesma transação (não baixa duas vezes, nem deixa estoque negativo).
+  async function confirmarPagamento(botao, p) {
+    if (!p || pago(p)) return;
+    const sacola = sacolaDoPedido(p) || await escolherSacola(p);
+    if (!sacola) return;
+    const estoque = Number(sacola.estoque) || 0;
+    if (estoque <= 0) { toast('A sacola "' + sacola.titulo + '" está sem estoque. Ajuste o estoque antes de confirmar.', 'erro'); return; }
+    if (!(await confirmar('Confirmar o pagamento de ' + (p.nome || 'cliente') + ' pela sacola "' + sacola.titulo +
+      '"? 1 unidade sai do estoque (de ' + estoque + ' para ' + (estoque - 1) + ') e a vitrine é atualizada.',
+      { titulo: 'Confirmar pagamento', botao: 'Confirmar e dar baixa' }))) return;
+    botao.disabled = true;
+    try {
+      let restante = 0;
+      await store.transacao([{ col: 'leads', id: p.id }, { col: 'sacolas', id: sacola.id }], ([lead, sac]) => {
+        if (!lead) throw new Error('pedido não encontrado');
+        if (lead.pagamentoConfirmadoEm) throw new Error('este pagamento já foi confirmado');
+        if (!sac) throw new Error('a sacola não existe mais');
+        const atual = Number(sac.estoque) || 0;
+        if (atual <= 0) throw new Error('a sacola "' + sac.titulo + '" esgotou');
+        restante = atual - 1;
+        return [
+          { col: 'sacolas', id: sac.id, dados: { estoque: restante } },
+          { col: 'leads', id: lead.id, dados: { status: 'Virou cliente', pagamentoConfirmadoEm: new Date().toISOString(), sacolaBaixadaId: sac.id } },
+        ];
+      });
+      await publicar(sacolasAtuais().map((s) => (s.id === sacola.id ? { ...s, estoque: restante } : s)));
+      toast(restante > 0 ? 'Pagamento confirmado. Restam ' + restante + ' unidade(s) de "' + sacola.titulo + '".'
+        : 'Pagamento confirmado. "' + sacola.titulo + '" esgotou e aparece como esgotada na vitrine.');
+      render();
+    } catch (e) {
+      toast('Não foi possível confirmar: ' + e.message, 'erro');
+      botao.disabled = false;
+    }
+  }
+
+  // Desfaz uma confirmação feita por engano: devolve 1 unidade ao estoque.
+  async function desfazerPagamento(botao, p) {
+    if (!p || !pago(p)) return;
+    const sacola = store.get('sacolas', p.sacolaBaixadaId);
+    if (!sacola) { toast('A sacola deste pedido foi excluída; ajuste o estoque manualmente.', 'erro'); return; }
+    if (!(await confirmar('Desfazer a confirmação de pagamento de ' + (p.nome || 'cliente') + '? 1 unidade de "' +
+      sacola.titulo + '" volta ao estoque.', { titulo: 'Desfazer pagamento', botao: 'Desfazer', perigo: true }))) return;
+    botao.disabled = true;
+    try {
+      let novo = 0;
+      await store.transacao([{ col: 'leads', id: p.id }, { col: 'sacolas', id: sacola.id }], ([lead, sac]) => {
+        if (!lead || !lead.pagamentoConfirmadoEm) throw new Error('este pagamento não está confirmado');
+        if (!sac) throw new Error('a sacola não existe mais');
+        novo = (Number(sac.estoque) || 0) + 1;
+        return [
+          { col: 'sacolas', id: sac.id, dados: { estoque: novo } },
+          { col: 'leads', id: lead.id, dados: { status: 'Em contato', pagamentoConfirmadoEm: '', sacolaBaixadaId: '' } },
+        ];
+      });
+      await publicar(sacolasAtuais().map((s) => (s.id === sacola.id ? { ...s, estoque: novo } : s)));
+      toast('Confirmação desfeita. Estoque de "' + sacola.titulo + '": ' + novo + '.');
+      render();
+    } catch (e) {
+      toast('Não foi possível desfazer: ' + e.message, 'erro');
+      botao.disabled = false;
+    }
+  }
   async function editar(item) {
     const container = el.querySelector('#editor-karen');
     container.innerHTML = '<div class="card" style="margin-top:20px" id="card-editor-karen">' +
