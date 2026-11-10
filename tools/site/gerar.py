@@ -640,8 +640,8 @@ def gerar_institucionais():
 # Arquivos de apoio
 # ==================================================================
 
-# Pastas que não entram no sitemap (campanha de cliente hospedada no domínio).
-FORA_DO_SITEMAP = ('sacola-misteriosa/', 'tools/', 'assets/')
+# Pastas que não entram no sitemap.
+FORA_DO_SITEMAP = ('tools/', 'assets/')
 
 
 def montar_sitemap():
