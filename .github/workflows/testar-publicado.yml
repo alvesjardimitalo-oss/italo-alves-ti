@@ -12,7 +12,8 @@ permissions:
 
 jobs:
   smoke-browser:
-    runs-on: ubuntu-latest
+    # ubuntu-latest passou a ser 26.04, ainda sem suporte do Chromium do Playwright 1.56.
+    runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +24,15 @@ jobs:
         run: |
           npm install --no-save playwright@1.56.0
           npx playwright install --with-deps chromium
+      - name: Conferir publicação da otimização (sitemap, fontes, CSS mobile)
+        env:
+          SITE_URL: https://italoinfotec.com.br/
+        run: |
+          set -e
+          curl -fsS "${SITE_URL}sitemap.xml" | grep -q 'desenvolvimento/' && echo 'OK sitemap com desenvolvimento/'
+          curl -fsS "$SITE_URL" | grep -q 'media="print" onload=' && echo 'OK fontes sem bloquear'
+          curl -fsS "${SITE_URL}assets/css/site.css" | grep -q '.artigo .btn' && echo 'OK CSS mobile publicado'
+          curl -fsS "$SITE_URL" | grep -q 'icon-512.png", "logo"' && echo 'OK schema com logo PNG'
       - name: Testar site público (sem escrever no Firestore real)
         env:
           SITE_URL: https://italoinfotec.com.br/
