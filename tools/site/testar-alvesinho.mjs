@@ -32,9 +32,13 @@ const ids = new Set(sintomas.SINTOMAS.map(s=>s.id));
 for (const item of cards) assert(ids.has(item.id), 'Cartão sem resposta no Alvesinho: ' + item.id);
 assert(new Set(cards.map(x=>x.id)).size === cards.length, 'Cards duplicados');
 
+// Substitui o import de ./comum.js (a lista de nomes pode crescer) por stubs.
 const upOrig = ler('assets/js/ferramentas/upgrade.js')
-  .replace("import { enviarAoTecnico, copiar, esc } from './comum.js';", "const enviarAoTecnico=()=>{}, copiar=()=>{}, esc=String;");
-globalThis.document = { querySelector: () => null };
+  .replace(/import\s*\{[^}]*\}\s*from\s*'\.\/comum\.js';/, "const enviarAoTecnico=()=>{}, copiar=()=>{}, esc=String, ambiente=async()=>null, ramTexto=String;");
+assert(!/from '\.\/comum\.js'/.test(upOrig), 'Import de comum.js não substituído no teste');
+// Elemento falso: o módulo desenha a tela inicial ao carregar.
+const elFalso = { innerHTML: '', querySelector: () => ({ onclick: null, addEventListener() {}, disabled: false }), querySelectorAll: () => [] };
+globalThis.document = { querySelector: () => elFalso };
 const upgrade = await carregar(upOrig);
 const hdd = upgrade.recomendarUpgrade({disco:'HD',ram:'4',uso:'trabalho',sintoma:'iniciar'});
 assert(hdd.some(x=>/SSD/.test(x.titulo)), 'HD deve sugerir avaliação de SSD');
@@ -43,13 +47,15 @@ const ssd = upgrade.recomendarUpgrade({disco:'SSD',ram:'16',uso:'trabalho',sinto
 assert(ssd.some(x=>/Diagnóstico/.test(x.titulo)), 'SSD e RAM suficiente não devem induzir troca de peça');
 
 const home = ler('index.html'), ferramentas = ler('ferramentas/index.html');
-assert(home.includes('id="sintomas"') && home.includes('id="alvesinho"'), 'Seções comerciais faltando');
-assert(home.includes('assets/img/alvesinho.svg'), 'Avatar ausente da home');
+// Home atual (refeita à mão): vitrine animada do Alvesinho + atalho para o catálogo completo.
+assert(home.includes('id="solucoes"') && home.includes('data-alves-apresentacao'), 'Seções comerciais faltando');
+assert(/assets\/img\/alvesinho(-premium)?\.svg/.test(home), 'Avatar ausente da home');
+assert(home.includes('href="problemas/"'), 'Home deve levar ao catálogo de problemas');
 const catalogo = ler('problemas/index.html');
-assert((home.match(/data-sintoma="/g)||[]).length === 8, 'A home deve exibir só 8 sintomas para ser objetiva');
+assert((home.match(/data-alves-escolher="/g)||[]).length <= 8, 'A home deve destacar poucos sintomas para ser objetiva');
 assert((catalogo.match(/data-sintoma="/g)||[]).length === cards.length, 'Catálogo deve exibir todos os sintomas');
 for (const item of cards) assert(catalogo.includes('data-sintoma="' + item.id + '"'), 'Problema ausente no catálogo: ' + item.id);
 assert(home.includes('data-abrir-chat'), 'CTAs chat ausentes');
 assert(ferramentas.includes('upgrade.html') && existsSync(resolve(root,'ferramentas/upgrade.html')), 'Ferramenta de upgrade ausente');
 assert(ler('assets/js/site.js').includes('assistente virtual') || ler('assets/js/site.js').includes('Assistente virtual'), 'Chat deve informar que é automatizado');
-console.log('OK: ' + sintomas.SINTOMAS.length + ' diagnósticos locais, 8 destaques na home, ' + cards.length + ' no catálogo, avatar e simulador de upgrade.');
+console.log('OK: ' + sintomas.SINTOMAS.length + ' diagnósticos locais, destaques na home, ' + cards.length + ' no catálogo, avatar e simulador de upgrade.');

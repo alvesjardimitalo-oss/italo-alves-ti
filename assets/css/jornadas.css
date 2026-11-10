@@ -45,8 +45,8 @@
 .jornada-list{padding-left:20px;color:#c7d9ec;line-height:1.8;font-size:.9rem}
 .jornada-status{font-size:.83rem;color:#93edda}
 .jornada-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-@media(max-width:900px){.jornada-body{grid-template-columns:1fr}.jornada-side{position:static}.jornada-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.jornada-page{padding:22px 0 45px}.jornada-hero{grid-template-columns:1fr 74px;padding:20px;gap:8px}.jornada-hero img{width:72px;height:72px}.jornada-grid,.jornada-grid.three,.jornada-inputs{grid-template-columns:1fr}.jornada-field.wide{grid-column:1}.jornada-controls .btn{width:100%;justify-content:center}}
+@media(max-width:900px){.jornada-body{grid-template-columns:minmax(0,1fr)}.jornada-side{position:static}.jornada-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.jornada-page{padding:22px 0 45px}.jornada-hero{grid-template-columns:1fr 74px;padding:20px;gap:8px}.jornada-hero img{width:72px;height:72px}.jornada-grid,.jornada-grid.three,.jornada-inputs{grid-template-columns:minmax(0,1fr)}.jornada-field.wide{grid-column:1}.jornada-controls .btn{width:100%;justify-content:center}}
 
 
 /* Formulários claros e acolhedores, sem efeitos decorativos excessivos */

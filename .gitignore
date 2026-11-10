@@ -13,3 +13,4 @@ Thumbs.db
 # Arquivos temporários gerados automaticamente pelo interpretador Python
 __pycache__/
 *.py[cod]
+!tools/site/gerado.json
