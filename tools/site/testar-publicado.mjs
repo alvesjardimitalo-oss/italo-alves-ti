@@ -98,7 +98,7 @@ await test('Pedido completo em modo demo e link WhatsApp', async () => {
   await fill('Teste Navegador');
   await fill('Frei Inocêncio/MG');
   await fill('33999999999');
-  await p.locator('#chat-msgs').getByText('Seu pedido foi registrado no sistema.', { exact: false }).waitFor({ timeout: 20000 });
+  await p.locator('#chat-msgs').getByText(/Recebi seu pedido pelo sistema|Seu pedido foi registrado no sistema/).waitFor({ timeout: 20000 });
   const lead = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('italoti-demo-v1') || '{}').leads || {})[0]);
   assert(lead?.nome === 'Teste Navegador', 'Lead não foi salvo no armazenamento DEMO');
   assert(lead?.utm === 'smoke-ci', 'Origem da campanha não gravada');
