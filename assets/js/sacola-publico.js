@@ -178,7 +178,8 @@ if (form) form.addEventListener('submit', async (ev) => {
   retorno.hidden = true;
   enviar.textContent = 'Enviando…';
   const resumo = 'Sacola: ' + s.titulo + ' | Valor anunciado: ' + brl(s.valor)
-    + (obs ? ' | Observação: ' + obs : '');
+    + (obs ? ' | Observação: ' + obs : '')
+    + ' [ref:' + s.id + ']'; // código usado pelo painel para dar baixa no estoque
   const ok = await salvarLead({
     nome,whatsapp:telefone,cidade:'',equipamento:'',problema:'Pedido de sacola',
     detalhe:resumo,atendimento:'WhatsApp',servico:'Sacola Misteriosa',
