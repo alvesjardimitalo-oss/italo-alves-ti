@@ -1,4 +1,4 @@
-// Ítalo Alves TI — aplicação (roteador, layout, busca global)
+// Ítalo InfoTec — aplicação (roteador, layout, busca global)
 import { store } from './store.js';
 import { orientacaoLogin, URL_PAINEL } from './login-ajuda.js';
 import { icon } from './icons.js';

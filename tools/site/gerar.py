@@ -123,8 +123,26 @@ def ico(n, s=22):
 WA_LINK = f"https://wa.me/{SITE['whatsapp']}?text=" + 'Ol%C3%A1!%20Vim%20pelo%20site%20e%20gostaria%20de%20um%20or%C3%A7amento.' if SITE.get('whatsapp') else '#fale-comigo'
 
 
+# Títulos curtos para Google/aba/compartilhamento (conteudo/titulos-seo.json).
+try:
+    with open(os.path.join(RAIZ, 'conteudo', 'titulos-seo.json'), encoding='utf-8') as _f:
+        TITULOS_SEO = {k: v for k, v in json.load(_f).items() if not k.startswith('_')}
+except FileNotFoundError:
+    TITULOS_SEO = {}
+
+
+def titulo_curto(titulo):
+    for longo, curto in TITULOS_SEO.items():
+        if titulo == longo:
+            return curto
+        if titulo.startswith(longo + ' ·') or titulo.startswith(longo + ' |'):
+            return curto + titulo[len(longo):]
+    return titulo
+
+
 def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
     url = BASE + caminho
+    titulo = titulo_curto(titulo)
     lds = ''.join(f'  <script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>\n' for x in (ld or []))
     return f'''<!DOCTYPE html>
 <html lang="pt-BR" data-raiz="{raiz}">
@@ -141,11 +159,11 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
   <meta property="og:url" content="{url}">
   <meta property="og:site_name" content="{e(NOME)}">
   <meta property="og:locale" content="pt_BR">
-  <meta property="og:image" content="{BASE}assets/img/icon-512.png">
-  <meta property="og:image:width" content="512">
-  <meta property="og:image:height" content="512">
-  <meta property="og:image:alt" content="Logo {e(NOME)}">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:image" content="{BASE}assets/img/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{e(NOME)}: conserto de computadores e notebooks, sites e sistemas">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="{raiz}assets/img/logo.svg" type="image/svg+xml">
   <link rel="manifest" href="{raiz}site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -158,7 +176,7 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
 <body>
   <header class="topo">
     <div class="wrap">
-      <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
+      <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt=""><span>Ítalo <span class="grad">InfoTec</span></span></a>
       <nav class="menu" id="menu-principal" aria-label="Principal">
         <a href="{raiz}servicos/">Serviços</a>
         <a href="{raiz}problemas/">Problemas comuns</a>
@@ -177,14 +195,14 @@ def head(titulo, desc, caminho, raiz, ld=None, tipo='website', noindex=False):
 def rodape(raiz, extra_js=''):
     links_dicas = ''.join(f'<li><a href="{raiz}dicas/{a["slug"]}.html">{e(a["curto"])}</a></li>' for a in ARTIGOS[:5])
     sociais = ''.join(x for x in [
-        f'<li><a href="{e(SITE["instagram_url"])}" rel="noopener" target="_blank">Instagram</a></li>' if SITE.get('instagram_url') else '',
+        *[f'<li><a href="{e(i["url"])}" rel="noopener" target="_blank">Instagram @{e(i["usuario"])}</a></li>' for i in SITE.get('instagram', [])],
         f'<li><a href="{e(SITE["google_perfil_url"])}" rel="noopener" target="_blank">Perfil no Google</a></li>' if SITE.get('google_perfil_url') else '',
     ])
     return f'''
   <footer class="rodape">
     <div class="wrap">
       <div>
-        <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt="">Ítalo Alves <span class="grad">TI</span></a>
+        <a href="{raiz}" class="marca"><img src="{raiz}assets/img/logo.svg" alt=""><span>Ítalo <span class="grad">InfoTec</span></span></a>
         <p>Manutenção de computadores e notebooks. Atendimento presencial em {e(SITE["regiao_presencial"])} e suporte remoto para todo o Brasil.</p>
         {f'<p><b>{e(SITE["horario"])}</b></p>' if SITE.get('horario') else ''}
         {f'<p>WhatsApp: <a href="{WA_LINK}" rel="noopener" target="_blank">{e(SITE["telefone_exibicao"])}</a></p>' if SITE.get('whatsapp') else ''}
@@ -297,6 +315,9 @@ def ld_negocio():
         "areaServed": [{"@type": "City", "name": c['cidade']} for c in CIDADES] + [{"@type": "Country", "name": "Brasil"}],
         "makesOffer": [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": s[1]}} for s in SERVICOS],
     }
+    redes = [i['url'] for i in SITE.get('instagram', [])] + ([SITE['google_perfil_url']] if SITE.get('google_perfil_url') else [])
+    if redes:
+        d['sameAs'] = redes
     if SITE.get('whatsapp'):
         d['telephone'] = '+' + SITE['whatsapp']
     if '24 horas' in (SITE.get('horario') or ''):

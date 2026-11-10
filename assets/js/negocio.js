@@ -29,7 +29,7 @@ export function aReceber() {
 export function empresa() {
   const c = store.config || {};
   return {
-    nome: c.nome || 'Ítalo Alves TI',
+    nome: c.nome || 'Ítalo InfoTec',
     documento: c.documento || '',
     endereco: c.endereco || 'Rua Agostinho Moreira de Lima, nº 45, Planalto',
     cidade: c.cidade || 'Frei Inocêncio',

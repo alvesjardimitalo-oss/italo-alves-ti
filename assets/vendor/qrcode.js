@@ -1,6 +1,6 @@
 // QRCode for JavaScript — Copyright (c) 2009 Kazuhiko Arase — MIT License (http://www.opensource.org/licenses/mit-license.php)
 // "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
-// Empacotado como módulo ES para o Ítalo Alves TI (a partir da cópia em qrcode-terminal).
+// Empacotado como módulo ES para o Ítalo InfoTec (a partir da cópia em qrcode-terminal).
 const __m = {};
 const __c = {};
 function __req(n){ n = n.replace(/\.js$/,''); if(!(n in __c)){ const module={exports:{}}; __c[n]=module.exports; __m[n](module, module.exports); __c[n]=module.exports; } return __c[n]; }

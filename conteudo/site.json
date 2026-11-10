@@ -1,6 +1,6 @@
 {
   "base": "https://italoinfotec.com.br/",
-  "nome": "Ítalo Alves TI",
+  "nome": "Ítalo InfoTec",
   "whatsapp": "5533998556503",
   "telefone_exibicao": "(33) 99855-6503",
   "email": "alvesjardim.italo@gmail.com",
@@ -10,7 +10,10 @@
   "cep": "35112-000",
   "regiao_presencial": "Frei Inocêncio e região",
   "horario": "Atendimento 24 horas",
-  "instagram_url": "",
+  "instagram": [
+    {"usuario": "italoalvesgv", "url": "https://www.instagram.com/italoalvesgv/"},
+    {"usuario": "italoalvesti", "url": "https://www.instagram.com/italoalvesti/"}
+  ],
   "google_perfil_url": "",
   "garantia_dias": 90,
   "sobre": {},
