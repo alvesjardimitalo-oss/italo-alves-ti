@@ -53,24 +53,35 @@
         && request.resource.data.criadoEm == request.time;
     }
     // Black Friday da Karen: cada frasco é uma VAGA numerada (ex.: kaiak-extremo-2).
-    // Reservar = gravar a vaga. O Firebase só aceita se a vaga estiver livre:
-    // nunca usada, cancelada pela Karen ou vencida (10 min sem pagamento).
-    // Duas clientes não conseguem pegar a mesma vaga. Sem dados pessoais aqui.
+    // Reservar = gravar a vaga com uma "trava" (SHA-256 de um segredo que só o
+    // celular da cliente conhece). O Firebase só aceita reservar vaga livre:
+    // nunca usada, cancelada ou vencida (10 min sem pagamento). Duas clientes
+    // não pegam a mesma vaga. Cancelar: só quem tem o segredo da trava.
+    // Sem dados pessoais aqui. A Karen (tiDono) altera tudo pelo painel.
     function tiVagaLivre(r) {
       return !(('pagoEm' in r) && r.pagoEm != '')
         && ((('canceladoEm' in r) && r.canceladoEm != '') || r.criadoEm + duration.value(10, 'm') < request.time);
     }
     function tiVagaNova(id, d) {
       return id.matches('^(floratta-fleur-eclipse|clash-extreme|kaiak-extremo|humor-envolve|meu-primeiro-humor|floratta-blue-crystal|300kmh-max-turbo)-[0-9]{1,3}$')
-        && d.keys().hasOnly(['pedido', 'criadoEm'])
-        && d.pedido is string && d.pedido.matches('^P[A-Z0-9]{6}$')
+        && d.keys().hasOnly(['trava', 'criadoEm'])
+        && d.trava is string && d.trava.matches('^[0-9a-f]{64}$')
         && d.criadoEm == request.time;
+    }
+    function tiVagaCancelada(antes, d) {
+      return d.keys().hasOnly(['trava', 'criadoEm', 'canceladoEm', 'segredo'])
+        && d.trava == antes.trava && d.criadoEm == antes.criadoEm
+        && d.canceladoEm == request.time
+        && d.segredo is string && d.segredo.size() <= 64
+        && hashing.sha256(d.segredo).toHexString().lower() == antes.trava
+        && !(('pagoEm' in antes) && antes.pagoEm != '');
     }
     match /ti/base/vagas-bf/{vagaId} {
       allow get: if true;
       allow list: if request.query.limit <= 500;
       allow create: if tiVagaNova(vagaId, request.resource.data);
-      allow update: if tiVagaNova(vagaId, request.resource.data) && tiVagaLivre(resource.data);
+      allow update: if (tiVagaNova(vagaId, request.resource.data) && tiVagaLivre(resource.data))
+        || tiVagaCancelada(resource.data, request.resource.data);
     }
     // "Acompanhar OS": o visitante só LÊ um documento se souber o ID exato
     // (hash do código da OS + telefone). Não dá para listar nem gravar.

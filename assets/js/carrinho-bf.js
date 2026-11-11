@@ -20,6 +20,14 @@ const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', curren
 const digits = (v) => String(v || '').replace(/\D/g, '');
 const normalizeWhatsApp = (v) => { const d = digits(v); return (d.length === 10 || d.length === 11) ? '55' + d : d; };
 const centavos = (n) => Math.round(n * 100) / 100;
+async function sha256(t) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+function segredoNovo() {
+  const n = new Uint8Array(18); crypto.getRandomValues(n);
+  return [...n].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
 
 export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
   const porFoto = Object.fromEntries(perfumes.map((p) => [p.foto, p]));
@@ -61,7 +69,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
   }
 
   // Reserva as vagas num lote atômico; se outra cliente pegou alguma antes, tenta de novo.
-  async function reservarVagas(codigo, linhas) {
+  async function reservarVagas(codigo, linhas, trava) {
     const { F, db } = firebase();
     for (let tentativa = 0; tentativa < 3; tentativa++) {
       await carregarDisponivel();
@@ -75,7 +83,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       if (!escolhidas.length) return { vagas: [] };
       try {
         const lote = F.writeBatch(db);
-        escolhidas.forEach((id) => lote.set(F.doc(db, 'ti', 'base', 'vagas-bf', id), { pedido: codigo, criadoEm: F.serverTimestamp() }));
+        escolhidas.forEach((id) => lote.set(F.doc(db, 'ti', 'base', 'vagas-bf', id), { trava, criadoEm: F.serverTimestamp() }));
         await lote.commit();
         return { vagas: escolhidas };
       } catch (e) {
@@ -99,7 +107,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
   document.body.appendChild(dlg);
   fab.addEventListener('click', () => abrir());
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
-  dlg.addEventListener('close', () => { clearInterval(timer); });
+  dlg.addEventListener('close', () => { clearInterval(timer); clearInterval(vigia); });
 
   const quantidade = () => Object.values(itens).reduce((a, b) => a + b, 0);
   const salvarItens = () => { gravar(K_CARRINHO, itens); atualizarFab(); };
@@ -151,7 +159,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
   }
 
   // ---------- Tela 1: itens, cupom e dados ----------
-  function telaItens() {
+  function telaItens(recado) {
     const cupons = cuponsDisponiveis();
     const ultimo = cupons[0] || null;
     const { linhas } = totais(null);
@@ -164,15 +172,18 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
     }
     const contatoSalvo = { nome: digitado.nome || (ultimo && ultimo.nome) || '', whatsapp: digitado.tel || (ultimo && ultimo.whatsapp ? ultimo.whatsapp.replace(/^55/, '') : '') };
     dlg.innerHTML = '<div class="carrinho-topo"><h2>Seu carrinho</h2><button type="button" class="carrinho-x" aria-label="Fechar">×</button></div>' +
+      (recado ? '<p class="carrinho-recado">' + esc(recado) + '</p>' : '') +
       '<ul class="carrinho-itens">' + linhas.map((l) => '<li><img src="/sacola-misteriosa/perfumes/' + esc(l.p.foto) + '.webp" alt="" width="56" height="70">' +
         '<div><strong>' + esc(l.p.nome) + '</strong><span>' + esc(l.p.marca) + ' · ' + brl(l.p.cheio) + ' cada</span></div>' +
         '<div class="carrinho-qtd"><button type="button" data-menos="' + esc(l.p.foto) + '" aria-label="Diminuir">−</button><b>' + l.q + '</b>' +
-        '<button type="button" data-mais="' + esc(l.p.foto) + '" aria-label="Aumentar">+</button></div></li>').join('') + '</ul>' +
+        '<button type="button" data-mais="' + esc(l.p.foto) + '" aria-label="Aumentar">+</button>' +
+        '<button type="button" class="carrinho-remover" data-remover="' + esc(l.p.foto) + '">Remover</button></div></li>').join('') + '</ul>' +
+      '<button type="button" class="carrinho-esvaziar" data-esvaziar>Esvaziar carrinho</button>' +
       '<div class="carrinho-cupom">' + (cupons.length
         ? '<label for="carrinho-cupom">Cupom (1 por compra)</label><select id="carrinho-cupom">' +
           cupons.map((c) => '<option value="' + esc(c.codigo) + '">' + esc(c.codigo) + ' · ' + c.pct + '% de desconto</option>').join('') +
           '<option value="">Comprar sem cupom</option></select>'
-        : '<p>' + (perdidos.length ? 'Seu cupom foi perdido porque o Pix não foi pago em ' + PRAZO_MIN + ' minutos.' : 'Você ainda não tem cupom. <a href="#roda" data-girar>Gire a roleta</a> para ganhar de 1% a 10%.') +
+        : '<p>' + (perdidos.length ? 'Seu cupom foi perdido porque o pedido foi cancelado ou o Pix não foi pago em ' + PRAZO_MIN + ' minutos.' : 'Você ainda não tem cupom. <a href="#roda" data-girar>Gire a roleta</a> para ganhar de 1% a 10%.') +
           ' Use o mesmo celular em que girou a roleta.</p>') + '</div>' +
       '<dl class="carrinho-total"></dl>' +
       '<form class="carrinho-dados"><div class="bf-campos"><div class="field"><label for="c-nome">Seu nome</label><input id="c-nome" required minlength="2" maxlength="80" autocomplete="name" value="' + esc(contatoSalvo.nome || '') + '"></div>' +
@@ -185,6 +196,8 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       b.disabled = itens[b.dataset.mais] >= limite(b.dataset.mais);
       b.onclick = () => { if (itens[b.dataset.mais] < limite(b.dataset.mais)) { itens[b.dataset.mais]++; salvarItens(); } telaItens(); };
     });
+    dlg.querySelectorAll('[data-remover]').forEach((b) => b.onclick = () => { delete itens[b.dataset.remover]; salvarItens(); telaItens(); });
+    dlg.querySelector('[data-esvaziar]').onclick = () => { itens = {}; salvarItens(); telaItens(); };
     dlg.querySelectorAll('[data-menos]').forEach((b) => b.onclick = () => { itens[b.dataset.menos]--; if (itens[b.dataset.menos] <= 0) delete itens[b.dataset.menos]; salvarItens(); telaItens(); });
     const sel = dlg.querySelector('#carrinho-cupom');
     const botao = dlg.querySelector('.carrinho-dados button[type=submit]');
@@ -237,14 +250,16 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
     const prazo = new Date(Date.now() + PRAZO_MIN * 60000).toISOString();
     const resumoItens = t.linhas.map((l) => l.q + 'x ' + l.p.nome + ' (' + brl(l.valor) + ')').join('; ');
     const tag = `[pedido:${codigo};cupom:${cupom ? cupom.codigo : ''};pct:${t.pct};sub:${t.subtotal.toFixed(2)};total:${t.total.toFixed(2)};` +
-      `itens:${t.linhas.map((l) => l.p.foto + '*' + l.q).join(',')};vagas:VAGAS]`;
+      `itens:${t.linhas.map((l) => l.p.foto + '*' + l.q).join(',')};vagas:VAGAS;segredo:SEGREDO]`;
     const detalhe0 = `Pedido ${codigo}: ${resumoItens}. Subtotal ${brl(t.subtotal)}` + (cupom ? `, cupom ${cupom.codigo} (${t.pct}%) −${brl(t.desconto)}` : '') +
       `. Total no Pix ${brl(t.total)}. ${tag}`;
     let detalhe = '';
     // 1) Reserva as vagas (o pedido só existe se a reserva for aceita).
     let vagas = [];
+    const segredo = segredoNovo();
+    const trava = await sha256(segredo);
     try {
-      const r = await reservarVagas(codigo, t.linhas);
+      const r = await reservarVagas(codigo, t.linhas, trava);
       if (r.faltando) {
         await carregarDisponivel().catch(() => {});
         r.faltando.forEach((l) => { const d = disponivel[l.p.foto] || 0; if (d <= 0) delete itens[l.p.foto]; else itens[l.p.foto] = d; });
@@ -261,7 +276,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       return mostrarErro('Não foi possível reservar os perfumes agora. Tente de novo em instantes ou fale com a Karen pelo WhatsApp.');
     }
     // 2) Registra o pedido para a Karen (dados de contato ficam só no painel).
-    detalhe = detalhe0.replace('VAGAS', vagas.join(','));
+    detalhe = detalhe0.replace('VAGAS', vagas.join(',')).replace('SEGREDO', segredo);
     const ok = await salvarLead({
       nome, whatsapp, cidade: '', equipamento: codigo, problema: 'Pedido Black Friday', detalhe,
       atendimento: 'Pix', servico: 'Pedido Black Friday', origem: 'black-friday-pedido', utm: 'black-friday',
@@ -270,7 +285,8 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
     if (!ok) { botao.disabled = false; botao.textContent = 'Tentar de novo'; return mostrarErro('Os perfumes ficaram reservados, mas o pedido não foi registrado. Tente de novo; a reserva anterior expira sozinha em 10 minutos.'); }
     const { pixPayload } = await import('./pix.js');
     const payload = pixPayload({ chave: pix.chave, nome: pix.nome || 'Karen', cidade: pix.cidade || 'Brasil', valor: t.total, txid: codigo });
-    const pedido = { codigo, total: t.total, prazo, payload, cupom: cupom ? cupom.codigo : '', pct: t.pct, nome, resumo: resumoItens };
+    const pedido = { codigo, total: t.total, prazo, payload, cupom: cupom ? cupom.codigo : '', pct: t.pct, nome, resumo: resumoItens,
+      vagas, segredo, itens: Object.fromEntries(t.linhas.map((l) => [l.p.foto, l.q])) };
     if (cupom) { const u = ler(K_USO, {}); u[cupom.codigo] = { pedido: codigo, prazo, estado: 'reservado' }; gravar(K_USO, u); }
     gravar(K_PEDIDO, pedido);
     itens = {}; salvarItens();
@@ -293,12 +309,24 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       '<label class="pix-rotulo" for="pix-copia">Pix copia e cola</label><textarea id="pix-copia" readonly rows="3">' + esc(p.payload) + '</textarea>' +
       '<div class="premio-acoes"><button type="button" class="btn" id="pix-copiar">Copiar código Pix</button>' +
       (tel ? '<a class="btn secondary" target="_blank" rel="noopener" href="https://wa.me/' + esc(tel) + '?text=' + encodeURIComponent(msg) + '">Já paguei: enviar comprovante</a>' : '') + '</div>' +
+      '<button type="button" class="carrinho-cancelar" id="pix-cancelar">Cancelar pedido</button>' +
       '<p class="carrinho-aviso">Pague em até ' + PRAZO_MIN + ' minutos. Sem pagamento, o pedido é cancelado' + (p.cupom ? ' e o cupom ' + esc(p.cupom) + ' é perdido' : '') +
       '. Depois de pagar, envie o comprovante: a Karen confirma e combina a entrega.</p>';
     dlg.querySelector('.carrinho-x').onclick = () => dlg.close();
     dlg.querySelector('#pix-copiar').onclick = async (e) => {
       try { await navigator.clipboard.writeText(p.payload); e.currentTarget.textContent = 'Código copiado ✓'; }
       catch (_) { dlg.querySelector('#pix-copia').select(); }
+    };
+    const btCancelar = dlg.querySelector('#pix-cancelar');
+    btCancelar.onclick = async () => {
+      if (!btCancelar.dataset.certeza) {
+        btCancelar.dataset.certeza = '1';
+        btCancelar.textContent = 'Toque de novo para cancelar (os perfumes voltam ao carrinho)';
+        return;
+      }
+      btCancelar.disabled = true; btCancelar.textContent = 'Cancelando…';
+      const ok = await cancelarPelaCliente(p);
+      if (!ok) { btCancelar.disabled = false; btCancelar.textContent = 'Não foi possível cancelar. Tentar de novo'; delete btCancelar.dataset.certeza; }
     };
     const relogio = dlg.querySelector('#pix-relogio');
     clearInterval(timer);
@@ -310,7 +338,65 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       relogio.parentElement.classList.toggle('urgente', s <= 120);
     };
     tic(); timer = setInterval(tic, 1000);
+    vigiarPedido(p);
     atualizarFab();
+  }
+
+
+  // A cliente desiste antes de pagar: libera as vagas (com o segredo da trava),
+  // devolve os perfumes ao carrinho e mantém o cupom.
+  async function cancelarPelaCliente(p) {
+    const fb = firebase();
+    if (p.vagas && p.vagas.length) {
+      if (!fb) return false;
+      try {
+        const { F, db } = fb;
+        const lote = F.writeBatch(db);
+        p.vagas.forEach((id) => lote.update(F.doc(db, 'ti', 'base', 'vagas-bf', id), { canceladoEm: F.serverTimestamp(), segredo: p.segredo }));
+        await lote.commit();
+      } catch (e) { console.warn('Cancelamento recusado:', e); return false; }
+    }
+    clearInterval(timer); clearInterval(vigia);
+    localStorage.removeItem(K_PEDIDO);
+    if (p.cupom) { const u = ler(K_USO, {}); delete u[p.cupom]; gravar(K_USO, u); }
+    itens = { ...(p.itens || {}) }; salvarItens();
+    document.dispatchEvent(new CustomEvent('karen:cupons'));
+    await carregarDisponivel().catch(() => {});
+    telaItens('Pedido ' + p.codigo + ' cancelado. Seus perfumes voltaram ao carrinho' + (p.cupom ? ' e o cupom continua com você' : '') + '.');
+    return true;
+  }
+
+  // Enquanto o Pix está aberto, confere se a Karen confirmou ou cancelou o pedido.
+  let vigia = null;
+  function vigiarPedido(p) {
+    clearInterval(vigia);
+    const fb = firebase();
+    if (!fb || !p.vagas || !p.vagas.length) return;
+    const { F, db } = fb;
+    vigia = setInterval(async () => {
+      if (!dlg.open || document.hidden) return;
+      try {
+        const d = await F.getDoc(F.doc(db, 'ti', 'base', 'vagas-bf', p.vagas[0]));
+        const v = d.exists() ? d.data() : null;
+        if (!v) return;
+        if (v.pagoEm) {
+          clearInterval(vigia); clearInterval(timer);
+          localStorage.removeItem(K_PEDIDO); atualizarFab();
+          if (p.cupom) { const u = ler(K_USO, {}); u[p.cupom] = { ...(u[p.cupom] || {}), estado: 'usado' }; gravar(K_USO, u); }
+          dlg.innerHTML = '<div class="carrinho-topo"><h2>Pagamento confirmado!</h2><button type="button" class="carrinho-x" aria-label="Fechar">×</button></div>' +
+            '<p class="pix-ok">A Karen recebeu seu Pix do pedido ' + esc(p.codigo) + ' 💝 Ela vai combinar a entrega com você pelo WhatsApp.</p>';
+          dlg.querySelector('.carrinho-x').onclick = () => dlg.close();
+        } else if (v.canceladoEm && !v.segredo) {
+          clearInterval(vigia); clearInterval(timer);
+          localStorage.removeItem(K_PEDIDO);
+          if (p.cupom) { const u = ler(K_USO, {}); u[p.cupom] = { ...(u[p.cupom] || {}), estado: 'perdido' }; gravar(K_USO, u); }
+          atualizarFab(); carregarDisponivel().catch(() => {});
+          dlg.innerHTML = '<div class="carrinho-topo"><h2>Pedido cancelado</h2><button type="button" class="carrinho-x" aria-label="Fechar">×</button></div>' +
+            '<p class="carrinho-vazio">O pedido ' + esc(p.codigo) + ' foi cancelado pela loja. Se você já pagou, fale com a Karen pelo WhatsApp.</p>';
+          dlg.querySelector('.carrinho-x').onclick = () => dlg.close();
+        }
+      } catch (_) {}
+    }, 15000);
   }
 
   function expirar(p, mostrar) {
