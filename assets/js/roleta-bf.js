@@ -198,13 +198,13 @@ function desenharPerfumes() {
     : 'O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
 }
 
-// Combo: perfume + sacola misteriosa ganha um mimo.
+// Combo: pedir perfume e sacola misteriosa juntos (o cupom vale para o perfume).
 function atualizarCombo() {
   const a = document.getElementById('combo-whats');
   if (!a) return;
   if (!telefoneKaren) { a.hidden = true; return; }
   const c = cupomAtual;
-  a.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent('Olá, Karen! Quero o combo da Black Friday: um perfume + uma sacola misteriosa, com o mimo extra.' +
+  a.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent('Olá, Karen! Quero um perfume da Black Friday e uma sacola misteriosa juntos.' +
     (c ? ` Meu cupom é ${c.codigo} (${c.pct}%).` : ''));
   a.hidden = false;
 }
