@@ -473,3 +473,9 @@ dialog.carrinho::backdrop{background:#1f0e18c4;backdrop-filter:blur(3px)}
 .pix-rotulo{font-weight:700;font-size:.85rem}
 #pix-copia{width:100%;font:500 .78rem/1.4 ui-monospace,monospace;border:1px solid #d9b9c6;border-radius:12px;padding:10px;resize:none;margin:6px 0 12px;background:#fff;color:#352432}
 @media(max-width:550px){dialog.carrinho{padding:16px}.carrinho-fab{right:12px;bottom:12px}}
+.carrinho-qtd{flex-wrap:wrap;justify-content:flex-end}
+.carrinho-remover{border:0!important;background:none!important;width:auto!important;height:auto!important;border-radius:0!important;color:#a12b41!important;font-size:.8rem!important;text-decoration:underline;padding:2px 0!important;flex-basis:100%;text-align:right}
+.carrinho-esvaziar{border:0;background:none;color:#806879;font-size:.82rem;text-decoration:underline;cursor:pointer;margin:-6px 0 12px;padding:0}
+.carrinho-cancelar{display:block;width:100%;margin-top:10px;border:1.5px solid #d7798c;background:#fff;color:#a12b41;border-radius:999px;padding:11px 14px;font:700 .9rem "DM Sans",sans-serif;cursor:pointer}
+.carrinho-cancelar[data-certeza]{background:#a12b41;color:#fff;border-color:#a12b41}
+.carrinho-recado{background:#e8f4ec;color:#276044;border-radius:12px;padding:10px 12px;font-weight:600;font-size:.9rem;margin:0 0 12px}

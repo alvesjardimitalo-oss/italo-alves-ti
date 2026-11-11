@@ -87,9 +87,12 @@ function pedidoDoLead(l) {
   const itens = Object.fromEntries(String(d.itens || '').split(',').filter(Boolean).map((x) => { const [f, q] = x.split('*'); return [f, Number(q) || 0]; }));
   const criado = ms(l.criadoEm);
   const prazo = criado + PRAZO_PIX_MIN * 60000;
-  const estado = l.pagoEm ? 'pago' : l.canceladoEm ? 'cancelado' : (criado && Date.now() > prazo) ? 'expirado' : 'aguardando';
+  let estado = l.pagoEm ? 'pago' : l.canceladoEm ? 'cancelado' : (criado && Date.now() > prazo) ? 'expirado' : 'aguardando';
   const vagas = String(d.vagas || '').split(',').filter(Boolean);
-  return { lead: l, codigo: d.pedido, cupom: d.cupom || '', pct: Number(d.pct) || 0, sub: Number(d.sub) || 0, total: Number(d.total) || 0, itens, vagas, criado, prazo, estado };
+  // A cliente cancelou no site: todas as vagas do pedido foram liberadas com o segredo dela.
+  const pelaCliente = !l.pagoEm && !l.canceladoEm && vagas.length > 0 && vagas.every((v) => vagasCache[v] && vagasCache[v].segredo && vagasCache[v].canceladoEm);
+  return { lead: l, codigo: d.pedido, cupom: d.cupom || '', pct: Number(d.pct) || 0, sub: Number(d.sub) || 0, total: Number(d.total) || 0, itens, vagas,
+    segredo: d.segredo || '', criado, prazo, estado: pelaCliente ? 'cancelado' : estado, pelaCliente };
 }
 function listarPedidosBF() {
   return store.lista('leads').filter((l) => l.origem === 'black-friday-pedido').map(pedidoDoLead).filter((p) => p && p.codigo)
@@ -100,7 +103,7 @@ function cuponsNosPedidos() {
   const peso = { pago: 3, aguardando: 2, expirado: 1, cancelado: 1 };
   const mapa = {};
   listarPedidosBF().forEach((p) => {
-    if (!p.cupom) return;
+    if (!p.cupom || p.pelaCliente) return;
     if (!mapa[p.cupom] || peso[p.estado] > peso[mapa[p.cupom].estado]) mapa[p.cupom] = p;
   });
   return mapa;
@@ -108,6 +111,11 @@ function cuponsNosPedidos() {
 const nomePerfume = (f) => (PERFUMES.find((p) => p.foto === f) || {}).nome || f;
 const hora = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 let pedidosVistos = null;
+let vagasCache = {};   // id da vaga -> documento (lido de tempos em tempos)
+async function sha256hex(t) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
 let relogioPedidos = null;
 function avisarNovaCompra(p) {
   const texto = 'Nova compra! Pedido ' + p.codigo + ' de ' + (p.lead.nome || 'cliente') + ': ' + money(p.total) + ' no Pix.';
@@ -191,6 +199,7 @@ export function tela(el) {
     '<button type="button" class="btn btn-sm" id="avisos-bf">Ativar aviso no celular/computador</button></div>' +
     '<p class="sub" style="padding:0 20px">A cliente tem ' + PRAZO_PIX_MIN + ' minutos para pagar. Sem pagamento, o pedido é cancelado sozinho, os frascos voltam ao site e o cupom é perdido. ' +
     'Confira o Pix no banco e clique em <b>Pix recebido</b>.</p>' +
+    '<label style="display:flex;gap:8px;align-items:center;padding:0 20px 12px;font-size:.9rem"><input type="checkbox" id="mostrar-cancelados-bf"> Mostrar cancelados e vencidos</label>' +
     '<div class="tabela-wrap" id="pedidos-bf"></div></div>' +
     '<div class="card" style="margin-top:20px"><div class="card-head"><h2>Estoque dos perfumes (Black Friday)</h2></div>' +
     '<p class="sub">Informe o <b>total de frascos à venda</b> na Black Friday. Vendidos e reservados são descontados sozinhos: não precisa mexer a cada venda. Em branco = sem controle; 0 = esgotado.</p>' +
@@ -545,6 +554,9 @@ export function tela(el) {
     vagasLidasEm = Date.now();
     let vagas = [];
     try { vagas = await store.buscar('vagas-bf'); } catch (e) { console.warn('Vagas indisponíveis:', e); return; }
+    const antes = JSON.stringify(vagasCache);
+    vagasCache = Object.fromEntries(vagas.map((v) => [v.id, v]));
+    if (JSON.stringify(vagasCache) !== antes) desenharPedidosBF();
     const total = estoqueBF();
     const cont = {};
     vagas.forEach((v) => {
@@ -576,23 +588,26 @@ export function tela(el) {
     el.querySelector('#resumo-pedidos-bf').textContent = cont.aguardando + ' aguardando Pix · ' + cont.pago + ' pagos · ' + cont.perdidos + ' cancelados';
     const situacao = (p) => {
       if (p.estado === 'pago') return '<span class="badge b-ok">Pago</span>';
-      if (p.estado === 'cancelado') return '<span class="badge b-muted">Cancelado</span>';
+      if (p.estado === 'cancelado') return '<span class="badge b-muted">' + (p.pelaCliente ? 'Cancelado pela cliente' : 'Cancelado') + '</span>';
       if (p.estado === 'expirado') return '<span class="badge b-danger">Cancelado: Pix não pago até ' + hora(p.prazo) + '</span>';
       const s = Math.max(0, Math.ceil((p.prazo - Date.now()) / 1000));
       return '<span class="badge b-warn">Aguardando Pix · ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '</span>';
     };
-    alvo.innerHTML = pedidos.length ? '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Cupom</th><th>Total</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
-      pedidos.slice(0, 200).map((p) => '<tr><td><strong>' + esc(p.codigo) + '</strong><div class="sub">' + esc(dataBR(p.lead.criadoEm, true)) + '</div></td>' +
+    const verCancelados = el.querySelector('#mostrar-cancelados-bf');
+    if (verCancelados && !verCancelados.dataset.ligado) { verCancelados.dataset.ligado = '1'; verCancelados.addEventListener('change', desenharPedidosBF); }
+    const visiveis = verCancelados && verCancelados.checked ? pedidos : pedidos.filter((p) => p.estado === 'aguardando' || p.estado === 'pago');
+    alvo.innerHTML = visiveis.length ? '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Cupom</th><th>Total</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
+      visiveis.slice(0, 200).map((p) => '<tr><td><strong>' + esc(p.codigo) + '</strong><div class="sub">' + esc(dataBR(p.lead.criadoEm, true)) + '</div></td>' +
         '<td>' + esc(p.lead.nome || '') + '<div class="sub">' + esc(p.lead.whatsapp || '') + '</div></td>' +
         '<td>' + Object.entries(p.itens).map(([f, q]) => q + '× ' + esc(nomePerfume(f))).join('<br>') + '</td>' +
         '<td>' + (p.cupom ? esc(p.cupom) + ' (' + p.pct + '%)' : '—') + '</td><td><strong>' + money(p.total) + '</strong></td><td>' + situacao(p) + '</td><td class="nowrap">' +
-        (p.estado === 'aguardando' || p.estado === 'expirado' ? '<button type="button" class="btn btn-sm btn-primary" data-pix-ok="' + esc(p.lead.id) + '">Pix recebido</button> ' : '') +
+        (p.estado === 'aguardando' || (p.estado === 'expirado') ? '<button type="button" class="btn btn-sm btn-primary" data-pix-ok="' + esc(p.lead.id) + '">Pix recebido</button> ' : '') +
         (p.estado === 'aguardando' ? '<button type="button" class="btn btn-sm" data-pix-cancelar="' + esc(p.lead.id) + '">Cancelar</button> ' : '') +
         (p.estado === 'pago' ? '<button type="button" class="btn btn-sm" data-pix-desfazer="' + esc(p.lead.id) + '">Desfazer</button> ' : '') +
         '<a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(p.lead.whatsapp, p.estado === 'pago'
           ? 'Olá, ' + (p.lead.nome || '').split(' ')[0] + '! Aqui é a Karen 💝 Recebi seu Pix do pedido ' + p.codigo + ' (' + money(p.total) + '). Vamos combinar a entrega?'
           : 'Olá, ' + (p.lead.nome || '').split(' ')[0] + '! Aqui é a Karen. Sobre o seu pedido ' + p.codigo + ' de ' + money(p.total) + ' da Black Friday:')) + '">WhatsApp</a></td></tr>').join('') +
-      '</tbody></table>' : '<div class="sub" style="padding:28px">Nenhuma compra pelo carrinho ainda.</div>';
+      '</tbody></table>' : '<div class="sub" style="padding:28px">' + (pedidos.length ? 'Nenhum pedido aguardando Pix ou pago. Marque "Mostrar cancelados e vencidos" para ver o histórico.' : 'Nenhuma compra pelo carrinho ainda.') + '</div>';
     alvo.querySelectorAll('[data-pix-ok]').forEach((b) => b.onclick = () => pixRecebido(b, b.dataset.pixOk));
     alvo.querySelectorAll('[data-pix-cancelar]').forEach((b) => b.onclick = () => cancelarPedido(b, b.dataset.pixCancelar));
     alvo.querySelectorAll('[data-pix-desfazer]').forEach((b) => b.onclick = () => desfazerPix(b, b.dataset.pixDesfazer));
@@ -612,6 +627,7 @@ export function tela(el) {
     botao.disabled = true;
     try {
       const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
+      const trava = p.segredo ? await sha256hex(p.segredo) : '';
       const leituras = [{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : [], p.vagas.map((v) => ({ col: 'vagas-bf', id: v })));
       const agora = new Date().toISOString();
       let perdidas = [];
@@ -626,7 +642,7 @@ export function tela(el) {
         perdidas = [];
         vagasDocs.forEach((v, i) => {
           // Se o prazo passou, outra cliente pode ter pegado a vaga: não mexe nela.
-          if (v && v.pedido === p.codigo) w.push({ col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: agora, canceladoEm: '' } });
+          if (v && v.trava === trava) w.push({ col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: agora, canceladoEm: '' } });
           else perdidas.push(p.vagas[i]);
         });
         if (cupom && !cupom.cupomUsadoEm) w.push({ col: 'leads', id: idCupom, dados: { cupomUsadoEm: agora } });
@@ -643,19 +659,20 @@ export function tela(el) {
   async function cancelarPedido(botao, id) {
     const p = pedidoDoLead(store.get('leads', id) || {});
     if (!p) return;
-    if (!(await confirmar('Cancelar o pedido ' + p.codigo + '? Os perfumes voltam ao site' + (p.cupom ? ' e o cupom ' + p.cupom + ' é perdido' : '') + '.',
-      { titulo: 'Cancelar pedido', botao: 'Cancelar pedido', perigo: true }))) return;
+    if (!(await confirmar('Cancelar o pedido ' + p.codigo + ' de ' + (p.lead.nome || 'cliente') + '? Ele sai da lista, os frascos voltam ao site na hora' + (p.cupom ? ' e o cupom ' + p.cupom + ' é perdido' : '') + '. Se a cliente estiver na tela do Pix, ela verá que o pedido foi cancelado.',
+      { titulo: 'Cancelar pedido?', botao: 'Sim, cancelar pedido', perigo: true }))) return;
     botao.disabled = true;
     try {
       const agora = new Date().toISOString();
+      const trava = p.segredo ? await sha256hex(p.segredo) : '';
       await store.transacao([{ col: 'leads', id }].concat(p.vagas.map((v) => ({ col: 'vagas-bf', id: v }))), ([lead, ...vagasDocs]) => {
         if (!lead) throw new Error('pedido não encontrado');
         if (lead.pagoEm) throw new Error('este pedido já está pago');
         return [{ col: 'leads', id, dados: { canceladoEm: agora } }]
-          .concat(vagasDocs.map((v, i) => (v && v.pedido === p.codigo ? { col: 'vagas-bf', id: p.vagas[i], dados: { canceladoEm: agora } } : null)).filter(Boolean));
+          .concat(vagasDocs.map((v, i) => (v && v.trava === trava && !v.pagoEm ? { col: 'vagas-bf', id: p.vagas[i], dados: { canceladoEm: agora } } : null)).filter(Boolean));
       });
       atualizarVagas(true);
-      toast('Pedido ' + p.codigo + ' cancelado.');
+      toast('Pedido ' + p.codigo + ' cancelado e removido da lista.');
       render();
     } catch (e) { toast('Não foi possível cancelar: ' + e.message, 'erro'); botao.disabled = false; }
   }
@@ -669,13 +686,14 @@ export function tela(el) {
     try {
       const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
       const agora = new Date().toISOString();
+      const trava = p.segredo ? await sha256hex(p.segredo) : '';
       await store.transacao([{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : [], p.vagas.map((v) => ({ col: 'vagas-bf', id: v }))), (docs) => {
         const [lead] = docs;
         const vagasDocs = docs.slice(idCupom ? 2 : 1);
         if (!lead || !lead.pagoEm) throw new Error('este pedido não está pago');
         return [{ col: 'leads', id, dados: { pagoEm: '', canceladoEm: agora, status: 'Em contato' } }]
           .concat(idCupom ? [{ col: 'leads', id: idCupom, dados: { cupomUsadoEm: '' } }] : [])
-          .concat(vagasDocs.map((v, i) => (v && v.pedido === p.codigo ? { col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: '', canceladoEm: agora } } : null)).filter(Boolean));
+          .concat(vagasDocs.map((v, i) => (v && v.trava === trava ? { col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: '', canceladoEm: agora } } : null)).filter(Boolean));
       });
       atualizarVagas(true);
       toast('Pagamento desfeito; perfumes de volta ao estoque.');
