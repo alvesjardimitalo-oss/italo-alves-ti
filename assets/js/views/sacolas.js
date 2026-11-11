@@ -36,21 +36,39 @@ function cupomDoLead(l) {
   const m = /\[cupom:([A-Z0-9-]+):(\d+)\]/.exec(l.detalhe || '');
   return m ? { codigo: m[1], pct: Number(m[2]) } : null;
 }
-/** Lista os cupons e marca repetidos: só o primeiro giro de cada WhatsApp vale. */
+const BF_FIM = new Date('2026-11-30T23:59:59-03:00');
+const ROLETA_URL = 'https://italoinfotec.com.br/sacola-misteriosa/roleta/';
+/**
+ * Lista os cupons. Regras: só o primeiro giro de cada WhatsApp vale; giros extras
+ * (link enviado pela Karen) valem uma vez por link. Calcula também as indicações.
+ */
 function listarCupons() {
   const cupons = store.lista('leads')
     .filter((l) => l.origem === 'black-friday')
-    .map((l) => ({ lead: l, ...cupomDoLead(l), quando: String(l.criadoEm || '') }))
+    .map((l) => ({ lead: l, ...cupomDoLead(l), quando: String(l.criadoEm || ''), ind: String(l.indicacao || '') }))
     .filter((c) => c.codigo)
     .sort((a, b) => a.quando.localeCompare(b.quando));
-  const vistos = new Set();
+  const telefones = new Set(), tokens = new Set();
   cupons.forEach((c) => {
     const tel = String(c.lead.whatsapp || '');
-    c.repetido = vistos.has(tel);
-    vistos.add(tel);
+    if (c.ind.startsWith('giro:')) {
+      c.extra = true;
+      c.repetido = tokens.has(c.ind);
+      tokens.add(c.ind);
+    } else {
+      c.repetido = telefones.has(tel);
+      telefones.add(tel);
+    }
+  });
+  cupons.forEach((c) => {
+    const amigas = cupons.filter((x) => x.ind === 'amiga:' + c.codigo && !x.repetido && String(x.lead.whatsapp) !== String(c.lead.whatsapp));
+    c.amigas = amigas.length;
+    c.amigasCompraram = amigas.filter((x) => x.lead.cupomUsadoEm).length;
+    c.girosExtras = Number(c.lead.girosExtras) || 0;
   });
   return cupons.reverse();
 }
+let ultimoPlacar = '';
 
 
 /** Pergunta qual sacola foi vendida quando o pedido não identifica (pedidos antigos). */
@@ -107,7 +125,9 @@ export function tela(el) {
     '<a href="#/leads" class="btn btn-sm">Ver todos os pedidos</a></div>' +
     '<div class="tabela-wrap" id="pedidos-karen"></div></div>' +
     '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Cupons da Black Friday</h2><span id="resumo-cupons" class="sub"></span></div>' +
-    '<div style="padding:0 20px 14px;display:flex;gap:10px;flex-wrap:wrap"><input id="busca-cupom" placeholder="Digite o código (BF-XXXXX), nome ou WhatsApp" style="flex:1 1 260px" autocomplete="off"></div>' +
+    '<div id="aviso-cupons" style="padding:0 20px"></div>' +
+    '<div style="padding:0 20px 14px;display:flex;gap:10px;flex-wrap:wrap"><input id="busca-cupom" placeholder="Digite o código (BF-XXXXX), nome ou WhatsApp" style="flex:1 1 260px" autocomplete="off">' +
+    '<select id="filtro-cupom" style="flex:0 0 auto"><option value="">Todos os cupons</option><option value="abertos">Válidos ainda não usados</option><option value="usados">Usados</option><option value="indicacoes">Com giro extra para liberar</option></select></div>' +
     '<div class="tabela-wrap" id="cupons-karen"></div></div>' +
     '<div id="editor-karen"></div>';
   const status = (msg) => { const e = el.querySelector('#status-karen'); if (e) e.textContent = msg; };
@@ -183,30 +203,90 @@ export function tela(el) {
     const alvo = el.querySelector('#cupons-karen');
     if (!alvo) return;
     const busca = el.querySelector('#busca-cupom');
+    const filtro = el.querySelector('#filtro-cupom');
     const termo = (busca.value || '').trim().toUpperCase();
     const todos = listarCupons();
     const validos = todos.filter((c) => !c.repetido);
-    el.querySelector('#resumo-cupons').textContent = validos.length + ' cupons · ' +
-      validos.filter((c) => c.lead.cupomUsadoEm).length + ' usados' +
-      (todos.length > validos.length ? ' · ' + (todos.length - validos.length) + ' repetidos' : '');
+    const abertos = validos.filter((c) => !c.lead.cupomUsadoEm);
+    const usados = validos.length - abertos.length;
+    const paraLiberar = validos.filter((c) => c.amigasCompraram > c.girosExtras);
+    el.querySelector('#resumo-cupons').textContent = validos.length + ' cupons · ' + usados + ' usados' +
+      (todos.length > validos.length ? ' · ' + (todos.length - validos.length) + ' não valem' : '');
+    publicarPlacar(validos.length, usados);
+
+    // Aviso: lembrar quem não usou (últimos 3 dias) e giros extras pendentes.
+    const dias = Math.ceil((BF_FIM - Date.now()) / 864e5);
+    const avisos = [];
+    if (dias >= 0 && dias <= 3 && abertos.length) avisos.push('Faltam ' + (dias || 'menos de 1') + ' dia(s) para acabar a Black Friday e ' + abertos.length + ' cupom(ns) ainda não foram usados. Filtre por <b>Válidos ainda não usados</b> e mande um lembrete.');
+    if (paraLiberar.length) avisos.push(paraLiberar.length + ' cliente(s) indicaram amigas que já compraram e ganharam um giro extra. Filtre por <b>Com giro extra para liberar</b>.');
+    el.querySelector('#aviso-cupons').innerHTML = avisos.map((t) => '<div class="alerta" style="margin:0 0 12px;padding:10px 14px;border-radius:10px;background:var(--warn-bg);color:var(--warn)">' + t + '</div>').join('');
+
     const digitos = termo.replace(/\D/g, '');
-    const lista = !termo ? todos : todos.filter((c) => c.codigo.includes(termo) ||
+    let lista = !termo ? todos : todos.filter((c) => c.codigo.includes(termo) ||
       String(c.lead.nome || '').toUpperCase().includes(termo) || (digitos.length >= 4 && String(c.lead.whatsapp || '').includes(digitos)));
-    const situacao = (c) => c.repetido ? '<span class="badge b-danger">Não vale: número já tinha girado</span>'
+    if (filtro.value === 'abertos') lista = lista.filter((c) => !c.repetido && !c.lead.cupomUsadoEm);
+    if (filtro.value === 'usados') lista = lista.filter((c) => !c.repetido && c.lead.cupomUsadoEm);
+    if (filtro.value === 'indicacoes') lista = lista.filter((c) => !c.repetido && c.amigasCompraram > c.girosExtras);
+
+    const situacao = (c) => c.repetido ? '<span class="badge b-danger">Não vale: ' + (c.extra ? 'giro extra já usado' : 'número já tinha girado') + '</span>'
       : c.lead.cupomUsadoEm ? '<span class="badge b-muted">Usado em ' + esc(dataBR(c.lead.cupomUsadoEm, true)) + '</span>'
       : '<span class="badge b-ok">Válido</span>';
-    alvo.innerHTML = lista.length ? '<table><thead><tr><th>Cupom</th><th>Desconto</th><th>Cliente</th><th>WhatsApp</th><th>Girou em</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
-      lista.slice(0, 200).map((c) => '<tr><td><strong>' + esc(c.codigo) + '</strong></td><td><strong>' + c.pct + '%</strong></td><td>' + esc(c.lead.nome || '') +
-        '</td><td>' + esc(c.lead.whatsapp || '') + '</td><td>' + esc(dataBR(c.lead.criadoEm, true)) + '</td><td>' + situacao(c) + '</td><td class="nowrap">' +
+    const origem = (c) => c.extra ? '<span class="badge b-info">Giro extra</span>' : c.ind.startsWith('amiga:') ? '<span class="sub">Indicada por ' + esc(c.ind.slice(6)) + '</span>' : '';
+    const indicacoes = (c) => c.amigas ? c.amigas + ' amiga(s) · ' + c.amigasCompraram + ' comprou(aram)' : '—';
+    const lembrete = (c) => 'Olá, ' + (c.lead.nome || '').split(' ')[0] + '! Aqui é a Karen 💝 Seu cupom ' + c.codigo + ' de ' + c.pct +
+      '% da Black Friday vale até 30/11. Quer garantir seu perfume? Veja os preços com o seu cupom: ' + ROLETA_URL;
+    alvo.innerHTML = lista.length ? '<table><thead><tr><th>Cupom</th><th>Desconto</th><th>Cliente</th><th>WhatsApp</th><th>Girou em</th><th>Indicações</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
+      lista.slice(0, 300).map((c) => '<tr><td><strong>' + esc(c.codigo) + '</strong><div>' + origem(c) + '</div></td><td><strong>' + c.pct + '%</strong></td><td>' + esc(c.lead.nome || '') +
+        '</td><td>' + esc(c.lead.whatsapp || '') + '</td><td>' + esc(dataBR(c.lead.criadoEm, true)) + '</td><td>' + indicacoes(c) + '</td><td>' + situacao(c) + '</td><td class="nowrap">' +
         (c.repetido ? '' : c.lead.cupomUsadoEm
           ? '<button type="button" class="btn btn-sm" data-cupom-desfazer="' + esc(c.lead.id) + '">Desfazer uso</button>'
           : '<button type="button" class="btn btn-sm btn-primary" data-cupom-usar="' + esc(c.lead.id) + '">Marcar como usado</button>') +
-        ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, 'Olá, ' + (c.lead.nome || '') + '! Aqui é a Karen. Vi seu cupom ' + c.codigo + ' de ' + c.pct + '% da Black Friday.')) + '">WhatsApp</a></td></tr>').join('') +
+        (!c.repetido && c.amigasCompraram > c.girosExtras ? ' <button type="button" class="btn btn-sm btn-primary" data-giro-extra="' + esc(c.lead.id) + '">Liberar giro extra</button>' : '') +
+        (c.lead.giroExtraLink ? ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, 'Olá, ' + (c.lead.nome || '').split(' ')[0] + '! Sua amiga comprou com o cupom dela e você ganhou um giro extra na roleta da Black Friday 🎁 Gire aqui: ' + c.lead.giroExtraLink)) + '">Enviar giro extra</a>' : '') +
+        ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, !c.repetido && !c.lead.cupomUsadoEm ? lembrete(c)
+          : 'Olá, ' + (c.lead.nome || '') + '! Aqui é a Karen. Vi seu cupom ' + c.codigo + ' de ' + c.pct + '% da Black Friday.')) + '">' + (!c.repetido && !c.lead.cupomUsadoEm ? 'Lembrar no WhatsApp' : 'WhatsApp') + '</a></td></tr>').join('') +
       '</tbody></table>'
-      : '<div class="sub" style="padding:28px">' + (termo ? 'Nenhum cupom encontrado para "' + esc(termo) + '". Confira se o código foi digitado certo.' : 'Ainda ninguém girou a roleta.') + '</div>';
-    alvo.querySelectorAll('[data-cupom-usar]').forEach((b) => b.onclick = () => marcarCupom(b, b.dataset.cupomUsar, true));
-    alvo.querySelectorAll('[data-cupom-desfazer]').forEach((b) => b.onclick = () => marcarCupom(b, b.dataset.cupomDesfazer, false));
-    if (!busca.dataset.ligado) { busca.dataset.ligado = '1'; busca.addEventListener('input', desenharCupons); }
+      : '<div class="sub" style="padding:28px">' + (termo ? 'Nenhum cupom encontrado para "' + esc(termo) + '". Confira se o código foi digitado certo.' : filtro.value ? 'Nenhum cupom neste filtro.' : 'Ainda ninguém girou a roleta.') + '</div>';
+    alvo.querySelectorAll('[data-cupom-usar]').forEach((bt) => bt.onclick = () => marcarCupom(bt, bt.dataset.cupomUsar, true));
+    alvo.querySelectorAll('[data-cupom-desfazer]').forEach((bt) => bt.onclick = () => marcarCupom(bt, bt.dataset.cupomDesfazer, false));
+    alvo.querySelectorAll('[data-giro-extra]').forEach((bt) => bt.onclick = () => liberarGiro(bt, bt.dataset.giroExtra));
+    if (!busca.dataset.ligado) {
+      busca.dataset.ligado = '1';
+      busca.addEventListener('input', desenharCupons);
+      filtro.addEventListener('change', desenharCupons);
+    }
+  }
+
+  // Placar público (cupons distribuídos), lido pela página da roleta.
+  function publicarPlacar(cupons, usados) {
+    const chave = cupons + '/' + usados;
+    if (chave === ultimoPlacar) return;
+    ultimoPlacar = chave;
+    store.definir('rastreio', 'bf-placar', { cupons, usados, atualizadoEm: new Date().toISOString() }).catch(() => { ultimoPlacar = ''; });
+  }
+
+  // Giro extra: cria um link de uso único e guarda no cupom de quem indicou.
+  async function liberarGiro(botao, id) {
+    const lead = store.get('leads', id);
+    const c = lead && cupomDoLead(lead);
+    if (!c) return;
+    if (!(await confirmar('Liberar um giro extra para ' + (lead.nome || 'cliente') + '? Uma amiga indicada já comprou com o cupom dela. ' +
+      'Depois, use "Enviar giro extra" para mandar o link pelo WhatsApp.', { titulo: 'Giro extra', botao: 'Liberar giro extra' }))) return;
+    botao.disabled = true;
+    try {
+      const bytes = new Uint8Array(10); crypto.getRandomValues(bytes);
+      const token = [...bytes].map((v) => 'abcdefghjkmnpqrstuvwxyz23456789'[v % 31]).join('');
+      await store.definir('rastreio', 'bfgiro-' + token, { codigoOrigem: c.codigo, criadoEm: new Date().toISOString() });
+      await store.transacao([{ col: 'leads', id }], ([l]) => {
+        if (!l) throw new Error('cupom não encontrado');
+        return [{ col: 'leads', id, dados: { girosExtras: (Number(l.girosExtras) || 0) + 1, giroExtraLink: ROLETA_URL + '?giro=' + token } }];
+      });
+      toast('Giro extra liberado. Toque em "Enviar giro extra" para mandar no WhatsApp.');
+      render();
+    } catch (e) {
+      toast('Não foi possível liberar: ' + e.message, 'erro');
+      botao.disabled = false;
+    }
   }
 
   async function marcarCupom(botao, id, usar) {

@@ -40,7 +40,13 @@ const premio = $('#premio');
 const calmo = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let telefoneKaren = '';
 let girando = false;
-let pendente = null; // cupom sorteado que ainda não foi registrado (não sorteia de novo)
+let pendente = null;
+const params = new URLSearchParams(location.search);
+const amiga = /^BF-[A-Z0-9]{5}$/.test(params.get('amiga') || '') ? params.get('amiga') : '';
+const tokenGiro = /^[a-z0-9]{10,20}$/.test(params.get('giro') || '') ? params.get('giro') : '';
+let giroExtraOk = false;      // link de giro extra conferido no banco
+let fbDb = null, fbF = null;
+const chaveCupom = () => tokenGiro ? CHAVE + '-giro-' + tokenGiro : CHAVE; // cupom sorteado que ainda não foi registrado (não sorteia de novo)
 
 const digits = (v) => String(v || '').replace(/\D/g, '');
 const normalizeWhatsApp = (v) => { const d = digits(v); return (d.length === 10 || d.length === 11) ? '55' + d : d; };
@@ -116,14 +122,16 @@ function mensagemWhats(c) {
 }
 function mostrarPremio(c, repetido) {
   cupomAtual = c;
+  prepararIndicacao(c);
+  atualizarCombo();
   desenharPerfumes();
   premio.hidden = false;
   premio.querySelector('.premio-pct').textContent = c.pct + '%';
   premio.querySelector('.premio-codigo').textContent = c.codigo;
-  premio.querySelector('.premio-titulo').textContent = repetido ? 'Este é o seu cupom' : (c.nome.split(' ')[0] + ', você ganhou!');
+  premio.querySelector('.premio-titulo').textContent = repetido ? (tokenGiro ? 'Você já usou este giro extra' : 'Este é o seu cupom') : (c.nome.split(' ')[0] + ', você ganhou!');
   premio.querySelector('.premio-aviso').textContent = repetido
     ? 'A roleta é uma vez por pessoa, e você já girou neste aparelho.'
-    : 'Mostre este código para a Karen na hora da compra.';
+    : (tokenGiro ? 'Este é o seu giro extra por indicar uma amiga. ' : '') + 'Mostre este código para a Karen na hora da compra.';
   const wa = premio.querySelector('#usar-cupom');
   if (telefoneKaren) { wa.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(mensagemWhats(c)); wa.hidden = false; }
   else wa.hidden = true;
@@ -190,23 +198,86 @@ function desenharPerfumes() {
     : 'O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
 }
 
+// Combo: perfume + sacola misteriosa ganha um mimo.
+function atualizarCombo() {
+  const a = document.getElementById('combo-whats');
+  if (!a) return;
+  if (!telefoneKaren) { a.hidden = true; return; }
+  const c = cupomAtual;
+  a.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent('Olá, Karen! Quero o combo da Black Friday: um perfume + uma sacola misteriosa, com o mimo extra.' +
+    (c ? ` Meu cupom é ${c.codigo} (${c.pct}%).` : ''));
+  a.hidden = false;
+}
+
 // ---------------- Fluxo ----------------
 async function carregarContato() {
   try {
     const [{ initializeApp }, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-firestore-lite.js')]);
     const app = initializeApp(FIREBASE_CONFIG, 'karen-roleta-publico');
     await iniciarAppCheck(app);
-    const snap = await F.getDoc(F.doc(F.getFirestore(app), 'ti', 'base', 'rastreio', 'sacolas-publicas'));
+    fbF = F; fbDb = F.getFirestore(app);
+    const snap = await F.getDoc(F.doc(fbDb, 'ti', 'base', 'rastreio', 'sacolas-publicas'));
     const t = normalizeWhatsApp(snap.exists() ? snap.data().whatsapp : '');
     telefoneKaren = (t.length >= 12 && t.length <= 13) ? t : '';
   } catch (e) { console.warn('Contato da Karen indisponível:', e); }
+}
+const lerPublico = async (id) => {
+  if (!fbDb) return null;
+  try { const d = await fbF.getDoc(fbF.doc(fbDb, 'ti', 'base', 'rastreio', id)); return d.exists() ? d.data() : null; }
+  catch (_) { return null; }
+};
+
+// Placar: quantos cupons já saíram (publicado pelo painel da Karen).
+async function mostrarPlacar() {
+  const p = await lerPublico('bf-placar');
+  const el = document.getElementById('placar');
+  if (!el || !p || !(Number(p.cupons) >= 10)) return;
+  el.textContent = Number(p.cupons) + ' cupons já distribuídos' + (Number(p.usados) >= 5 ? ' · ' + Number(p.usados) + ' perfumes garantidos' : '');
+  el.hidden = false;
+}
+
+// Contagem regressiva até o fim da campanha.
+function contagem() {
+  const el = document.getElementById('contagem');
+  if (!el) return;
+  const pad = (n) => String(n).padStart(2, '0');
+  const tic = () => {
+    const ms = FIM - Date.now();
+    if (ms <= 0) { el.textContent = 'Promoção encerrada'; return; }
+    const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60, sg = Math.floor(ms / 1e3) % 60;
+    el.innerHTML = '<span>Termina em</span>' + (d ? '<b>' + d + '</b>d ' : '') + '<b>' + pad(h) + '</b>h <b>' + pad(m) + '</b>m <b>' + pad(sg) + '</b>s';
+    setTimeout(tic, 1000 - (Date.now() % 1000));
+  };
+  tic();
+}
+
+// Depois de ganhar: convite para indicar uma amiga.
+function prepararIndicacao(c) {
+  const box = document.getElementById('indicar');
+  if (!box || !c) return;
+  const link = location.origin + location.pathname + '?amiga=' + encodeURIComponent(c.codigo);
+  const texto = 'Olha que legal: a Karen Cosméticos está com uma roleta de Black Friday e todo giro ganha desconto em perfumes! Gira aqui: ' + link;
+  box.querySelector('#indicar-whats').href = 'https://wa.me/?text=' + encodeURIComponent(texto);
+  box.querySelector('#indicar-copiar').onclick = async (e) => {
+    try { await navigator.clipboard.writeText(link); e.currentTarget.textContent = 'Link copiado ✓'; } catch (_) { e.currentTarget.textContent = link; }
+  };
+  box.hidden = false;
 }
 
 function iniciar() {
   desenharRoda();
   desenharPerfumes();
-  carregarContato().then(() => {
-    const salvo = (() => { try { return JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (_) { return null; } })();
+  contagem();
+  if (amiga) { const av = document.getElementById('aviso-amiga'); if (av) av.hidden = false; }
+  carregarContato().then(async () => {
+    atualizarCombo();
+    mostrarPlacar();
+    if (tokenGiro) {
+      giroExtraOk = Boolean(await lerPublico('bfgiro-' + tokenGiro));
+      const av = document.getElementById('aviso-giro');
+      if (av) { av.hidden = false; av.textContent = giroExtraOk ? 'Você ganhou um giro extra por indicar uma amiga! 🎁' : 'Este link de giro extra não é válido. Peça um novo para a Karen.'; av.classList.toggle('erro', !giroExtraOk); }
+    }
+    const salvo = (() => { try { return JSON.parse(localStorage.getItem(chaveCupom()) || 'null'); } catch (_) { return null; } })();
     if (salvo && salvo.codigo) mostrarPremio(salvo, true);
     else desenharPerfumes(); // agora com o WhatsApp da Karen carregado
   });
@@ -223,8 +294,9 @@ function iniciar() {
     if (girando) return;
     retorno.hidden = true;
     let salvo = null;
-    try { salvo = JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (_) {}
+    try { salvo = JSON.parse(localStorage.getItem(chaveCupom()) || 'null'); } catch (_) {}
     if (salvo && salvo.codigo) { mostrarPremio(salvo, true); return; }
+    if (tokenGiro && !giroExtraOk) { aviso('Este link de giro extra não é válido. Peça um novo para a Karen.', true); return; }
     const nome = $('#nome').value.trim();
     const whatsapp = normalizeWhatsApp($('#telefone').value);
     if (nome.length < 2) { aviso('Informe seu nome para girar.', true); $('#nome').focus(); return; }
@@ -245,6 +317,7 @@ function iniciar() {
         nome, whatsapp, cidade: '', equipamento: '', problema: 'Cupom Black Friday',
         detalhe: `Cupom ${codigo}: ${pct}% de desconto, válido até ${VALIDADE_TEXTO} [cupom:${codigo}:${pct}]`,
         atendimento: 'WhatsApp', servico: 'Roleta Black Friday', origem: 'black-friday', utm: 'black-friday',
+        indicacao: tokenGiro ? 'giro:' + tokenGiro : (amiga ? 'amiga:' + amiga : ''),
       }),
       pendente ? Promise.resolve() : girarAte(pct),
     ]);
@@ -256,7 +329,7 @@ function iniciar() {
       return;
     }
     pendente = null;
-    try { localStorage.setItem(CHAVE, JSON.stringify(cupom)); } catch (_) {}
+    try { localStorage.setItem(chaveCupom(), JSON.stringify(cupom)); } catch (_) {}
     confete();
     mostrarPremio(cupom, false);
   });
