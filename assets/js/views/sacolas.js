@@ -1,4 +1,4 @@
-// Gestão das Sacolas Misteriosas dentro da área técnica da Ítalo InfoTec.
+// Gestão da Loja da Karen (Black Friday + Sacola Misteriosa) dentro do sistema da Ítalo InfoTec.
 // Conteúdo interno fica somente em ti/base/sacolas (acesso restrito).
 // Vitrine é uma cópia limitada em ti/base/rastreio/sacolas-publicas.
 import { store } from '../store.js';
@@ -7,7 +7,7 @@ import { semRef } from './leads.js';
 import { PERFUMES } from '../perfumes-bf.js';
 import { icon } from '../icons.js';
 
-const URL_LOJA = 'https://italoinfotec.com.br/sacola-misteriosa/';
+const URL_LOJA = 'https://italoinfotec.com.br/karen/sacola-misteriosa/';
 const soNumeros = (v) => String(v || '').replace(/\D/g, '');
 function celular(v) {
   const d = soNumeros(v);
@@ -38,7 +38,7 @@ function cupomDoLead(l) {
   return m ? { codigo: m[1], pct: Number(m[2]) } : null;
 }
 const BF_FIM = new Date('2026-11-30T23:59:59-03:00');
-const ROLETA_URL = 'https://italoinfotec.com.br/sacola-misteriosa/roleta/';
+const ROLETA_URL = 'https://italoinfotec.com.br/karen/roleta/';
 /**
  * Lista os cupons. Regras: só o primeiro giro de cada WhatsApp vale; giros extras
  * (link enviado pela Karen) valem uma vez por link. Calcula também as indicações.
@@ -164,10 +164,10 @@ async function publicar(xs=sacolasAtuais(), tel=store.config.sacolasWhatsapp || 
 }
 function tituloPagina() {
   return '<div class="page-head"><div><div class="crumb">' + icon('catalogo',14) +
-    ' campanha promocional</div><h1>Sacolas Misteriosas · Karen</h1>' +
-    '<p>Cadastre preços e estoques, mantenha os produtos internos em segredo e publique na vitrine.</p></div>' +
-    '<a class="btn" href="' + URL_LOJA + '" target="_blank" rel="noopener">' +
-    icon('globe',16) + ' Abrir vitrine</a></div>';
+    ' loja parceira</div><h1>Loja da Karen</h1>' +
+    '<p>Black Friday (perfumes, Pix, cupons da roleta) e a ação Sacola Misteriosa. Tudo o que é publicado aqui aparece em /karen/.</p></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="/karen/" target="_blank" rel="noopener">' + icon('globe',16) + ' Abrir loja</a>' +
+    '<a class="btn" href="' + URL_LOJA + '" target="_blank" rel="noopener">Sacola Misteriosa</a></div></div>';
 }
 export function tela(el) {
   el.innerHTML = tituloPagina() + '<div class="grid g2" style="margin-bottom:18px">' +

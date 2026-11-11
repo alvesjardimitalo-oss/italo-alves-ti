@@ -36,7 +36,7 @@ const arteSacola = (indice) => {
 function selecionar(id) {
   const secao = document.getElementById('pedido');
   if (!seletor || !secao) {
-    const url = new URL('/sacola-misteriosa/pedido/', window.location.origin);
+    const url = new URL('/karen/sacola-misteriosa/pedido/', window.location.origin);
     url.searchParams.set('sacola', id);
     if (window.KarenSound?.isEnabled()) {
       window.setTimeout(() => window.location.assign(url.href), 190);
@@ -117,7 +117,7 @@ function desenhar() {
     const pedidoId = new URLSearchParams(window.location.search).get('sacola');
     if (pedidoId && ativos.some(s => s.id === pedidoId && Number(s.estoque) > 0)) seletor.value = pedidoId;
   }
-  // Ganchos para as animações (sacola-misteriosa/encanto.js).
+  // Ganchos para as animações (karen/encanto.js).
   document.dispatchEvent(new CustomEvent('karen:vitrine', {detail:{itens:ativos}}));
   avisarEscolha();
 }

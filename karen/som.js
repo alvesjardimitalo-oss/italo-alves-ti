@@ -190,7 +190,7 @@
     if(a){
       if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
       const url=new URL(a.href,location.href);
-      if(url.origin!==location.origin||!url.pathname.startsWith('/sacola-misteriosa/')||url.href===location.href)return;
+      if(url.origin!==location.origin||!url.pathname.startsWith('/karen/sacola-misteriosa/')||url.href===location.href)return;
       e.preventDefault();
       clickSound('tap');
       setTimeout(()=>{location.assign(url.href);},110);

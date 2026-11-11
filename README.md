@@ -240,7 +240,7 @@ Ao editar arquivos em `conteudo/` ou `tools/site/`, o GitHub Actions **Gerar sit
 
 ## Black Friday da Karen: roleta, carrinho e Pix
 
-- Página: `/sacola-misteriosa/roleta/`. Perfumes e preços cheios em `assets/js/perfumes-bf.js` (lista única, usada pela página e pelo painel). Fotos em `sacola-misteriosa/perfumes/<foto>.webp`.
+- Loja: `/karen/` (vitrine da Black Friday com carrinho). Ações: `/karen/roleta/` e `/karen/sacola-misteriosa/`. Endereços antigos em `/sacola-misteriosa/` redirecionam. Perfumes e preços cheios em `assets/js/perfumes-bf.js` (lista única, usada pela página e pelo painel). Fotos em `karen/perfumes/<foto>.webp`.
 - **Cupom:** 1% a 10% (roleta), 1 por compra, aplicado no carrinho sobre o preço cheio. Com 10% o preço fica igual ao preço Black Friday da loja.
 - **Compra:** cada frasco é uma **vaga numerada** em `ti/base/vagas-bf/{foto}-{n}` (sem dados pessoais). O carrinho grava as vagas num lote só; as regras do Firebase recusam vaga ocupada, então duas clientes nunca pegam o mesmo frasco (o carrinho tenta outra vaga ou avisa que esgotou). Depois registra o pedido em `leads` (origem `black-friday-pedido`) e mostra o Pix (copia e cola + QR) com **10 minutos** para pagar.
 - **Cancelar:** no carrinho a cliente remove itens ou esvazia; na tela do Pix ela pode **cancelar o pedido** (libera as vagas com o segredo da trava — SHA-256 conferido pelas regras —, devolve os perfumes ao carrinho e mantém o cupom). No painel, *Cancelar* tira o pedido da lista, libera as vagas e a cliente vê "Pedido cancelado pela loja"; *Pix recebido* aparece para ela como "Pagamento confirmado!". Cancelados e vencidos ficam ocultos ("Mostrar cancelados e vencidos").

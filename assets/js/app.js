@@ -52,7 +52,7 @@ const MENU = [
   ['/lembretes', 'clock', 'Lembretes de manutenção', () => lembretesManutencao().length],
   ['/financeiro', 'financeiro', 'Financeiro', () => aReceber().length],
   ['/divulgacao', 'globe', 'Divulgação e indicação'],
-  ['/sacolas', 'catalogo', 'Sacolas Misteriosas'],
+  ['/sacolas', 'catalogo', 'Loja da Karen'],
   ['/catalogo', 'catalogo', 'Produtos e serviços'],
   ['/config', 'config', 'Configurações'],
 ];

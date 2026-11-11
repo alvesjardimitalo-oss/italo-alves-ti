@@ -114,6 +114,11 @@ function mostrarPremio(c, repetido) {
   prepararIndicacao(c);
   atualizarCombo();
   desenharPerfumes();
+  if (!premio) { // página da loja: mostra só o selo do cupom
+    const selo = document.getElementById('cupom-loja');
+    if (selo) { selo.hidden = false; selo.querySelector('b').textContent = c.codigo + ' · ' + c.pct + '%'; }
+    return;
+  }
   premio.hidden = false;
   premio.querySelector('.premio-pct').textContent = c.pct + '%';
   premio.querySelector('.premio-codigo').textContent = c.codigo;
@@ -161,7 +166,7 @@ function desenharPerfumes() {
     const li = document.createElement('li');
     li.className = 'perfume' + (pct ? ' com-cupom' : '');
     const preco = pct ? comDesconto(p.cheio, pct) : comDesconto(p.cheio, DESCONTO_MAXIMO);
-    li.innerHTML = '<span class="perfume-foto"><img src="/sacola-misteriosa/perfumes/' + p.foto + '.webp" width="400" height="500" loading="lazy" decoding="async" alt=""></span>' +
+    li.innerHTML = '<span class="perfume-foto"><img src="/karen/perfumes/' + p.foto + '.webp" width="400" height="500" loading="lazy" decoding="async" alt=""></span>' +
       '<span class="perfume-marca"></span><strong class="perfume-nome"></strong>' +
       '<span class="perfume-cheio"></span><span class="perfume-preco"></span><span class="perfume-nota"></span>';
     li.querySelector('.perfume-marca').textContent = p.marca;
@@ -265,7 +270,9 @@ function prepararIndicacao(c) {
 }
 
 function iniciar() {
-  desenharRoda();
+  // Na página da loja (/karen/) não há roda: só vitrine, carrinho e cupom já ganho.
+  const temRoleta = Boolean(roda && form);
+  if (temRoleta) desenharRoda();
   desenharPerfumes();
   contagem();
   if (amiga) { const av = document.getElementById('aviso-amiga'); if (av) av.hidden = false; }
@@ -290,6 +297,7 @@ function iniciar() {
     if (salvo && salvo.codigo) mostrarPremio(salvo, true);
     else desenharPerfumes(); // agora com o WhatsApp da Karen carregado
   });
+  if (!temRoleta) return;
   if (new Date() > FIM) {
     form.querySelectorAll('input,button').forEach((el) => { el.disabled = true; });
     aviso('A roleta da Black Friday terminou. Obrigada por participar! 💝', false);
