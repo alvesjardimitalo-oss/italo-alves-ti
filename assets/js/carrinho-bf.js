@@ -173,7 +173,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
     const contatoSalvo = { nome: digitado.nome || (ultimo && ultimo.nome) || '', whatsapp: digitado.tel || (ultimo && ultimo.whatsapp ? ultimo.whatsapp.replace(/^55/, '') : '') };
     dlg.innerHTML = '<div class="carrinho-topo"><h2>Seu carrinho</h2><button type="button" class="carrinho-x" aria-label="Fechar">×</button></div>' +
       (recado ? '<p class="carrinho-recado">' + esc(recado) + '</p>' : '') +
-      '<ul class="carrinho-itens">' + linhas.map((l) => '<li><img src="/sacola-misteriosa/perfumes/' + esc(l.p.foto) + '.webp" alt="" width="56" height="70">' +
+      '<ul class="carrinho-itens">' + linhas.map((l) => '<li><img src="/karen/perfumes/' + esc(l.p.foto) + '.webp" alt="" width="56" height="70">' +
         '<div><strong>' + esc(l.p.nome) + '</strong><span>' + esc(l.p.marca) + ' · ' + brl(l.p.cheio) + ' cada</span></div>' +
         '<div class="carrinho-qtd"><button type="button" data-menos="' + esc(l.p.foto) + '" aria-label="Diminuir">−</button><b>' + l.q + '</b>' +
         '<button type="button" data-mais="' + esc(l.p.foto) + '" aria-label="Aumentar">+</button>' +

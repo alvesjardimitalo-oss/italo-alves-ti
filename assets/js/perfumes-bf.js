@@ -1,5 +1,5 @@
 // Perfumes da Black Friday da Karen — lista única usada pela página da roleta e pelo painel.
-// "foto" é o identificador (nome do arquivo em /sacola-misteriosa/perfumes/ e chave do estoque).
+// "foto" é o identificador (nome do arquivo em /karen/perfumes/ e chave do estoque).
 // Perfumes da Black Friday. "cheio" = preço sem desconto. O cupom é aplicado sobre
 // o preço cheio, então o melhor prêmio (10%) chega exatamente ao preço Black Friday
 // anunciado na loja da Karen, nunca abaixo dele.
