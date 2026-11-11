@@ -18,13 +18,13 @@ const CHAVE = 'karen-bf-cupom-2026';
 // o preço cheio, então o melhor prêmio (10%) chega exatamente ao preço Black Friday
 // anunciado na loja da Karen, nunca abaixo dele.
 const PERFUMES = [
-  { nome: 'Floratta Fleur d’Éclipse Eau de Parfum 75 ml', marca: 'O Boticário', cheio: 229.90 },
-  { nome: 'Clash Extreme', marca: 'O Boticário', cheio: 184.90 },
-  { nome: 'Kaiak Extremo masculino 100 ml', marca: 'Natura', cheio: 180.00 },
-  { nome: 'Humor Envolve desodorante colônia 75 ml', marca: 'Natura', cheio: 164.90 },
-  { nome: 'Meu Primeiro Humor feminino 75 ml', marca: 'Natura', cheio: 164.90 },
-  { nome: 'Floratta Blue Crystal desodorante colônia 75 ml', marca: 'O Boticário', cheio: 149.90 },
-  { nome: '300 km/h Max Turbo deo colônia', marca: 'Avon', cheio: 75.00 },
+  { foto: 'floratta-fleur-eclipse', nome: 'Floratta Fleur d’Éclipse Eau de Parfum 75 ml', marca: 'O Boticário', cheio: 229.90 },
+  { foto: 'clash-extreme', nome: 'Clash Extreme', marca: 'O Boticário', cheio: 184.90 },
+  { foto: 'kaiak-extremo', nome: 'Kaiak Extremo masculino 100 ml', marca: 'Natura', cheio: 180.00 },
+  { foto: 'humor-envolve', nome: 'Humor Envolve desodorante colônia 75 ml', marca: 'Natura', cheio: 164.90 },
+  { foto: 'meu-primeiro-humor', nome: 'Meu Primeiro Humor feminino 75 ml', marca: 'Natura', cheio: 164.90 },
+  { foto: 'floratta-blue-crystal', nome: 'Floratta Blue Crystal desodorante colônia 75 ml', marca: 'O Boticário', cheio: 149.90 },
+  { foto: '300kmh-max-turbo', nome: '300 km/h Max Turbo deo colônia', marca: 'Avon', cheio: 75.00 },
 ];
 const DESCONTO_MAXIMO = 10;
 const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -173,10 +173,12 @@ function desenharPerfumes() {
     const li = document.createElement('li');
     li.className = 'perfume' + (pct ? ' com-cupom' : '');
     const preco = pct ? comDesconto(p.cheio, pct) : comDesconto(p.cheio, DESCONTO_MAXIMO);
-    li.innerHTML = '<span class="perfume-marca"></span><strong class="perfume-nome"></strong>' +
+    li.innerHTML = '<span class="perfume-foto"><img src="/sacola-misteriosa/perfumes/' + p.foto + '.webp" width="400" height="500" loading="lazy" decoding="async" alt=""></span>' +
+      '<span class="perfume-marca"></span><strong class="perfume-nome"></strong>' +
       '<span class="perfume-cheio"></span><span class="perfume-preco"></span><span class="perfume-nota"></span>';
     li.querySelector('.perfume-marca').textContent = p.marca;
     li.querySelector('.perfume-nome').textContent = p.nome;
+    li.querySelector('.perfume-foto img').alt = p.nome + ' (' + p.marca + ')';
     li.querySelector('.perfume-cheio').textContent = 'Preço cheio ' + brl(p.cheio);
     li.querySelector('.perfume-preco').innerHTML = '<small>' + (pct ? 'Com seu cupom' : 'A partir de') + '</small>' + brl(preco);
     li.querySelector('.perfume-nota').textContent = pct ? pct + '% de desconto (economia de ' + brl(p.cheio - preco) + ')' : 'com o cupom de 10%';
