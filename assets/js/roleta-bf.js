@@ -14,6 +14,21 @@ const VALIDADE_TEXTO = '30/11/2026';
 const FATIAS = [1, 6, 3, 8, 2, 10, 4, 7, 5, 9];
 const CORES = ['#3a1a2c', '#7a3a5c', '#5a2843', '#c99a5b', '#3a1a2c', '#a74971', '#5a2843', '#7a3a5c', '#3a1a2c', '#c99a5b'];
 const CHAVE = 'karen-bf-cupom-2026';
+// Perfumes da Black Friday. "cheio" = preço sem desconto. O cupom é aplicado sobre
+// o preço cheio, então o melhor prêmio (10%) chega exatamente ao preço Black Friday
+// anunciado na loja da Karen, nunca abaixo dele.
+const PERFUMES = [
+  { nome: 'Floratta Fleur d’Éclipse Eau de Parfum 75 ml', marca: 'O Boticário', cheio: 229.90 },
+  { nome: 'Clash Extreme', marca: 'O Boticário', cheio: 184.90 },
+  { nome: 'Kaiak Extremo masculino 100 ml', marca: 'Natura', cheio: 180.00 },
+  { nome: 'Humor Envolve desodorante colônia 75 ml', marca: 'Natura', cheio: 164.90 },
+  { nome: 'Meu Primeiro Humor feminino 75 ml', marca: 'Natura', cheio: 164.90 },
+  { nome: 'Floratta Blue Crystal desodorante colônia 75 ml', marca: 'O Boticário', cheio: 149.90 },
+  { nome: '300 km/h Max Turbo deo colônia', marca: 'Avon', cheio: 75.00 },
+];
+const DESCONTO_MAXIMO = 10;
+const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const comDesconto = (cheio, pct) => Math.round(cheio * (100 - Math.min(pct, DESCONTO_MAXIMO))) / 100;
 
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 const $ = (s) => document.querySelector(s);
@@ -97,9 +112,11 @@ function girarAte(pct) {
 // ---------------- Cupom ----------------
 function mensagemWhats(c) {
   return `Olá, Karen! Ganhei ${c.pct}% de desconto na roleta da Black Friday. ` +
-    `Meu cupom é ${c.codigo} (nome: ${c.nome}). Quero aproveitar nos perfumes/sacolas!`;
+    `Meu cupom é ${c.codigo} (nome: ${c.nome}). Quero ver os perfumes!`;
 }
 function mostrarPremio(c, repetido) {
+  cupomAtual = c;
+  desenharPerfumes();
   premio.hidden = false;
   premio.querySelector('.premio-pct').textContent = c.pct + '%';
   premio.querySelector('.premio-codigo').textContent = c.codigo;
@@ -137,6 +154,42 @@ function confete() {
 }
 const aviso = (t, erro) => { retorno.hidden = false; retorno.textContent = t; retorno.classList.toggle('erro', !!erro); };
 
+// ---------------- Perfumes com o preço do cupom ----------------
+let cupomAtual = null;
+function desenharPerfumes() {
+  const lista = document.getElementById('perfumes');
+  if (!lista) return;
+  const pct = cupomAtual ? cupomAtual.pct : null;
+  lista.innerHTML = '';
+  PERFUMES.forEach((p) => {
+    const li = document.createElement('li');
+    li.className = 'perfume' + (pct ? ' com-cupom' : '');
+    const preco = pct ? comDesconto(p.cheio, pct) : comDesconto(p.cheio, DESCONTO_MAXIMO);
+    li.innerHTML = '<span class="perfume-marca"></span><strong class="perfume-nome"></strong>' +
+      '<span class="perfume-cheio"></span><span class="perfume-preco"></span><span class="perfume-nota"></span>';
+    li.querySelector('.perfume-marca').textContent = p.marca;
+    li.querySelector('.perfume-nome').textContent = p.nome;
+    li.querySelector('.perfume-cheio').textContent = 'Preço cheio ' + brl(p.cheio);
+    li.querySelector('.perfume-preco').innerHTML = '<small>' + (pct ? 'Com seu cupom' : 'A partir de') + '</small>' + brl(preco);
+    li.querySelector('.perfume-nota').textContent = pct ? pct + '% de desconto (economia de ' + brl(p.cheio - preco) + ')' : 'com o cupom de 10%';
+    if (pct && telefoneKaren) {
+      const a = document.createElement('a');
+      a.className = 'btn perfume-btn';
+      a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = 'Quero este';
+      a.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(
+        `Olá, Karen! Quero o perfume ${p.nome} (${p.marca}) com meu cupom ${cupomAtual.codigo} de ${pct}% da Black Friday. ` +
+        `Preço cheio ${brl(p.cheio)}, com o cupom ${brl(preco)}. Nome: ${cupomAtual.nome}.`);
+      li.appendChild(a);
+    }
+    lista.appendChild(li);
+  });
+  const titulo = document.getElementById('perfumes-sub');
+  if (titulo) titulo.textContent = pct
+    ? 'Preços com o seu cupom de ' + pct + '%. Toque em "Quero este" para chamar a Karen.'
+    : 'O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
+}
+
 // ---------------- Fluxo ----------------
 async function carregarContato() {
   try {
@@ -151,9 +204,11 @@ async function carregarContato() {
 
 function iniciar() {
   desenharRoda();
+  desenharPerfumes();
   carregarContato().then(() => {
     const salvo = (() => { try { return JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (_) { return null; } })();
     if (salvo && salvo.codigo) mostrarPremio(salvo, true);
+    else desenharPerfumes(); // agora com o WhatsApp da Karen carregado
   });
   if (new Date() > FIM) {
     form.querySelectorAll('input,button').forEach((el) => { el.disabled = true; });
