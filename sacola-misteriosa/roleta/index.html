@@ -49,7 +49,7 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 @media(max-width:550px){.wrap{padding:0 18px}.hero .wrap{padding-bottom:30px}nav a:nth-child(1){display:none}.features,.cards,.fields{grid-template-columns:1fr}.full{grid-column:auto}.scene{margin-top:15px}.form-card{padding:22px}section.pad{padding:63px 0}.hero .lead{font-size:1rem}h1{font-size:3.15rem}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 </style>
-<link rel="stylesheet" href="/sacola-misteriosa/visual.css?v=7">
+<link rel="stylesheet" href="/sacola-misteriosa/visual.css?v=8">
 </head>
 <body class="bf">
 <div class="ribbon-top">✦ BLACK FRIDAY KAREN · TODO GIRO GANHA ATÉ 10% ✦</div>
@@ -59,7 +59,8 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <main>
 <section class="bf-hero"><div class="wrap bf-grid">
 <div class="bf-texto">
-<span class="bf-selo">Black Friday Karen · até 30/11</span>
+<div class="bf-topo"><span class="bf-selo">Black Friday Karen · até 30/11</span><span class="bf-contagem" id="contagem" aria-live="off"></span></div>
+<p class="bf-aviso" id="aviso-amiga" hidden>Uma amiga te indicou 💝 Gire e ganhe o seu cupom.</p><p class="bf-aviso" id="aviso-giro" hidden></p>
 <h1>Gire a roleta e ganhe até 10% de desconto.</h1>
 <p class="bf-lead">Todo giro ganha. O desconto vale para os perfumes da Black Friday da Karen e é aplicado sobre o preço cheio.</p>
 <form id="form-roleta" class="bf-form" novalidate>
@@ -67,6 +68,7 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <div class="field"><label for="telefone">Seu WhatsApp</label><input id="telefone" type="tel" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="(33) 99999-9999" required></div></div>
 <label class="bf-aceite"><input id="aceite" type="checkbox" required>Autorizo a Karen a falar comigo no WhatsApp sobre o meu cupom.</label>
 <button class="btn bf-girar" id="girar" type="submit">Girar a roleta</button>
+<p class="bf-placar" id="placar" hidden></p>
 <p class="bf-mini">Um giro por pessoa. <a href="/politica-de-privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>
 <p id="retorno" role="status" aria-live="polite" hidden></p>
 </form>
@@ -77,11 +79,13 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <p class="premio-aviso"></p>
 <div class="premio-acoes"><a class="btn" id="usar-cupom" target="_blank" rel="noopener" hidden>Usar meu cupom no WhatsApp</a><button type="button" class="btn secondary" id="copiar-cupom">Copiar código</button></div>
 <a class="premio-link" href="#perfumes-bf">Ver o preço de cada perfume com o seu cupom</a>
+<div class="bf-indicar" id="indicar" hidden><strong>Indique uma amiga e ganhe outro giro</strong><span>Se ela comprar um perfume com o cupom dela, a Karen te manda um giro extra.</span><div class="premio-acoes"><a class="btn" id="indicar-whats" target="_blank" rel="noopener">Enviar para uma amiga</a><button type="button" class="btn secondary" id="indicar-copiar">Copiar link</button></div></div>
 </div>
 </div>
 <div class="bf-roda-wrap"><div id="roda" class="roda"></div></div>
 </div></section>
 <section class="pad bf-perfumes" id="perfumes-bf"><div class="wrap"><h2>Perfumes da Black Friday</h2><p class="sub-bf" id="perfumes-sub">O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.</p><ul class="perfumes" id="perfumes"></ul></div></section>
+<section class="bf-combo"><div class="wrap bf-combo-in"><div><h2>Perfume + Sacola Misteriosa</h2><p>Leve um perfume da Black Friday junto com uma sacola misteriosa e ganhe um mimo extra da Karen.</p></div><div class="bf-combo-acoes"><a class="btn" id="combo-whats" target="_blank" rel="noopener" hidden>Quero o combo</a><a class="btn secondary" href="/sacola-misteriosa/sacolas/">Ver as sacolas</a></div></div></section>
 <section class="pad bf-regras"><div class="wrap">
 <h2>Como funciona</h2>
 <ol class="bf-passos"><li><strong>Deixe nome e WhatsApp</strong><span>É assim que a Karen identifica o seu cupom.</span></li><li><strong>Gire a roleta</strong><span>Todas as fatias dão desconto, de 1% a 10%.</span></li><li><strong>Use até 30/11</strong><span>Escolha um perfume e mostre o código para a Karen.</span></li></ol>
@@ -89,6 +93,8 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <li>Um giro por pessoa (por número de WhatsApp). Cupons repetidos do mesmo número não valem.</li>
 <li>O cupom vale para uma compra até 30/11/2026 e não é cumulativo com outras promoções.</li>
 <li>O desconto é aplicado sobre o preço cheio do perfume. O preço final nunca fica abaixo do preço Black Friday anunciado (equivalente a 10% de desconto).</li><li>Válido para os perfumes desta página, sujeito à disponibilidade em estoque.</li>
+<li>Indicação: quem indica uma amiga ganha um giro extra quando ela compra um perfume com o próprio cupom. O link do giro extra é enviado pela Karen e vale uma vez.</li>
+<li>Combo: perfume + sacola misteriosa ganha um mimo extra, enquanto durarem os mimos.</li>
 <li>Pagamento e entrega são combinados diretamente com a Karen pelo WhatsApp.</li>
 </ul></details>
 </div></section>
@@ -96,7 +102,7 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 
 <footer><div class="wrap footer-inner"><div><b>Karen Cosméticos</b><div>Sacola Misteriosa · Carinho em forma de surpresa</div></div><div>Uma ação especial · <a href="https://italoinfotec.com.br/" target="_blank" rel="noopener">Tecnologia: Ítalo InfoTec</a></div></div></footer>
 
-<script type="module" src="/assets/js/roleta-bf.js?v=2"></script>
+<script type="module" src="/assets/js/roleta-bf.js?v=3"></script>
 <script defer src="/sacola-misteriosa/som.js?v=3"></script>
 </body>
 </html>
