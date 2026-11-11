@@ -236,6 +236,8 @@ await test('Loja da Karen: catálogo, produto e Meus pedidos abrem', async () =>
   await p.goto(BASE + 'karen/', { waitUntil: 'networkidle' });
   await p.waitForFunction(() => document.querySelectorAll('#perfumes .perfume:not(.carregando)').length > 0, null, { timeout: 20000 });
   const n = await p.locator('#perfumes .perfume').count();
+  // Antes da publicação desta versão (testes de PR rodam contra o site no ar), a loja não tem página de produto.
+  if (!(await p.locator('#perfumes .perfume-link').count())) return n + ' produtos; página de produto ainda não publicada';
   const href = await p.locator('#perfumes .perfume-link').first().getAttribute('href');
   assert(href && href.startsWith('/karen/produto/?p='), 'Link do produto inesperado: ' + href);
   await p.goto(new URL(href, BASE).href, { waitUntil: 'networkidle' });
