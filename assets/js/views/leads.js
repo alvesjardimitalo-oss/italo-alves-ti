@@ -3,8 +3,8 @@ import { icon } from '../icons.js';
 import { esc, norm, dataBR, formatFone, whatsapp, badge, toast, confirmar, modal, vazio } from '../util.js';
 import { empresa } from '../negocio.js';
 
-/** Remove o código interno [ref:...] que o pedido da sacola grava no detalhe. */
-export const semRef = (t) => String(t || '').replace(/\s*\[ref:[^\]]*\]/g, '');
+/** Remove os códigos internos [ref:...] (sacola) e [cupom:...] (roleta) gravados no detalhe. */
+export const semRef = (t) => String(t || '').replace(/\s*\[(ref|cupom):[^\]]*\]/g, '');
 
 export const STATUS_LEAD = { 'Novo': 'info', 'Em contato': 'warn', 'Virou cliente': 'ok', 'Perdido': 'muted' };
 

@@ -1,0 +1,209 @@
+// Roleta de descontos da Black Friday — Karen Cosméticos.
+// Cada pessoa gira uma vez e ganha um cupom de 1% a 10%. O cupom é salvo
+// como solicitação (coleção de leads) para a Karen conferir no painel.
+import { FIREBASE_CONFIG } from './config.js';
+import { iniciarAppCheck } from './app-check.js';
+import { salvarLead } from './leads.js';
+
+// ---------------- Configuração da campanha ----------------
+// Chance de cada desconto (soma 100). Descontos maiores são mais raros.
+const CHANCES = { 1: 18, 2: 17, 3: 15, 4: 13, 5: 11, 6: 9, 7: 7, 8: 5, 9: 3, 10: 2 };
+const FIM = new Date('2026-11-30T23:59:59-03:00'); // último dia para girar e usar o cupom
+const VALIDADE_TEXTO = '30/11/2026';
+// Ordem das fatias na roda (intercaladas para os maiores não ficarem juntos).
+const FATIAS = [1, 6, 3, 8, 2, 10, 4, 7, 5, 9];
+const CORES = ['#3a1a2c', '#7a3a5c', '#5a2843', '#c99a5b', '#3a1a2c', '#a74971', '#5a2843', '#7a3a5c', '#3a1a2c', '#c99a5b'];
+const CHAVE = 'karen-bf-cupom-2026';
+
+const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
+const $ = (s) => document.querySelector(s);
+const roda = $('#roda');
+const form = $('#form-roleta');
+const botao = $('#girar');
+const retorno = $('#retorno');
+const premio = $('#premio');
+const calmo = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let telefoneKaren = '';
+let girando = false;
+let pendente = null; // cupom sorteado que ainda não foi registrado (não sorteia de novo)
+
+const digits = (v) => String(v || '').replace(/\D/g, '');
+const normalizeWhatsApp = (v) => { const d = digits(v); return (d.length === 10 || d.length === 11) ? '55' + d : d; };
+const validoBR = (v) => /^55\d{10,11}$/.test(v);
+
+// ---------------- Desenho da roda (SVG) ----------------
+function desenharRoda() {
+  const n = FATIAS.length, r = 160, c = 170, passo = 360 / n;
+  const ponto = (ang, raio) => {
+    const a = (ang - 90) * Math.PI / 180;
+    return [c + raio * Math.cos(a), c + raio * Math.sin(a)];
+  };
+  let svg = '<svg viewBox="0 0 340 340" aria-hidden="true"><defs>' +
+    '<radialGradient id="brilho-roda" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>' +
+    '<g class="roda-giro">';
+  FATIAS.forEach((pct, i) => {
+    const a0 = i * passo, a1 = (i + 1) * passo;
+    const [x0, y0] = ponto(a0, r), [x1, y1] = ponto(a1, r);
+    svg += `<path d="M${c},${c} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${CORES[i]}" stroke="#e9c58f" stroke-opacity=".55" stroke-width="1.5"/>`;
+    const [tx, ty] = ponto(a0 + passo / 2, r * 0.7);
+    const dourada = CORES[i] === '#c99a5b';
+    svg += `<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" transform="rotate(${(a0 + passo / 2).toFixed(1)} ${tx.toFixed(2)} ${ty.toFixed(2)})" ` +
+      `text-anchor="middle" dominant-baseline="middle" class="roda-txt${dourada ? ' escuro' : ''}">${pct}%</text>`;
+  });
+  // pinos dourados na borda
+  for (let i = 0; i < n; i++) {
+    const [px, py] = ponto(i * passo, r + 1);
+    svg += `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="4.2" class="roda-pino"/>`;
+  }
+  svg += `<circle cx="${c}" cy="${c}" r="${r}" fill="url(#brilho-roda)"/></g>` +
+    `<circle cx="${c}" cy="${c}" r="${r + 7}" fill="none" stroke="#e9c58f" stroke-width="6"/>` +
+    `<circle cx="${c}" cy="${c}" r="34" fill="#2a1220" stroke="#e9c58f" stroke-width="3"/>` +
+    `<text x="${c}" y="${c + 1}" text-anchor="middle" dominant-baseline="middle" class="roda-centro">KC</text></svg>`;
+  roda.innerHTML = svg + '<span class="roda-ponteiro" aria-hidden="true"></span>';
+}
+
+// ---------------- Sorteio ----------------
+function sortear() {
+  const total = Object.values(CHANCES).reduce((a, b) => a + b, 0);
+  const n = new Uint32Array(1); crypto.getRandomValues(n);
+  let x = (n[0] / 2 ** 32) * total;
+  for (const [pct, peso] of Object.entries(CHANCES)) { if ((x -= peso) < 0) return Number(pct); }
+  return 1;
+}
+function gerarCodigo() {
+  const letras = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const n = new Uint32Array(5); crypto.getRandomValues(n);
+  return 'BF-' + [...n].map((v) => letras[v % letras.length]).join('');
+}
+
+let anguloAtual = 0;
+function girarAte(pct) {
+  return new Promise((ok) => {
+    const giro = roda.querySelector('.roda-giro');
+    const passo = 360 / FATIAS.length;
+    const indices = FATIAS.map((p, i) => (p === pct ? i : -1)).filter((i) => i >= 0);
+    const i = indices[0];
+    const folga = (Math.random() - 0.5) * passo * 0.6;
+    const alvo = 360 - (i * passo + passo / 2) + folga; // fatia sob o ponteiro (topo)
+    const voltas = calmo ? 0 : 360 * 6;
+    anguloAtual = anguloAtual - (anguloAtual % 360) + voltas + alvo;
+    giro.style.transition = calmo ? 'none' : 'transform 5.4s cubic-bezier(.12,.66,.1,1)';
+    giro.style.transform = `rotate(${anguloAtual}deg)`;
+    roda.classList.add('girando');
+    setTimeout(() => { roda.classList.remove('girando'); ok(); }, calmo ? 50 : 5500);
+  });
+}
+
+// ---------------- Cupom ----------------
+function mensagemWhats(c) {
+  return `Olá, Karen! Ganhei ${c.pct}% de desconto na roleta da Black Friday. ` +
+    `Meu cupom é ${c.codigo} (nome: ${c.nome}). Quero aproveitar nos perfumes/sacolas!`;
+}
+function mostrarPremio(c, repetido) {
+  premio.hidden = false;
+  premio.querySelector('.premio-pct').textContent = c.pct + '%';
+  premio.querySelector('.premio-codigo').textContent = c.codigo;
+  premio.querySelector('.premio-titulo').textContent = repetido ? 'Este é o seu cupom' : (c.nome.split(' ')[0] + ', você ganhou!');
+  premio.querySelector('.premio-aviso').textContent = repetido
+    ? 'A roleta é uma vez por pessoa, e você já girou neste aparelho.'
+    : 'Mostre este código para a Karen na hora da compra.';
+  const wa = premio.querySelector('#usar-cupom');
+  if (telefoneKaren) { wa.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(mensagemWhats(c)); wa.hidden = false; }
+  else wa.hidden = true;
+  form.hidden = true;
+  premio.scrollIntoView({ behavior: calmo ? 'auto' : 'smooth', block: 'center' });
+}
+$('#copiar-cupom')?.addEventListener('click', async (e) => {
+  const codigo = premio.querySelector('.premio-codigo').textContent;
+  try { await navigator.clipboard.writeText(codigo); e.currentTarget.textContent = 'Código copiado ✓'; }
+  catch (_) { e.currentTarget.textContent = codigo; }
+});
+
+function confete() {
+  if (calmo) return;
+  const cores = ['#e9c58f', '#d798a7', '#ffffff', '#a74971', '#f3dcae'];
+  const box = document.createElement('div');
+  box.className = 'karen-confete';
+  box.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 80; i++) {
+    const c = document.createElement('i');
+    c.style.cssText = `left:${Math.random() * 100}%;background:${cores[i % cores.length]};--d:${(1.8 + Math.random() * 1.6).toFixed(2)}s;` +
+      `--atraso:${(Math.random() * .5).toFixed(2)}s;--x:${(Math.random() * 160 - 80).toFixed(0)}px;--giro:${(Math.random() * 720 - 360).toFixed(0)}deg;` +
+      `width:${6 + Math.random() * 6}px;height:${8 + Math.random() * 8}px;border-radius:${i % 4 ? '2px' : '50%'}`;
+    box.appendChild(c);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 4000);
+}
+const aviso = (t, erro) => { retorno.hidden = false; retorno.textContent = t; retorno.classList.toggle('erro', !!erro); };
+
+// ---------------- Fluxo ----------------
+async function carregarContato() {
+  try {
+    const [{ initializeApp }, F] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-firestore-lite.js')]);
+    const app = initializeApp(FIREBASE_CONFIG, 'karen-roleta-publico');
+    await iniciarAppCheck(app);
+    const snap = await F.getDoc(F.doc(F.getFirestore(app), 'ti', 'base', 'rastreio', 'sacolas-publicas'));
+    const t = normalizeWhatsApp(snap.exists() ? snap.data().whatsapp : '');
+    telefoneKaren = (t.length >= 12 && t.length <= 13) ? t : '';
+  } catch (e) { console.warn('Contato da Karen indisponível:', e); }
+}
+
+function iniciar() {
+  desenharRoda();
+  carregarContato().then(() => {
+    const salvo = (() => { try { return JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (_) { return null; } })();
+    if (salvo && salvo.codigo) mostrarPremio(salvo, true);
+  });
+  if (new Date() > FIM) {
+    form.querySelectorAll('input,button').forEach((el) => { el.disabled = true; });
+    aviso('A roleta da Black Friday terminou. Obrigada por participar! 💝', false);
+    return;
+  }
+  // clicar na roda também envia o formulário
+  roda.addEventListener('click', () => { if (!girando) form.requestSubmit(); });
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (girando) return;
+    retorno.hidden = true;
+    let salvo = null;
+    try { salvo = JSON.parse(localStorage.getItem(CHAVE) || 'null'); } catch (_) {}
+    if (salvo && salvo.codigo) { mostrarPremio(salvo, true); return; }
+    const nome = $('#nome').value.trim();
+    const whatsapp = normalizeWhatsApp($('#telefone').value);
+    if (nome.length < 2) { aviso('Informe seu nome para girar.', true); $('#nome').focus(); return; }
+    if (!validoBR(whatsapp)) { aviso('Informe um WhatsApp com DDD, por exemplo (33) 99999-9999.', true); $('#telefone').focus(); return; }
+    if (!$('#aceite').checked) { aviso('Marque a autorização de contato para receber o cupom.', true); return; }
+
+    girando = true; botao.disabled = true; botao.textContent = 'Girando…';
+    // no celular a roda fica acima do formulário: mostra a roda antes de girar
+    if (roda.getBoundingClientRect().bottom < 80 || roda.getBoundingClientRect().top > innerHeight - 80) {
+      roda.scrollIntoView({ behavior: calmo ? 'auto' : 'smooth', block: 'center' });
+      if (!calmo) await new Promise((r) => setTimeout(r, 450));
+    }
+    const cupom = pendente ? { ...pendente, nome, whatsapp } : { pct: sortear(), codigo: gerarCodigo(), nome, whatsapp, em: new Date().toISOString() };
+    const { pct, codigo } = cupom;
+    try { window.KarenSound?.play('bag'); } catch (_) {}
+    const [gravou] = await Promise.all([
+      salvarLead({
+        nome, whatsapp, cidade: '', equipamento: '', problema: 'Cupom Black Friday',
+        detalhe: `Cupom ${codigo}: ${pct}% de desconto, válido até ${VALIDADE_TEXTO} [cupom:${codigo}:${pct}]`,
+        atendimento: 'WhatsApp', servico: 'Roleta Black Friday', origem: 'black-friday', utm: 'black-friday',
+      }),
+      pendente ? Promise.resolve() : girarAte(pct),
+    ]);
+    girando = false;
+    if (!gravou) {
+      pendente = cupom;
+      botao.disabled = false; botao.textContent = 'Tentar de novo';
+      aviso('A roleta parou, mas não conseguimos registrar seu cupom. Verifique a internet e toque em "Tentar de novo".', true);
+      return;
+    }
+    pendente = null;
+    try { localStorage.setItem(CHAVE, JSON.stringify(cupom)); } catch (_) {}
+    confete();
+    mostrarPremio(cupom, false);
+  });
+}
+iniciar();

@@ -30,6 +30,29 @@ function sacolaDoPedido(p) {
 }
 const pago = (p) => Boolean(p.pagamentoConfirmadoEm);
 
+// ---------- Cupons da roleta da Black Friday ----------
+/** Lê o cupom gravado pela roleta: detalhe "... [cupom:BF-XXXXX:7]". */
+function cupomDoLead(l) {
+  const m = /\[cupom:([A-Z0-9-]+):(\d+)\]/.exec(l.detalhe || '');
+  return m ? { codigo: m[1], pct: Number(m[2]) } : null;
+}
+/** Lista os cupons e marca repetidos: só o primeiro giro de cada WhatsApp vale. */
+function listarCupons() {
+  const cupons = store.lista('leads')
+    .filter((l) => l.origem === 'black-friday')
+    .map((l) => ({ lead: l, ...cupomDoLead(l), quando: String(l.criadoEm || '') }))
+    .filter((c) => c.codigo)
+    .sort((a, b) => a.quando.localeCompare(b.quando));
+  const vistos = new Set();
+  cupons.forEach((c) => {
+    const tel = String(c.lead.whatsapp || '');
+    c.repetido = vistos.has(tel);
+    vistos.add(tel);
+  });
+  return cupons.reverse();
+}
+
+
 /** Pergunta qual sacola foi vendida quando o pedido não identifica (pedidos antigos). */
 function escolherSacola(p) {
   return new Promise((ok) => {
@@ -83,6 +106,9 @@ export function tela(el) {
     '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Solicitações recebidas</h2>' +
     '<a href="#/leads" class="btn btn-sm">Ver todos os pedidos</a></div>' +
     '<div class="tabela-wrap" id="pedidos-karen"></div></div>' +
+    '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Cupons da Black Friday</h2><span id="resumo-cupons" class="sub"></span></div>' +
+    '<div style="padding:0 20px 14px;display:flex;gap:10px;flex-wrap:wrap"><input id="busca-cupom" placeholder="Digite o código (BF-XXXXX), nome ou WhatsApp" style="flex:1 1 260px" autocomplete="off"></div>' +
+    '<div class="tabela-wrap" id="cupons-karen"></div></div>' +
     '<div id="editor-karen"></div>';
   const status = (msg) => { const e = el.querySelector('#status-karen'); if (e) e.textContent = msg; };
   const sincronizar = async (lista) => {
@@ -149,8 +175,61 @@ export function tela(el) {
       '">Responder</a></td></tr>').join('') + '</tbody></table>' :
       '<div class="sub" style="padding:28px">Ainda não há solicitações de sacolas.</div>';
     el.querySelectorAll('[data-pago]').forEach((b) => b.onclick = () => confirmarPagamento(b, store.get('leads', b.dataset.pago)));
+    desenharCupons();
     el.querySelectorAll('[data-desfazer]').forEach((b) => b.onclick = () => desfazerPagamento(b, store.get('leads', b.dataset.desfazer)));
   };
+
+  function desenharCupons() {
+    const alvo = el.querySelector('#cupons-karen');
+    if (!alvo) return;
+    const busca = el.querySelector('#busca-cupom');
+    const termo = (busca.value || '').trim().toUpperCase();
+    const todos = listarCupons();
+    const validos = todos.filter((c) => !c.repetido);
+    el.querySelector('#resumo-cupons').textContent = validos.length + ' cupons · ' +
+      validos.filter((c) => c.lead.cupomUsadoEm).length + ' usados' +
+      (todos.length > validos.length ? ' · ' + (todos.length - validos.length) + ' repetidos' : '');
+    const digitos = termo.replace(/\D/g, '');
+    const lista = !termo ? todos : todos.filter((c) => c.codigo.includes(termo) ||
+      String(c.lead.nome || '').toUpperCase().includes(termo) || (digitos.length >= 4 && String(c.lead.whatsapp || '').includes(digitos)));
+    const situacao = (c) => c.repetido ? '<span class="badge b-danger">Não vale: número já tinha girado</span>'
+      : c.lead.cupomUsadoEm ? '<span class="badge b-muted">Usado em ' + esc(dataBR(c.lead.cupomUsadoEm, true)) + '</span>'
+      : '<span class="badge b-ok">Válido</span>';
+    alvo.innerHTML = lista.length ? '<table><thead><tr><th>Cupom</th><th>Desconto</th><th>Cliente</th><th>WhatsApp</th><th>Girou em</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
+      lista.slice(0, 200).map((c) => '<tr><td><strong>' + esc(c.codigo) + '</strong></td><td><strong>' + c.pct + '%</strong></td><td>' + esc(c.lead.nome || '') +
+        '</td><td>' + esc(c.lead.whatsapp || '') + '</td><td>' + esc(dataBR(c.lead.criadoEm, true)) + '</td><td>' + situacao(c) + '</td><td class="nowrap">' +
+        (c.repetido ? '' : c.lead.cupomUsadoEm
+          ? '<button type="button" class="btn btn-sm" data-cupom-desfazer="' + esc(c.lead.id) + '">Desfazer uso</button>'
+          : '<button type="button" class="btn btn-sm btn-primary" data-cupom-usar="' + esc(c.lead.id) + '">Marcar como usado</button>') +
+        ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, 'Olá, ' + (c.lead.nome || '') + '! Aqui é a Karen. Vi seu cupom ' + c.codigo + ' de ' + c.pct + '% da Black Friday.')) + '">WhatsApp</a></td></tr>').join('') +
+      '</tbody></table>'
+      : '<div class="sub" style="padding:28px">' + (termo ? 'Nenhum cupom encontrado para "' + esc(termo) + '". Confira se o código foi digitado certo.' : 'Ainda ninguém girou a roleta.') + '</div>';
+    alvo.querySelectorAll('[data-cupom-usar]').forEach((b) => b.onclick = () => marcarCupom(b, b.dataset.cupomUsar, true));
+    alvo.querySelectorAll('[data-cupom-desfazer]').forEach((b) => b.onclick = () => marcarCupom(b, b.dataset.cupomDesfazer, false));
+    if (!busca.dataset.ligado) { busca.dataset.ligado = '1'; busca.addEventListener('input', desenharCupons); }
+  }
+
+  async function marcarCupom(botao, id, usar) {
+    const lead = store.get('leads', id);
+    const c = lead && cupomDoLead(lead);
+    if (!c) return;
+    const texto = usar ? 'Marcar o cupom ' + c.codigo + ' (' + c.pct + '% para ' + (lead.nome || 'cliente') + ') como usado? Ele não poderá ser usado de novo.'
+      : 'Desfazer o uso do cupom ' + c.codigo + '? Ele volta a valer.';
+    if (!(await confirmar(texto, { titulo: usar ? 'Usar cupom' : 'Desfazer uso', botao: usar ? 'Marcar como usado' : 'Desfazer' }))) return;
+    botao.disabled = true;
+    try {
+      await store.transacao([{ col: 'leads', id }], ([l]) => {
+        if (!l) throw new Error('cupom não encontrado');
+        if (usar && l.cupomUsadoEm) throw new Error('este cupom já foi usado');
+        return [{ col: 'leads', id, dados: usar ? { cupomUsadoEm: new Date().toISOString(), status: 'Virou cliente' } : { cupomUsadoEm: '' } }];
+      });
+      toast(usar ? 'Cupom ' + c.codigo + ' marcado como usado.' : 'Uso do cupom ' + c.codigo + ' desfeito.');
+      render();
+    } catch (e) {
+      toast('Não foi possível atualizar: ' + e.message, 'erro');
+      botao.disabled = false;
+    }
+  }
 
   // Pagamento confirmado: marca o pedido como pago e tira 1 unidade do estoque,
   // tudo na mesma transação (não baixa duas vezes, nem deixa estoque negativo).

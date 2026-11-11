@@ -112,7 +112,7 @@ footer{padding-bottom:38px}
 html{scroll-padding-top:26px}
 .ribbon-top{font-size:.57rem;letter-spacing:.1em;padding:8px 4px}
 header .wrap{padding-top:11px;padding-bottom:11px}.brand{font-size:1rem}.brand-badge{width:40px;height:40px}.brand small{font-size:.54rem}
-nav{font-size:.77rem;gap:14px}nav a:nth-child(1),nav a:nth-child(3){display:none}
+nav{font-size:.77rem;gap:14px}nav a:nth-child(1),nav a:nth-child(1),nav a:nth-child(3){display:none!important}
 .hero .wrap{display:flex;flex-direction:column;min-height:unset;align-items:stretch;gap:0;padding-top:38px;padding-bottom:27px}
 .hero h1{font-size:clamp(2.85rem,11.2vw,4.2rem);margin:13px 0 15px;line-height:1.07}.hero .lead{font-size:.98rem;line-height:1.6;margin-bottom:23px}.hero-copy{width:100%}
 .hero-tags{gap:7px;margin-top:18px}.hero-tags span{font-size:.67rem;padding:6px 10px}.hero .tiny{display:none}
@@ -298,4 +298,91 @@ header nav a{font-size:.71rem}
 @media (prefers-reduced-motion:reduce){
   .paperbag.sacudindo .paperbag__corpo,.escolhida.chegou .escolhida__arte{animation:none}
   .paperbag__corpo,.paperbag__seda,.scene .paperbag{transition:none}
+}
+
+/* ================= Black Friday: roleta de descontos ================= */
+nav .nav-bf{background:#2a1220;color:#f3dcae!important;padding:7px 13px;border-radius:999px}
+body.bf{background:#1f0e18;color:#f6e9ee}
+.bf .ribbon-top{background:#c99a5b;color:#2a1220}
+.bf header{background:#1f0e18ee;border-bottom-color:#3a2030}
+.bf header .brand,.bf header nav a{color:#f6e9ee}
+.bf header .brand small{color:#e9c58f}
+.bf nav .nav-bf{background:#e9c58f;color:#2a1220!important}
+.bf-hero{position:relative;overflow:hidden;padding:64px 0 72px;background:radial-gradient(circle at 78% 42%,#5a2843 0%,#2a1220 42%,#1f0e18 72%)}
+.bf-hero:before{content:"";position:absolute;inset:0;background-image:radial-gradient(#e9c58f 1px,transparent 1.4px);background-size:34px 34px;opacity:.09;pointer-events:none}
+.bf-grid{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center}
+.bf-selo{display:inline-block;border:1px solid #e9c58f80;color:#f3dcae;border-radius:999px;padding:7px 14px;font:600 .85rem "DM Sans",sans-serif}
+.bf h1{color:#fff7f1;font-size:clamp(2.4rem,5vw,4.1rem);line-height:1.02;margin:20px 0 16px;letter-spacing:-.02em}
+.bf-lead{color:#e3cbd6;font-size:1.12rem;max-width:30em;margin:0 0 28px}
+.bf-form{background:#fffaf6;color:#352432;border-radius:24px;padding:22px;box-shadow:0 24px 60px #0007;max-width:520px}
+.bf-campos{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bf-form .field label{color:#352432}
+.bf-aceite{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;margin:14px 0 16px;color:#5e4a57}
+.bf-aceite input{width:18px;height:18px;margin-top:2px;flex:none;accent-color:#7a3a5c}
+.bf-girar{width:100%;justify-content:center;font-size:1.08rem;padding:16px;background:linear-gradient(135deg,#c99a5b,#e9c58f);color:#2a1220;box-shadow:0 12px 26px #c99a5b55}
+.bf-girar:disabled{opacity:.75;cursor:progress}
+.bf-mini{font-size:.8rem;color:#806879;margin:12px 0 0;text-align:center}
+.bf-mini a{text-decoration:underline}
+#retorno.erro{color:#a12b41}
+.bf #retorno{margin-top:12px;font-weight:700;font-size:.9rem;color:#276044}
+
+/* roda */
+.bf-roda-wrap{display:flex;justify-content:center}
+.roda{position:relative;width:min(100%,460px);aspect-ratio:1;cursor:pointer;filter:drop-shadow(0 30px 50px #000a)}
+.roda svg{width:100%;height:100%;display:block}
+.roda-giro{transform-origin:170px 170px;transform-box:view-box}
+.roda-txt{font:700 21px "DM Sans",sans-serif;fill:#fff3ea}
+.roda-txt.escuro{fill:#2a1220}
+.roda-pino{fill:#f3dcae}
+.roda-centro{font:700 22px "Playfair Display",Georgia,serif;fill:#e9c58f}
+.roda-ponteiro{position:absolute;left:50%;top:-6px;translate:-50% 0;width:34px;height:44px;background:linear-gradient(180deg,#f3dcae,#c99a5b);clip-path:polygon(50% 100%,0 0,100% 0);filter:drop-shadow(0 4px 4px #0006);z-index:2}
+.roda.girando .roda-ponteiro{animation:ponteiroBate .12s ease-in-out infinite alternate}
+@keyframes ponteiroBate{to{rotate:-9deg}}
+.roda:not(.girando):hover .roda-giro{filter:brightness(1.06)}
+
+/* cupom ganho */
+.bf-premio{background:linear-gradient(160deg,#fffaf2,#fbe7ed);color:#352432;border-radius:26px;padding:26px;max-width:520px;box-shadow:0 24px 60px #0008;animation:premioChega .6s cubic-bezier(.3,1.5,.5,1)}
+@keyframes premioChega{from{opacity:0;scale:.9;translate:0 20px}}
+.premio-titulo{font:600 1.5rem "Playfair Display",Georgia,serif;margin:0}
+.premio-valor{display:flex;align-items:baseline;gap:12px;margin:4px 0 16px;color:#7a3a5c}
+.premio-pct{font:800 4.6rem/1 "DM Sans",sans-serif;letter-spacing:-.04em}
+.premio-valor span:last-child{font-weight:700;font-size:1.1rem}
+.premio-cupom{border:2px dashed #c99a5b;border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;background:#fff}
+.premio-cupom span{font-size:.82rem;color:#806879}
+.premio-codigo{font:800 1.7rem "DM Sans",sans-serif;letter-spacing:.08em;color:#2a1220}
+.premio-cupom small{color:#806879}
+.premio-aviso{font-size:.9rem;color:#5e4a57;margin:14px 0}
+.premio-acoes{display:flex;flex-wrap:wrap;gap:10px}
+.premio-acoes .btn{flex:1 1 200px;justify-content:center}
+.premio-link{display:inline-block;margin-top:14px;font-size:.9rem;text-decoration:underline;color:#7a3a5c}
+
+/* regras */
+.bf-regras{background:#fffaf6;color:#352432}
+.bf-regras h2{font-size:2rem;margin:0 0 22px}
+.bf-passos{list-style:none;counter-reset:p;padding:0;margin:0 0 26px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bf-passos li{counter-increment:p;background:#fff;border:1px solid #eadbe0;border-radius:20px;padding:18px 18px 18px 60px;position:relative}
+.bf-passos li:before{content:counter(p);position:absolute;left:16px;top:16px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#2a1220;color:#e9c58f;font-weight:800}
+.bf-passos strong{display:block;margin-bottom:4px}
+.bf-passos span{color:#75636e;font-size:.92rem}
+.bf-letras{border:1px solid #eadbe0;border-radius:16px;padding:14px 18px;background:#fff}
+.bf-letras summary{cursor:pointer;font-weight:700}
+.bf-letras ul{margin:12px 0 0;padding-left:20px;color:#5e4a57;font-size:.92rem;line-height:1.6}
+.bf footer{background:#1f0e18;border-top-color:#3a2030}
+.bf .footer-inner,.bf .footer-inner b{color:#e3cbd6}
+
+@media(max-width:900px){
+  .bf-grid{grid-template-columns:minmax(0,1fr);gap:26px}
+  .bf-roda-wrap{order:-1}
+  .roda{width:min(100%,360px)}
+  .bf-hero{padding:34px 0 48px}
+  .bf-passos{grid-template-columns:1fr}
+}
+@media(max-width:550px){
+  .bf-campos{grid-template-columns:1fr}
+  .bf-form,.bf-premio{padding:18px}
+  .premio-pct{font-size:3.8rem}
+  nav .nav-bf{padding:6px 10px}
+}
+@media(max-width:380px){
+  nav{gap:9px}nav a{font-size:.8rem}nav .nav-bf{padding:5px 9px}nav a:nth-child(1),nav a:nth-child(3){display:none!important}
 }
