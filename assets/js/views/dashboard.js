@@ -2,6 +2,7 @@ import { store } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, money, dataBR, diasDesde, badge, STATUS_OS, hojeISO, mesNome, vazio } from '../util.js';
 import { osAbertas, aReceber, saldoDo, lembretesManutencao } from '../negocio.js';
+import { leadsTI } from '../loja-comum.js';
 
 export function lista(el) {
   const render = () => {
@@ -17,7 +18,7 @@ export function lista(el) {
     const prontas = abertas.filter((o) => o.status === 'Pronto para retirada').length;
     const ultimos = [...pagamentos].sort((a, b) => (b.data || '').localeCompare(a.data || '') || (b.numero || 0) - (a.numero || 0)).slice(0, 6);
     const lembretes = lembretesManutencao().length;
-    const novosLeads = store.lista('leads').filter((l) => (l.status || 'Novo') === 'Novo').length;
+    const novosLeads = leadsTI().filter((l) => (l.status || 'Novo') === 'Novo').length;
     const saud = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite';
     const primeiroNome = (store.usuario?.nome || '').split(' ')[0];
 

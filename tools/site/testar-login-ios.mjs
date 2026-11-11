@@ -25,6 +25,8 @@ assert(html.includes('id="login-ajuda"') && html.includes('id="copiar-login-url"
 assert(html.includes('id="login-url"') && html.includes('Ajust')===false);
 assert(js.includes("orientacaoLogin(e?.code)") && js.includes("$('#login-ajuda').hidden = !mostrarAjuda"));
 assert(js.includes("navigator.clipboard.writeText(URL_PAINEL)"));
-assert(html.includes('app.js?v=1.0.1') && html.includes('app.css?v=1.0.1'), 'Cache de recursos deve mudar');
+// A versão dos arquivos no sistema.html acompanha a VERSAO do painel (cache de recursos muda a cada versão).
+const versao=(readFileSync(new URL('../../assets/js/util.js',import.meta.url),'utf8').match(/VERSAO = '([^']+)'/)||[])[1];
+assert(versao && html.includes('app.js?v='+versao) && html.includes('app.css?v='+versao), 'Cache de recursos deve mudar');
 assert(css.includes('.login-ajuda[hidden]'), 'Ajuda do login deve poder se ocultar');
 console.log('OK: login bloqueado tratado com orientação de Safari/Chrome, link copiável e sem alterar credenciais.');

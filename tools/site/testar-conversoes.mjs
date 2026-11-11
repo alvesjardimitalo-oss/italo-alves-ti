@@ -29,7 +29,8 @@ assert.equal(modulo.eventoSeguro('visita','categoria livre com espaços'),null);
 const analyticsSrc=ler('assets/js/views/conversoes.js')
   .replace("import { store } from '../store.js';",'const store={};')
   .replace("import { icon } from '../icons.js';",'const icon=()=>"";')
-  .replace("import { esc } from '../util.js';",'const esc=String;');
+  .replace("import { esc } from '../util.js';",'const esc=String;')
+  .replace("import { leadsTI } from '../loja-comum.js';",'const leadsTI=()=>[];');
 const painel=await importar(analyticsSrc);
 const agora=Date.now();
 const data=new Date(agora-10000).toISOString(),antigo=new Date(agora-150*864e5).toISOString();

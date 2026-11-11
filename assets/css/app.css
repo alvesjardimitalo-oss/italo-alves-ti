@@ -392,3 +392,29 @@ dl.info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
   .login-card { padding:24px 18px 22px; }
   .login-ajuda { padding:12px; }
 }
+
+/* ---------- Loja da Karen (área própria no painel) ---------- */
+.abas-loja { display: flex; gap: 6px; overflow-x: auto; margin: -6px 0 18px; padding-bottom: 4px; scrollbar-width: thin; }
+.abas-loja a { flex: 0 0 auto; padding: 7px 14px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-2); font-size: .86rem; white-space: nowrap; }
+.abas-loja a:hover { text-decoration: none; border-color: var(--border-strong); color: var(--text); }
+.abas-loja a[aria-current="page"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+.lista-atencao, .lista-top, .lista-links { list-style: none; margin: 0; padding: 0; }
+.lista-atencao li + li, .lista-top li + li { border-top: 1px solid var(--border); }
+.lista-atencao a { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; color: var(--text); }
+.lista-atencao a:hover { text-decoration: none; color: var(--accent, var(--text)); }
+.lista-atencao svg { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
+.lista-top { counter-reset: top; }
+.lista-top li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; counter-increment: top; }
+.lista-top li span::before { content: counter(top) ". "; color: var(--text-3); }
+.lista-top b { font-family: var(--mono); }
+.lista-links li { padding: 4px 0; }
+.mini-foto { width: 44px; height: 55px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; background: var(--bg-2, transparent); }
+.mini-foto.vazia { display: grid; place-items: center; color: var(--text-3); }
+.foto-produto { display: flex; gap: 16px; align-items: flex-start; }
+.foto-previa { flex: 0 0 auto; width: 120px; height: 150px; border-radius: 12px; border: 1px dashed var(--border-strong); overflow: hidden; display: grid; place-items: center; color: var(--text-3); }
+.foto-previa img { width: 100%; height: 100%; object-fit: cover; }
+.foto-previa span { display: grid; justify-items: center; gap: 4px; font-size: .78rem; }
+@media (max-width: 520px) { .foto-produto { flex-direction: column; } }
+.barra-filtros { display: flex; gap: 10px; flex-wrap: wrap; }
+.barra-filtros input { flex: 1 1 240px; width: auto; }
+.barra-filtros select { flex: 0 0 auto; width: auto; }

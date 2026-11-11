@@ -63,7 +63,7 @@
         && ((('canceladoEm' in r) && r.canceladoEm != '') || r.criadoEm + duration.value(10, 'm') < request.time);
     }
     function tiVagaNova(id, d) {
-      return id.matches('^(floratta-fleur-eclipse|clash-extreme|kaiak-extremo|humor-envolve|meu-primeiro-humor|floratta-blue-crystal|300kmh-max-turbo)-[0-9]{1,3}$')
+      return id.matches('^[a-z0-9][a-z0-9-]{0,39}-[0-9]{1,3}$')
         && d.keys().hasOnly(['trava', 'criadoEm'])
         && d.trava is string && d.trava.matches('^[0-9a-f]{64}$')
         && d.criadoEm == request.time;
