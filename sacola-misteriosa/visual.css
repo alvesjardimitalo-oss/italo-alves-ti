@@ -419,3 +419,13 @@ body.bf{background:#1f0e18;color:#f6e9ee}
 .bf-combo-acoes{display:flex;gap:10px;flex-wrap:wrap}
 .bf-combo .btn{background:#2a1220;color:#f3dcae}
 .bf-combo .btn.secondary{background:transparent;color:#2a1220;border:1.5px solid #2a1220}
+
+/* fotos dos perfumes */
+.perfume{overflow:hidden;padding:0 0 18px}
+.perfume>*:not(.perfume-foto){margin-left:18px;margin-right:18px}
+.perfume-foto{display:block;aspect-ratio:4/5;background:#fff;margin-bottom:14px;overflow:hidden}
+.perfume-foto img{width:100%;height:100%;object-fit:cover;display:block;transition:scale .4s cubic-bezier(.2,.7,.2,1)}
+.perfume:hover .perfume-foto img{scale:1.04}
+.perfume .perfume-btn{margin-left:18px;margin-right:18px}
+@media(max-width:550px){.perfumes{grid-template-columns:1fr 1fr;gap:10px}.perfume>*:not(.perfume-foto),.perfume .perfume-btn{margin-left:12px;margin-right:12px}.perfume-nome{font-size:.95rem}.perfume-preco{font-size:1.1rem}.perfume-btn{padding:9px 10px;font-size:.85rem}}
+@media(prefers-reduced-motion:reduce){.perfume-foto img{transition:none}}
