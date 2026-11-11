@@ -52,6 +52,30 @@
         && request.resource.data.canal in ['social', 'whatsapp', 'busca', 'email', 'referencia', 'direto']
         && request.resource.data.criadoEm == request.time;
     }
+    // Black Friday da Karen: reserva de estoque do carrinho (10 minutos para pagar o Pix).
+    // Público: CRIAR uma reserva (só código do pedido, itens e horário, sem dados pessoais)
+    // e LER as reservas para calcular o estoque disponível. Alterar/apagar: só o dono.
+    function tiQtd(itens, foto) {
+      return !(foto in itens) || (itens[foto] is int && itens[foto] >= 1 && itens[foto] <= 5);
+    }
+    match /ti/base/reservas-bf/{reservaId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 300;
+      allow create: if reservaId.matches('^P[A-Z0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['pedido', 'itens', 'criadoEm'])
+        && request.resource.data.pedido == reservaId
+        && request.resource.data.criadoEm == request.time
+        && request.resource.data.itens is map
+        && request.resource.data.itens.size() >= 1
+        && request.resource.data.itens.keys().hasOnly(['floratta-fleur-eclipse', 'clash-extreme', 'kaiak-extremo', 'humor-envolve', 'meu-primeiro-humor', 'floratta-blue-crystal', '300kmh-max-turbo'])
+        && tiQtd(request.resource.data.itens, 'floratta-fleur-eclipse')
+        && tiQtd(request.resource.data.itens, 'clash-extreme')
+        && tiQtd(request.resource.data.itens, 'kaiak-extremo')
+        && tiQtd(request.resource.data.itens, 'humor-envolve')
+        && tiQtd(request.resource.data.itens, 'meu-primeiro-humor')
+        && tiQtd(request.resource.data.itens, 'floratta-blue-crystal')
+        && tiQtd(request.resource.data.itens, '300kmh-max-turbo');
+    }
     // "Acompanhar OS": o visitante só LÊ um documento se souber o ID exato
     // (hash do código da OS + telefone). Não dá para listar nem gravar.
     match /ti/base/rastreio/{rastreioId} {

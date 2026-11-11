@@ -237,3 +237,13 @@ Ao editar arquivos em `conteudo/` ou `tools/site/`, o GitHub Actions **Gerar sit
 - O menu do celular usa `aria-expanded`, fecha ao selecionar link, ao pressionar Escape ou ao tocar fora dele.
 - O componente isolado está em `assets/js/busca-conteudo.js`. A marcação fica em `tools/site/paginas/catalogos.py` e `dicas.py`. Estilos estão em `assets/css/site.css`.
 - Os testes de regressão estão em `tools/site/testar-busca.mjs`. Sem mudança no banco, regras Firebase, login, orçamentos ou OS.
+
+## Black Friday da Karen: roleta, carrinho e Pix
+
+- Página: `/sacola-misteriosa/roleta/`. Perfumes e preços cheios em `assets/js/perfumes-bf.js` (lista única, usada pela página e pelo painel). Fotos em `sacola-misteriosa/perfumes/<foto>.webp`.
+- **Cupom:** 1% a 10% (roleta), 1 por compra, aplicado no carrinho sobre o preço cheio. Com 10% o preço fica igual ao preço Black Friday da loja.
+- **Compra:** o carrinho confere o estoque, cria uma **reserva** em `ti/base/reservas-bf/{pedido}` (só itens e horário, sem dados pessoais), registra o pedido em `leads` (origem `black-friday-pedido`) e mostra o Pix (copia e cola + QR) com **10 minutos** para pagar.
+- **Sem pagamento em 10 min:** a reserva deixa de contar (o estoque volta ao site sozinho), o pedido aparece como cancelado no painel e o cupom fica **perdido**.
+- **Painel › Sacolas Misteriosas:** chave Pix da Karen (configuração da promoção), estoque dos perfumes, pedidos com prazo ao vivo, aviso sonoro de compra nova e botões *Pix recebido* (baixa o estoque e marca o cupom como usado), *Cancelar* e *Desfazer*.
+- **Regra do Firestore obrigatória:** o bloco `reservas-bf` de `firebase/regras-ti.rules` precisa estar publicado no Console (*Firestore Database › Regras*), junto com os demais blocos da TI, **antes** da regra final `match /{document=**}`. Sem ele, o carrinho mostra "Não foi possível reservar os perfumes" e nenhuma compra é registrada.
+- Limitações: a confirmação do Pix é manual (a Karen confere no banco). Se duas clientes comprarem a última unidade no mesmo segundo, as duas reservas podem passar; o painel avisa quando o estoque ficaria negativo.

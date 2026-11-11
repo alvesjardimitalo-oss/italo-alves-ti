@@ -429,3 +429,47 @@ body.bf{background:#1f0e18;color:#f6e9ee}
 .perfume .perfume-btn{margin-left:18px;margin-right:18px}
 @media(max-width:550px){.perfumes{grid-template-columns:1fr 1fr;gap:10px}.perfume>*:not(.perfume-foto),.perfume .perfume-btn{margin-left:12px;margin-right:12px}.perfume-nome{font-size:.95rem}.perfume-preco{font-size:1.1rem}.perfume-btn{padding:9px 10px;font-size:.85rem}}
 @media(prefers-reduced-motion:reduce){.perfume-foto img{transition:none}}
+
+/* carrinho + Pix da Black Friday */
+.perfume-foto{position:relative}
+.perfume-estoque{position:absolute;left:10px;top:10px;background:#2a1220;color:#f3dcae;font:700 .78rem "DM Sans",sans-serif;padding:5px 10px;border-radius:999px}
+.perfume-estoque.zero{background:#a12b41;color:#fff}
+.perfume-btn:disabled{opacity:.55;cursor:not-allowed}
+.carrinho-fab{position:fixed;right:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:12px 14px 12px 20px;background:#2a1220;color:#f3dcae;font:700 .95rem "DM Sans",sans-serif;box-shadow:0 14px 30px #0008,0 0 0 2px #e9c58f inset;cursor:pointer}
+.carrinho-fab b{display:grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:999px;background:#e9c58f;color:#2a1220}
+.carrinho-fab.pulo{animation:fabPulo .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes fabPulo{40%{scale:1.12}}
+dialog.carrinho{border:0;border-radius:26px;padding:22px;width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 32px);background:#fffaf6;color:#352432;box-shadow:0 30px 80px #000a}
+dialog.carrinho::backdrop{background:#1f0e18c4;backdrop-filter:blur(3px)}
+.carrinho-topo{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.carrinho-topo h2{margin:0;font-size:1.5rem}
+.carrinho-x{border:0;background:#f1e3e8;color:#4d243b;width:36px;height:36px;border-radius:50%;font-size:1.4rem;line-height:1;cursor:pointer}
+.carrinho-vazio{color:#5e4a57;line-height:1.55}
+.carrinho-itens{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-direction:column;gap:10px}
+.carrinho-itens li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;background:#fff;border:1px solid #eadbe0;border-radius:16px;padding:8px 10px}
+.carrinho-itens img{width:56px;height:70px;object-fit:cover;border-radius:10px}
+.carrinho-itens strong{display:block;font-size:.92rem;line-height:1.25}
+.carrinho-itens span{font-size:.8rem;color:#806879}
+.carrinho-qtd{display:flex;align-items:center;gap:8px}
+.carrinho-qtd button{width:32px;height:32px;border-radius:50%;border:1px solid #d9b9c6;background:#fff;color:#4d243b;font-size:1.1rem;cursor:pointer}
+.carrinho-qtd button:disabled{opacity:.4;cursor:not-allowed}
+.carrinho-cupom{background:#f8eef1;border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:.9rem}
+.carrinho-cupom label{display:block;font-weight:700;margin-bottom:6px}
+.carrinho-cupom select{width:100%}
+.carrinho-cupom p{margin:0;color:#5e4a57}
+.carrinho-cupom a{text-decoration:underline}
+.carrinho-total{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:0 0 14px}
+.carrinho-total dt{color:#5e4a57}.carrinho-total dd{margin:0;text-align:right;font-weight:700}
+.carrinho-total .t{font-size:1.15rem;color:#2a1220;font-weight:800;padding-top:6px;border-top:1px dashed #d9b9c6}
+.carrinho-aviso{font-size:.84rem;color:#5e4a57;background:#fff4e2;border-radius:12px;padding:10px 12px;margin:12px 0}
+.carrinho-erro{color:#a12b41;font-weight:700;font-size:.9rem;margin:10px 0 0}
+.pix-ok{margin:-4px 0 12px;color:#276044;font-weight:700}
+.pix-tempo{display:flex;justify-content:space-between;align-items:center;background:#2a1220;color:#f3dcae;border-radius:16px;padding:12px 16px;margin-bottom:12px}
+.pix-tempo b{font:800 1.8rem "DM Sans",sans-serif;font-variant-numeric:tabular-nums}
+.pix-tempo.urgente{background:#a12b41;color:#fff}
+.pix-valor{text-align:center;margin:0 0 10px}
+.pix-qr{display:flex;justify-content:center;margin-bottom:10px}
+.pix-qr svg{width:220px;height:220px;max-width:70vw;max-height:70vw;border-radius:12px;border:1px solid #eadbe0}
+.pix-rotulo{font-weight:700;font-size:.85rem}
+#pix-copia{width:100%;font:500 .78rem/1.4 ui-monospace,monospace;border:1px solid #d9b9c6;border-radius:12px;padding:10px;resize:none;margin:6px 0 12px;background:#fff;color:#352432}
+@media(max-width:550px){dialog.carrinho{padding:16px}.carrinho-fab{right:12px;bottom:12px}}
