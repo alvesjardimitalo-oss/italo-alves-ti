@@ -4,6 +4,8 @@
 import { FIREBASE_CONFIG } from './config.js';
 import { iniciarAppCheck } from './app-check.js';
 import { salvarLead } from './leads.js';
+import { PERFUMES } from './perfumes-bf.js';
+import { criarCarrinho } from './carrinho-bf.js';
 
 // ---------------- Configuração da campanha ----------------
 // Chance de cada desconto (soma 100). Descontos maiores são mais raros.
@@ -14,18 +16,7 @@ const VALIDADE_TEXTO = '30/11/2026';
 const FATIAS = [1, 6, 3, 8, 2, 10, 4, 7, 5, 9];
 const CORES = ['#3a1a2c', '#7a3a5c', '#5a2843', '#c99a5b', '#3a1a2c', '#a74971', '#5a2843', '#7a3a5c', '#3a1a2c', '#c99a5b'];
 const CHAVE = 'karen-bf-cupom-2026';
-// Perfumes da Black Friday. "cheio" = preço sem desconto. O cupom é aplicado sobre
-// o preço cheio, então o melhor prêmio (10%) chega exatamente ao preço Black Friday
-// anunciado na loja da Karen, nunca abaixo dele.
-const PERFUMES = [
-  { foto: 'floratta-fleur-eclipse', nome: 'Floratta Fleur d’Éclipse Eau de Parfum 75 ml', marca: 'O Boticário', cheio: 229.90 },
-  { foto: 'clash-extreme', nome: 'Clash Extreme', marca: 'O Boticário', cheio: 184.90 },
-  { foto: 'kaiak-extremo', nome: 'Kaiak Extremo masculino 100 ml', marca: 'Natura', cheio: 180.00 },
-  { foto: 'humor-envolve', nome: 'Humor Envolve desodorante colônia 75 ml', marca: 'Natura', cheio: 164.90 },
-  { foto: 'meu-primeiro-humor', nome: 'Meu Primeiro Humor feminino 75 ml', marca: 'Natura', cheio: 164.90 },
-  { foto: 'floratta-blue-crystal', nome: 'Floratta Blue Crystal desodorante colônia 75 ml', marca: 'O Boticário', cheio: 149.90 },
-  { foto: '300kmh-max-turbo', nome: '300 km/h Max Turbo deo colônia', marca: 'Avon', cheio: 75.00 },
-];
+
 const DESCONTO_MAXIMO = 10;
 const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const comDesconto = (cheio, pct) => Math.round(cheio * (100 - Math.min(pct, DESCONTO_MAXIMO))) / 100;
@@ -39,6 +30,8 @@ const retorno = $('#retorno');
 const premio = $('#premio');
 const calmo = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let telefoneKaren = '';
+let publico = { pix: null, estoque: {} }; // dados publicados pela Karen no painel
+let carrinho = null;
 let girando = false;
 let pendente = null;
 const params = new URLSearchParams(location.search);
@@ -116,10 +109,6 @@ function girarAte(pct) {
 }
 
 // ---------------- Cupom ----------------
-function mensagemWhats(c) {
-  return `Olá, Karen! Ganhei ${c.pct}% de desconto na roleta da Black Friday. ` +
-    `Meu cupom é ${c.codigo} (nome: ${c.nome}). Quero ver os perfumes!`;
-}
 function mostrarPremio(c, repetido) {
   cupomAtual = c;
   prepararIndicacao(c);
@@ -131,10 +120,9 @@ function mostrarPremio(c, repetido) {
   premio.querySelector('.premio-titulo').textContent = repetido ? (tokenGiro ? 'Você já usou este giro extra' : 'Este é o seu cupom') : (c.nome.split(' ')[0] + ', você ganhou!');
   premio.querySelector('.premio-aviso').textContent = repetido
     ? 'A roleta é uma vez por pessoa, e você já girou neste aparelho.'
-    : (tokenGiro ? 'Este é o seu giro extra por indicar uma amiga. ' : '') + 'Mostre este código para a Karen na hora da compra.';
+    : (tokenGiro ? 'Este é o seu giro extra por indicar uma amiga. ' : '') + 'O cupom entra sozinho no carrinho deste celular. Um cupom por compra.';
   const wa = premio.querySelector('#usar-cupom');
-  if (telefoneKaren) { wa.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(mensagemWhats(c)); wa.hidden = false; }
-  else wa.hidden = true;
+  wa.href = '#perfumes-bf'; wa.removeAttribute('target'); wa.textContent = 'Escolher meus perfumes'; wa.hidden = false;
   form.hidden = true;
   premio.scrollIntoView({ behavior: calmo ? 'auto' : 'smooth', block: 'center' });
 }
@@ -182,21 +170,29 @@ function desenharPerfumes() {
     li.querySelector('.perfume-cheio').textContent = 'Preço cheio ' + brl(p.cheio);
     li.querySelector('.perfume-preco').innerHTML = '<small>' + (pct ? 'Com seu cupom' : 'A partir de') + '</small>' + brl(preco);
     li.querySelector('.perfume-nota').textContent = pct ? pct + '% de desconto (economia de ' + brl(p.cheio - preco) + ')' : 'com o cupom de 10%';
-    if (pct && telefoneKaren) {
-      const a = document.createElement('a');
-      a.className = 'btn perfume-btn';
-      a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = 'Quero este';
-      a.href = 'https://wa.me/' + telefoneKaren + '?text=' + encodeURIComponent(
-        `Olá, Karen! Quero o perfume ${p.nome} (${p.marca}) com meu cupom ${cupomAtual.codigo} de ${pct}% da Black Friday. ` +
-        `Preço cheio ${brl(p.cheio)}, com o cupom ${brl(preco)}. Nome: ${cupomAtual.nome}.`);
-      li.appendChild(a);
-    }
+    const restam = carrinho ? carrinho.disponivel()[p.foto] : undefined;
+    const esgotado = restam !== undefined && restam <= 0;
+    const selo = document.createElement('span');
+    selo.className = 'perfume-estoque' + (esgotado ? ' zero' : '');
+    selo.textContent = restam === undefined ? '' : esgotado ? 'Esgotado' : restam <= 3 ? (restam === 1 ? 'Última unidade' : 'Restam ' + restam) : '';
+    if (selo.textContent) li.querySelector('.perfume-foto').appendChild(selo);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn perfume-btn';
+    const noCarrinho = carrinho ? carrinho.noCarrinho(p.foto) : 0;
+    btn.textContent = esgotado ? 'Esgotado' : noCarrinho ? 'No carrinho (' + noCarrinho + ') · adicionar' : 'Adicionar ao carrinho';
+    btn.disabled = esgotado || !carrinho;
+    btn.addEventListener('click', () => {
+      if (!carrinho) return;
+      if (carrinho.adicionar(p.foto)) { desenharPerfumes(); carrinho.abrir(); }
+      else { btn.textContent = 'Limite disponível no carrinho'; }
+    });
+    li.appendChild(btn);
     lista.appendChild(li);
   });
   const titulo = document.getElementById('perfumes-sub');
   if (titulo) titulo.textContent = pct
-    ? 'Preços com o seu cupom de ' + pct + '%. Toque em "Quero este" para chamar a Karen.'
+    ? 'Preços com o seu cupom de ' + pct + '%. O cupom é aplicado no carrinho; pagamento por Pix.'
     : 'O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
 }
 
@@ -219,7 +215,9 @@ async function carregarContato() {
     await iniciarAppCheck(app);
     fbF = F; fbDb = F.getFirestore(app);
     const snap = await F.getDoc(F.doc(fbDb, 'ti', 'base', 'rastreio', 'sacolas-publicas'));
-    const t = normalizeWhatsApp(snap.exists() ? snap.data().whatsapp : '');
+    const dados = snap.exists() ? snap.data() : {};
+    publico = { pix: dados.pix || null, estoque: dados.perfumes || {} };
+    const t = normalizeWhatsApp(dados.whatsapp);
     telefoneKaren = (t.length >= 12 && t.length <= 13) ? t : '';
   } catch (e) { console.warn('Contato da Karen indisponível:', e); }
 }
@@ -271,7 +269,16 @@ function iniciar() {
   desenharPerfumes();
   contagem();
   if (amiga) { const av = document.getElementById('aviso-amiga'); if (av) av.hidden = false; }
+  carrinho = criarCarrinho({
+    perfumes: PERFUMES,
+    chaveCupom: CHAVE,
+    contato: () => ({ pix: publico.pix, estoque: publico.estoque, whatsapp: telefoneKaren }),
+    firebase: () => (fbDb ? { F: fbF, db: fbDb } : null),
+  });
+  document.addEventListener('karen:estoque', () => desenharPerfumes());
+  document.addEventListener('karen:cupons', () => desenharPerfumes());
   carregarContato().then(async () => {
+    carrinho.carregarDisponivel().catch((e) => console.warn('Estoque indisponível:', e));
     atualizarCombo();
     mostrarPlacar();
     if (tokenGiro) {

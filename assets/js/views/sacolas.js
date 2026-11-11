@@ -4,6 +4,7 @@
 import { store } from '../store.js';
 import { esc, money, parseMoney, toast, confirmar, dataBR, whatsapp, modal } from '../util.js';
 import { semRef } from './leads.js';
+import { PERFUMES } from '../perfumes-bf.js';
 import { icon } from '../icons.js';
 
 const URL_LOJA = 'https://italoinfotec.com.br/sacola-misteriosa/';
@@ -70,6 +71,55 @@ function listarCupons() {
 }
 let ultimoPlacar = '';
 
+// ---------- Pedidos da Black Friday (carrinho + Pix) ----------
+const PRAZO_PIX_MIN = 10;
+/** Estoque dos perfumes definido pela Karen (só os preenchidos são controlados). */
+function estoqueBF() {
+  const e = store.config.bfEstoque || {};
+  return Object.fromEntries(Object.entries(e).filter(([f, v]) => PERFUMES.some((p) => p.foto === f) && v !== '' && v !== null && v !== undefined).map(([f, v]) => [f, Math.max(0, Number(v) || 0)]));
+}
+const ms = (v) => (v && typeof v.toMillis === 'function') ? v.toMillis() : (v ? Date.parse(v) || 0 : 0);
+/** Lê o pedido gravado pelo carrinho: detalhe "... [pedido:PXXXXXX;cupom:...;pct:5;sub:..;total:..;itens:foto*2,...]". */
+function pedidoDoLead(l) {
+  const m = /\[pedido:([^\]]+)\]/.exec(l.detalhe || '');
+  if (!m) return null;
+  const d = Object.fromEntries(('pedido:' + m[1]).split(';').map((x) => { const i = x.indexOf(':'); return [x.slice(0, i), x.slice(i + 1)]; }));
+  const itens = Object.fromEntries(String(d.itens || '').split(',').filter(Boolean).map((x) => { const [f, q] = x.split('*'); return [f, Number(q) || 0]; }));
+  const criado = ms(l.criadoEm);
+  const prazo = criado + PRAZO_PIX_MIN * 60000;
+  const estado = l.pagoEm ? 'pago' : l.canceladoEm ? 'cancelado' : (criado && Date.now() > prazo) ? 'expirado' : 'aguardando';
+  return { lead: l, codigo: d.pedido, cupom: d.cupom || '', pct: Number(d.pct) || 0, sub: Number(d.sub) || 0, total: Number(d.total) || 0, itens, criado, prazo, estado };
+}
+function listarPedidosBF() {
+  return store.lista('leads').filter((l) => l.origem === 'black-friday-pedido').map(pedidoDoLead).filter((p) => p && p.codigo)
+    .sort((a, b) => b.criado - a.criado);
+}
+/** Situação de cada cupom nos pedidos: pago > aguardando > perdido. */
+function cuponsNosPedidos() {
+  const peso = { pago: 3, aguardando: 2, expirado: 1, cancelado: 1 };
+  const mapa = {};
+  listarPedidosBF().forEach((p) => {
+    if (!p.cupom) return;
+    if (!mapa[p.cupom] || peso[p.estado] > peso[mapa[p.cupom].estado]) mapa[p.cupom] = p;
+  });
+  return mapa;
+}
+const nomePerfume = (f) => (PERFUMES.find((p) => p.foto === f) || {}).nome || f;
+const hora = (t) => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+let pedidosVistos = null;
+let relogioPedidos = null;
+function avisarNovaCompra(p) {
+  const texto = 'Nova compra! Pedido ' + p.codigo + ' de ' + (p.lead.nome || 'cliente') + ': ' + money(p.total) + ' no Pix.';
+  toast(texto);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1175, 1568].forEach((f, i) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(.18, ctx.currentTime + i * .14); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + i * .14 + .3); o.start(ctx.currentTime + i * .14); o.stop(ctx.currentTime + i * .14 + .32); });
+  } catch (_) {}
+  try { if ('Notification' in window && Notification.permission === 'granted') new Notification('Karen Cosméticos', { body: texto }); } catch (_) {}
+}
+
+
 
 /** Pergunta qual sacola foi vendida quando o pedido não identifica (pedidos antigos). */
 function escolherSacola(p) {
@@ -97,6 +147,9 @@ async function publicar(xs=sacolasAtuais(), tel=store.config.sacolasWhatsapp || 
   await store.definir('rastreio', 'sacolas-publicas', {
     itens: publicos(xs),
     whatsapp: celular(tel),
+    // Pix da Karen para o carrinho da Black Friday (chave Pix é pública por natureza).
+    perfumes: estoqueBF(),
+    pix: { chave: store.config.sacolasPixChave || '', nome: store.config.sacolasPixNome || '', cidade: store.config.sacolasPixCidade || '' },
     atualizadoEm: new Date().toISOString(),
   });
 }
@@ -113,7 +166,11 @@ export function tela(el) {
     '<form id="cfg-karen" class="form"><div class="campo c12"><label>WhatsApp da Karen (com DDD)</label>' +
     '<input name="numero" inputmode="tel" type="tel" placeholder="(33) 99999-9999" value="' +
     esc(store.config.sacolasWhatsapp || '') + '"><div class="dica">Esse contato recebe os pedidos. Não usa o WhatsApp da assistência técnica.</div></div>' +
-    '<div class="c12 form-acoes" style="margin-top:0"><button class="btn btn-primary">Salvar e publicar contato</button></div></form></div>' +
+    '<div class="campo c12"><label>Chave Pix da Karen</label><input name="pixChave" class="mono" placeholder="CPF, celular (+5533…), e-mail ou chave aleatória" value="' + esc(store.config.sacolasPixChave || '') + '">' +
+    '<div class="dica">Usada no carrinho da Black Friday: o site gera o Pix com o valor do pedido.</div></div>' +
+    '<div class="campo c6"><label>Nome no banco</label><input name="pixNome" maxlength="25" value="' + esc(store.config.sacolasPixNome || '') + '"></div>' +
+    '<div class="campo c6"><label>Cidade</label><input name="pixCidade" maxlength="15" value="' + esc(store.config.sacolasPixCidade || '') + '"></div>' +
+    '<div class="c12 form-acoes" style="margin-top:0"><button class="btn btn-primary">Salvar e publicar contato e Pix</button></div></form></div>' +
     '<div class="card"><div class="card-head"><h2>Vitrine pública</h2></div>' +
     '<p class="sub">Apenas nome, descrição pública, valor, estoque e disponibilidade são enviados à página do cliente. O conteúdo real permanece privado.</p>' +
     '<div class="acoes" style="margin-top:16px;justify-content:flex-start"><button class="btn" id="publicar-karen">' +
@@ -129,6 +186,17 @@ export function tela(el) {
     '<div style="padding:0 20px 14px;display:flex;gap:10px;flex-wrap:wrap"><input id="busca-cupom" placeholder="Digite o código (BF-XXXXX), nome ou WhatsApp" style="flex:1 1 260px" autocomplete="off">' +
     '<select id="filtro-cupom" style="flex:0 0 auto"><option value="">Todos os cupons</option><option value="abertos">Válidos ainda não usados</option><option value="usados">Usados</option><option value="indicacoes">Com giro extra para liberar</option></select></div>' +
     '<div class="tabela-wrap" id="cupons-karen"></div></div>' +
+    '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Pedidos da Black Friday (Pix)</h2><span id="resumo-pedidos-bf" class="sub"></span>' +
+    '<button type="button" class="btn btn-sm" id="avisos-bf">Ativar aviso no celular/computador</button></div>' +
+    '<p class="sub" style="padding:0 20px">A cliente tem ' + PRAZO_PIX_MIN + ' minutos para pagar. Sem pagamento, o pedido é cancelado sozinho, os perfumes voltam ao site e o cupom é perdido. ' +
+    'Confira o Pix no banco e clique em <b>Pix recebido</b>.</p>' +
+    '<div class="tabela-wrap" id="pedidos-bf"></div></div>' +
+    '<div class="card" style="margin-top:20px"><div class="card-head"><h2>Estoque dos perfumes (Black Friday)</h2></div>' +
+    '<p class="sub">Deixe em branco para não controlar. Com estoque 0 o perfume aparece como esgotado. Ao confirmar um Pix, o estoque baixa sozinho.</p>' +
+    '<form id="estoque-bf" class="form">' +
+    PERFUMES.map((p) => '<div class="campo c6"><label>' + esc(p.nome) + '</label><input name="' + esc(p.foto) + '" type="number" min="0" step="1" inputmode="numeric" value="' +
+      esc(estoqueBF()[p.foto] ?? '') + '"></div>').join('') +
+    '<div class="c12 form-acoes" style="margin-top:0"><button class="btn btn-primary">Salvar e publicar estoque</button></div></form></div>' +
     '<div id="editor-karen"></div>';
   const status = (msg) => { const e = el.querySelector('#status-karen'); if (e) e.textContent = msg; };
   const sincronizar = async (lista) => {
@@ -144,9 +212,10 @@ export function tela(el) {
     }
     const btn = f.querySelector('button'); btn.disabled = true;
     try {
-      await store.salvarConfig({ sacolasWhatsapp: numero });
+      await store.salvarConfig({ sacolasWhatsapp: numero, sacolasPixChave: f.pixChave.value.trim(),
+        sacolasPixNome: f.pixNome.value.trim(), sacolasPixCidade: f.pixCidade.value.trim() });
       await publicar(sacolasAtuais(), numero);
-      status('WhatsApp da Karen salvo e publicado.');
+      status('WhatsApp e Pix da Karen salvos e publicados.');
       toast('Contato atualizado.');
     } catch (e) {
       toast('Não foi possível salvar o contato: ' + e.message, 'erro');
@@ -196,6 +265,7 @@ export function tela(el) {
       '<div class="sub" style="padding:28px">Ainda não há solicitações de sacolas.</div>';
     el.querySelectorAll('[data-pago]').forEach((b) => b.onclick = () => confirmarPagamento(b, store.get('leads', b.dataset.pago)));
     desenharCupons();
+    desenharPedidosBF();
     el.querySelectorAll('[data-desfazer]').forEach((b) => b.onclick = () => desfazerPagamento(b, store.get('leads', b.dataset.desfazer)));
   };
 
@@ -207,7 +277,9 @@ export function tela(el) {
     const termo = (busca.value || '').trim().toUpperCase();
     const todos = listarCupons();
     const validos = todos.filter((c) => !c.repetido);
-    const abertos = validos.filter((c) => !c.lead.cupomUsadoEm);
+    const pedidosCupom = cuponsNosPedidos();
+    const perdido = (c) => ['expirado', 'cancelado'].includes((pedidosCupom[c.codigo] || {}).estado);
+    const abertos = validos.filter((c) => !c.lead.cupomUsadoEm && !perdido(c));
     const usados = validos.length - abertos.length;
     const paraLiberar = validos.filter((c) => c.amigasCompraram > c.girosExtras);
     el.querySelector('#resumo-cupons').textContent = validos.length + ' cupons · ' + usados + ' usados' +
@@ -224,13 +296,19 @@ export function tela(el) {
     const digitos = termo.replace(/\D/g, '');
     let lista = !termo ? todos : todos.filter((c) => c.codigo.includes(termo) ||
       String(c.lead.nome || '').toUpperCase().includes(termo) || (digitos.length >= 4 && String(c.lead.whatsapp || '').includes(digitos)));
-    if (filtro.value === 'abertos') lista = lista.filter((c) => !c.repetido && !c.lead.cupomUsadoEm);
+    if (filtro.value === 'abertos') lista = lista.filter((c) => !c.repetido && !c.lead.cupomUsadoEm && !perdido(c));
     if (filtro.value === 'usados') lista = lista.filter((c) => !c.repetido && c.lead.cupomUsadoEm);
     if (filtro.value === 'indicacoes') lista = lista.filter((c) => !c.repetido && c.amigasCompraram > c.girosExtras);
 
-    const situacao = (c) => c.repetido ? '<span class="badge b-danger">Não vale: ' + (c.extra ? 'giro extra já usado' : 'número já tinha girado') + '</span>'
-      : c.lead.cupomUsadoEm ? '<span class="badge b-muted">Usado em ' + esc(dataBR(c.lead.cupomUsadoEm, true)) + '</span>'
-      : '<span class="badge b-ok">Válido</span>';
+    const nosPedidos = cuponsNosPedidos();
+    const situacao = (c) => {
+      if (c.repetido) return '<span class="badge b-danger">Não vale: ' + (c.extra ? 'giro extra já usado' : 'número já tinha girado') + '</span>';
+      if (c.lead.cupomUsadoEm) return '<span class="badge b-muted">Usado em ' + esc(dataBR(c.lead.cupomUsadoEm, true)) + '</span>';
+      const ped = nosPedidos[c.codigo];
+      if (ped && ped.estado === 'aguardando') return '<span class="badge b-warn">Reservado no pedido ' + esc(ped.codigo) + '</span>';
+      if (ped && (ped.estado === 'expirado' || ped.estado === 'cancelado')) return '<span class="badge b-danger">Perdido: pedido ' + esc(ped.codigo) + ' não foi pago</span>';
+      return '<span class="badge b-ok">Válido</span>';
+    };
     const origem = (c) => c.extra ? '<span class="badge b-info">Giro extra</span>' : c.ind.startsWith('amiga:') ? '<span class="sub">Indicada por ' + esc(c.ind.slice(6)) + '</span>' : '';
     const indicacoes = (c) => c.amigas ? c.amigas + ' amiga(s) · ' + c.amigasCompraram + ' comprou(aram)' : '—';
     const lembrete = (c) => 'Olá, ' + (c.lead.nome || '').split(' ')[0] + '! Aqui é a Karen 💝 Seu cupom ' + c.codigo + ' de ' + c.pct +
@@ -238,13 +316,13 @@ export function tela(el) {
     alvo.innerHTML = lista.length ? '<table><thead><tr><th>Cupom</th><th>Desconto</th><th>Cliente</th><th>WhatsApp</th><th>Girou em</th><th>Indicações</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
       lista.slice(0, 300).map((c) => '<tr><td><strong>' + esc(c.codigo) + '</strong><div>' + origem(c) + '</div></td><td><strong>' + c.pct + '%</strong></td><td>' + esc(c.lead.nome || '') +
         '</td><td>' + esc(c.lead.whatsapp || '') + '</td><td>' + esc(dataBR(c.lead.criadoEm, true)) + '</td><td>' + indicacoes(c) + '</td><td>' + situacao(c) + '</td><td class="nowrap">' +
-        (c.repetido ? '' : c.lead.cupomUsadoEm
+        (c.repetido || perdido(c) ? '' : c.lead.cupomUsadoEm
           ? '<button type="button" class="btn btn-sm" data-cupom-desfazer="' + esc(c.lead.id) + '">Desfazer uso</button>'
           : '<button type="button" class="btn btn-sm btn-primary" data-cupom-usar="' + esc(c.lead.id) + '">Marcar como usado</button>') +
         (!c.repetido && c.amigasCompraram > c.girosExtras ? ' <button type="button" class="btn btn-sm btn-primary" data-giro-extra="' + esc(c.lead.id) + '">Liberar giro extra</button>' : '') +
         (c.lead.giroExtraLink ? ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, 'Olá, ' + (c.lead.nome || '').split(' ')[0] + '! Sua amiga comprou com o cupom dela e você ganhou um giro extra na roleta da Black Friday 🎁 Gire aqui: ' + c.lead.giroExtraLink)) + '">Enviar giro extra</a>' : '') +
-        ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, !c.repetido && !c.lead.cupomUsadoEm ? lembrete(c)
-          : 'Olá, ' + (c.lead.nome || '') + '! Aqui é a Karen. Vi seu cupom ' + c.codigo + ' de ' + c.pct + '% da Black Friday.')) + '">' + (!c.repetido && !c.lead.cupomUsadoEm ? 'Lembrar no WhatsApp' : 'WhatsApp') + '</a></td></tr>').join('') +
+        ' <a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(c.lead.whatsapp, !c.repetido && !c.lead.cupomUsadoEm && !perdido(c) ? lembrete(c)
+          : 'Olá, ' + (c.lead.nome || '') + '! Aqui é a Karen. Vi seu cupom ' + c.codigo + ' de ' + c.pct + '% da Black Friday.')) + '">' + (!c.repetido && !c.lead.cupomUsadoEm && !perdido(c) ? 'Lembrar no WhatsApp' : 'WhatsApp') + '</a></td></tr>').join('') +
       '</tbody></table>'
       : '<div class="sub" style="padding:28px">' + (termo ? 'Nenhum cupom encontrado para "' + esc(termo) + '". Confira se o código foi digitado certo.' : filtro.value ? 'Nenhum cupom neste filtro.' : 'Ainda ninguém girou a roleta.') + '</div>';
     alvo.querySelectorAll('[data-cupom-usar]').forEach((bt) => bt.onclick = () => marcarCupom(bt, bt.dataset.cupomUsar, true));
@@ -443,6 +521,138 @@ export function tela(el) {
       } catch(e) { toast('Erro ao excluir: ' + e.message, 'erro'); excluir.disabled = false; }
     };
   }
+  el.querySelector('#estoque-bf').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = ev.currentTarget, bt = f.querySelector('button');
+    const novo = {};
+    PERFUMES.forEach((p) => { const v = f[p.foto].value.trim(); if (v !== '') novo[p.foto] = Math.max(0, Math.floor(Number(v) || 0)); });
+    bt.disabled = true;
+    try { await store.salvarConfig({ bfEstoque: novo }); await publicar(); toast('Estoque dos perfumes publicado.'); }
+    catch (e) { toast('Não foi possível salvar o estoque: ' + e.message, 'erro'); }
+    finally { bt.disabled = false; }
+  });
+  el.querySelector('#avisos-bf').addEventListener('click', async () => {
+    if (!('Notification' in window)) { toast('Este navegador não mostra notificações. O aviso com som continua funcionando com o painel aberto.'); return; }
+    const r = await Notification.requestPermission();
+    toast(r === 'granted' ? 'Avisos ativados: você será avisada de cada compra enquanto o painel estiver aberto.' : 'Avisos não permitidos no navegador.');
+  });
+
+  function desenharPedidosBF() {
+    const alvo = el.querySelector('#pedidos-bf');
+    if (!alvo) return;
+    const pedidos = listarPedidosBF();
+    // Aviso de compra nova (a partir do segundo desenho, para não tocar ao abrir o painel).
+    const ids = new Set(pedidos.map((p) => p.lead.id));
+    if (pedidosVistos) pedidos.filter((p) => !pedidosVistos.has(p.lead.id) && p.estado === 'aguardando').forEach(avisarNovaCompra);
+    pedidosVistos = ids;
+    const cont = { aguardando: 0, pago: 0, perdidos: 0 };
+    pedidos.forEach((p) => { if (p.estado === 'pago') cont.pago++; else if (p.estado === 'aguardando') cont.aguardando++; else cont.perdidos++; });
+    el.querySelector('#resumo-pedidos-bf').textContent = cont.aguardando + ' aguardando Pix · ' + cont.pago + ' pagos · ' + cont.perdidos + ' cancelados';
+    const situacao = (p) => {
+      if (p.estado === 'pago') return '<span class="badge b-ok">Pago</span>';
+      if (p.estado === 'cancelado') return '<span class="badge b-muted">Cancelado</span>';
+      if (p.estado === 'expirado') return '<span class="badge b-danger">Cancelado: Pix não pago até ' + hora(p.prazo) + '</span>';
+      const s = Math.max(0, Math.ceil((p.prazo - Date.now()) / 1000));
+      return '<span class="badge b-warn">Aguardando Pix · ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '</span>';
+    };
+    alvo.innerHTML = pedidos.length ? '<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Cupom</th><th>Total</th><th>Situação</th><th>Ação</th></tr></thead><tbody>' +
+      pedidos.slice(0, 200).map((p) => '<tr><td><strong>' + esc(p.codigo) + '</strong><div class="sub">' + esc(dataBR(p.lead.criadoEm, true)) + '</div></td>' +
+        '<td>' + esc(p.lead.nome || '') + '<div class="sub">' + esc(p.lead.whatsapp || '') + '</div></td>' +
+        '<td>' + Object.entries(p.itens).map(([f, q]) => q + '× ' + esc(nomePerfume(f))).join('<br>') + '</td>' +
+        '<td>' + (p.cupom ? esc(p.cupom) + ' (' + p.pct + '%)' : '—') + '</td><td><strong>' + money(p.total) + '</strong></td><td>' + situacao(p) + '</td><td class="nowrap">' +
+        (p.estado === 'aguardando' || p.estado === 'expirado' ? '<button type="button" class="btn btn-sm btn-primary" data-pix-ok="' + esc(p.lead.id) + '">Pix recebido</button> ' : '') +
+        (p.estado === 'aguardando' ? '<button type="button" class="btn btn-sm" data-pix-cancelar="' + esc(p.lead.id) + '">Cancelar</button> ' : '') +
+        (p.estado === 'pago' ? '<button type="button" class="btn btn-sm" data-pix-desfazer="' + esc(p.lead.id) + '">Desfazer</button> ' : '') +
+        '<a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(p.lead.whatsapp, p.estado === 'pago'
+          ? 'Olá, ' + (p.lead.nome || '').split(' ')[0] + '! Aqui é a Karen 💝 Recebi seu Pix do pedido ' + p.codigo + ' (' + money(p.total) + '). Vamos combinar a entrega?'
+          : 'Olá, ' + (p.lead.nome || '').split(' ')[0] + '! Aqui é a Karen. Sobre o seu pedido ' + p.codigo + ' de ' + money(p.total) + ' da Black Friday:')) + '">WhatsApp</a></td></tr>').join('') +
+      '</tbody></table>' : '<div class="sub" style="padding:28px">Nenhuma compra pelo carrinho ainda.</div>';
+    alvo.querySelectorAll('[data-pix-ok]').forEach((b) => b.onclick = () => pixRecebido(b, b.dataset.pixOk));
+    alvo.querySelectorAll('[data-pix-cancelar]').forEach((b) => b.onclick = () => cancelarPedido(b, b.dataset.pixCancelar));
+    alvo.querySelectorAll('[data-pix-desfazer]').forEach((b) => b.onclick = () => desfazerPix(b, b.dataset.pixDesfazer));
+    // Atualiza a contagem e as expirações enquanto a tela estiver aberta.
+    clearInterval(relogioPedidos);
+    if (cont.aguardando) relogioPedidos = setInterval(() => { if (!document.body.contains(alvo)) { clearInterval(relogioPedidos); return; } desenharPedidosBF(); }, 5000);
+  }
+
+  const cupomLeadId = (codigo) => (listarCupons().find((c) => c.codigo === codigo && !c.repetido) || {}).lead?.id || '';
+  async function ajustarEstoque(itens, sinal) {
+    const atual = estoqueBF();
+    let negativo = false;
+    Object.entries(itens).forEach(([f, q]) => {
+      if (atual[f] === undefined) return;
+      atual[f] = atual[f] + sinal * q;
+      if (atual[f] < 0) { negativo = true; atual[f] = 0; }
+    });
+    await store.salvarConfig({ bfEstoque: atual });
+    await publicar();
+    return negativo;
+  }
+
+  async function pixRecebido(botao, id) {
+    const p = pedidoDoLead(store.get('leads', id) || {});
+    if (!p) return;
+    const atrasado = p.estado === 'expirado';
+    if (!(await confirmar((atrasado ? 'ATENÇÃO: o prazo deste pedido acabou às ' + hora(p.prazo) + ' e os perfumes já voltaram ao site. Só confirme se o Pix chegou até esse horário. ' : '') +
+      'Confirmar o Pix de ' + money(p.total) + ' do pedido ' + p.codigo + ' (' + (p.lead.nome || 'cliente') + ')? O estoque baixa' + (p.cupom ? ' e o cupom ' + p.cupom + ' fica usado' : '') + '.',
+      { titulo: 'Pix recebido', botao: 'Confirmar pagamento', perigo: atrasado }))) return;
+    botao.disabled = true;
+    try {
+      const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
+      const leituras = [{ col: 'leads', id }, { col: 'reservas-bf', id: p.codigo }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : []);
+      const agora = new Date().toISOString();
+      await store.transacao(leituras, ([lead, reserva, cupom]) => {
+        if (!lead) throw new Error('pedido não encontrado');
+        if (lead.pagoEm) throw new Error('este pedido já está pago');
+        if (lead.canceladoEm) throw new Error('este pedido foi cancelado');
+        const w = [{ col: 'leads', id, dados: { pagoEm: agora, status: 'Virou cliente' } }];
+        if (reserva) w.push({ col: 'reservas-bf', id: p.codigo, dados: { pagoEm: agora } });
+        if (cupom && !cupom.cupomUsadoEm) w.push({ col: 'leads', id: idCupom, dados: { cupomUsadoEm: agora } });
+        return w;
+      });
+      const negativo = await ajustarEstoque(p.itens, -1);
+      toast('Pagamento confirmado. Estoque atualizado.' + (negativo ? ' Atenção: algum perfume ficou sem estoque suficiente; confira as quantidades.' : ''));
+      render();
+    } catch (e) { toast('Não foi possível confirmar: ' + e.message, 'erro'); botao.disabled = false; }
+  }
+
+  async function cancelarPedido(botao, id) {
+    const p = pedidoDoLead(store.get('leads', id) || {});
+    if (!p) return;
+    if (!(await confirmar('Cancelar o pedido ' + p.codigo + '? Os perfumes voltam ao site' + (p.cupom ? ' e o cupom ' + p.cupom + ' é perdido' : '') + '.',
+      { titulo: 'Cancelar pedido', botao: 'Cancelar pedido', perigo: true }))) return;
+    botao.disabled = true;
+    try {
+      const agora = new Date().toISOString();
+      await store.transacao([{ col: 'leads', id }, { col: 'reservas-bf', id: p.codigo }], ([lead, reserva]) => {
+        if (!lead) throw new Error('pedido não encontrado');
+        if (lead.pagoEm) throw new Error('este pedido já está pago');
+        return [{ col: 'leads', id, dados: { canceladoEm: agora } }].concat(reserva ? [{ col: 'reservas-bf', id: p.codigo, dados: { canceladoEm: agora } }] : []);
+      });
+      toast('Pedido ' + p.codigo + ' cancelado.');
+      render();
+    } catch (e) { toast('Não foi possível cancelar: ' + e.message, 'erro'); botao.disabled = false; }
+  }
+
+  async function desfazerPix(botao, id) {
+    const p = pedidoDoLead(store.get('leads', id) || {});
+    if (!p) return;
+    if (!(await confirmar('Desfazer a confirmação do Pix do pedido ' + p.codigo + '? Os perfumes voltam ao estoque e o pedido fica cancelado.',
+      { titulo: 'Desfazer pagamento', botao: 'Desfazer', perigo: true }))) return;
+    botao.disabled = true;
+    try {
+      const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
+      const agora = new Date().toISOString();
+      await store.transacao([{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : []), ([lead]) => {
+        if (!lead || !lead.pagoEm) throw new Error('este pedido não está pago');
+        return [{ col: 'leads', id, dados: { pagoEm: '', canceladoEm: agora, status: 'Em contato' } }].concat(idCupom ? [{ col: 'leads', id: idCupom, dados: { cupomUsadoEm: '' } }] : []);
+      });
+      await ajustarEstoque(p.itens, +1);
+      toast('Pagamento desfeito; perfumes de volta ao estoque.');
+      render();
+    } catch (e) { toast('Não foi possível desfazer: ' + e.message, 'erro'); botao.disabled = false; }
+  }
+
   render();
   return { live:true, render };
 }

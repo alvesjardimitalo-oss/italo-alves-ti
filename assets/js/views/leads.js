@@ -4,7 +4,7 @@ import { esc, norm, dataBR, formatFone, whatsapp, badge, toast, confirmar, modal
 import { empresa } from '../negocio.js';
 
 /** Remove os códigos internos [ref:...] (sacola) e [cupom:...] (roleta) gravados no detalhe. */
-export const semRef = (t) => String(t || '').replace(/\s*\[(ref|cupom):[^\]]*\]/g, '');
+export const semRef = (t) => String(t || '').replace(/\s*\[(ref|cupom|pedido):[^\]]*\]/g, '');
 
 export const STATUS_LEAD = { 'Novo': 'info', 'Em contato': 'warn', 'Virou cliente': 'ok', 'Perdido': 'muted' };
 
