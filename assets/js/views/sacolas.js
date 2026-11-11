@@ -88,7 +88,8 @@ function pedidoDoLead(l) {
   const criado = ms(l.criadoEm);
   const prazo = criado + PRAZO_PIX_MIN * 60000;
   const estado = l.pagoEm ? 'pago' : l.canceladoEm ? 'cancelado' : (criado && Date.now() > prazo) ? 'expirado' : 'aguardando';
-  return { lead: l, codigo: d.pedido, cupom: d.cupom || '', pct: Number(d.pct) || 0, sub: Number(d.sub) || 0, total: Number(d.total) || 0, itens, criado, prazo, estado };
+  const vagas = String(d.vagas || '').split(',').filter(Boolean);
+  return { lead: l, codigo: d.pedido, cupom: d.cupom || '', pct: Number(d.pct) || 0, sub: Number(d.sub) || 0, total: Number(d.total) || 0, itens, vagas, criado, prazo, estado };
 }
 function listarPedidosBF() {
   return store.lista('leads').filter((l) => l.origem === 'black-friday-pedido').map(pedidoDoLead).filter((p) => p && p.codigo)
@@ -188,14 +189,14 @@ export function tela(el) {
     '<div class="tabela-wrap" id="cupons-karen"></div></div>' +
     '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Pedidos da Black Friday (Pix)</h2><span id="resumo-pedidos-bf" class="sub"></span>' +
     '<button type="button" class="btn btn-sm" id="avisos-bf">Ativar aviso no celular/computador</button></div>' +
-    '<p class="sub" style="padding:0 20px">A cliente tem ' + PRAZO_PIX_MIN + ' minutos para pagar. Sem pagamento, o pedido é cancelado sozinho, os perfumes voltam ao site e o cupom é perdido. ' +
+    '<p class="sub" style="padding:0 20px">A cliente tem ' + PRAZO_PIX_MIN + ' minutos para pagar. Sem pagamento, o pedido é cancelado sozinho, os frascos voltam ao site e o cupom é perdido. ' +
     'Confira o Pix no banco e clique em <b>Pix recebido</b>.</p>' +
     '<div class="tabela-wrap" id="pedidos-bf"></div></div>' +
     '<div class="card" style="margin-top:20px"><div class="card-head"><h2>Estoque dos perfumes (Black Friday)</h2></div>' +
-    '<p class="sub">Deixe em branco para não controlar. Com estoque 0 o perfume aparece como esgotado. Ao confirmar um Pix, o estoque baixa sozinho.</p>' +
+    '<p class="sub">Informe o <b>total de frascos à venda</b> na Black Friday. Vendidos e reservados são descontados sozinhos: não precisa mexer a cada venda. Em branco = sem controle; 0 = esgotado.</p>' +
     '<form id="estoque-bf" class="form">' +
     PERFUMES.map((p) => '<div class="campo c6"><label>' + esc(p.nome) + '</label><input name="' + esc(p.foto) + '" type="number" min="0" step="1" inputmode="numeric" value="' +
-      esc(estoqueBF()[p.foto] ?? '') + '"></div>').join('') +
+      esc(estoqueBF()[p.foto] ?? '') + '"><div class="dica" data-vagas-info="' + esc(p.foto) + '"></div></div>').join('') +
     '<div class="c12 form-acoes" style="margin-top:0"><button class="btn btn-primary">Salvar e publicar estoque</button></div></form></div>' +
     '<div id="editor-karen"></div>';
   const status = (msg) => { const e = el.querySelector('#status-karen'); if (e) e.textContent = msg; };
@@ -266,6 +267,7 @@ export function tela(el) {
     el.querySelectorAll('[data-pago]').forEach((b) => b.onclick = () => confirmarPagamento(b, store.get('leads', b.dataset.pago)));
     desenharCupons();
     desenharPedidosBF();
+    atualizarVagas();
     el.querySelectorAll('[data-desfazer]').forEach((b) => b.onclick = () => desfazerPagamento(b, store.get('leads', b.dataset.desfazer)));
   };
 
@@ -527,7 +529,7 @@ export function tela(el) {
     const novo = {};
     PERFUMES.forEach((p) => { const v = f[p.foto].value.trim(); if (v !== '') novo[p.foto] = Math.max(0, Math.floor(Number(v) || 0)); });
     bt.disabled = true;
-    try { await store.salvarConfig({ bfEstoque: novo }); await publicar(); toast('Estoque dos perfumes publicado.'); }
+    try { await store.salvarConfig({ bfEstoque: novo }); await publicar(); toast('Estoque dos perfumes publicado.'); atualizarVagas(true); }
     catch (e) { toast('Não foi possível salvar o estoque: ' + e.message, 'erro'); }
     finally { bt.disabled = false; }
   });
@@ -536,6 +538,30 @@ export function tela(el) {
     const r = await Notification.requestPermission();
     toast(r === 'granted' ? 'Avisos ativados: você será avisada de cada compra enquanto o painel estiver aberto.' : 'Avisos não permitidos no navegador.');
   });
+
+  let vagasLidasEm = 0;
+  async function atualizarVagas(forcar) {
+    if (!forcar && Date.now() - vagasLidasEm < 15000) return;
+    vagasLidasEm = Date.now();
+    let vagas = [];
+    try { vagas = await store.buscar('vagas-bf'); } catch (e) { console.warn('Vagas indisponíveis:', e); return; }
+    const total = estoqueBF();
+    const cont = {};
+    vagas.forEach((v) => {
+      const m = /^(.+)-(\d+)$/.exec(v.id); if (!m) return;
+      const c = (cont[m[1]] = cont[m[1]] || { vendidos: 0, reservados: 0 });
+      const criado = ms(v.criadoEm);
+      if (v.pagoEm) c.vendidos++;
+      else if (!v.canceladoEm && criado + PRAZO_PIX_MIN * 60000 > Date.now()) c.reservados++;
+    });
+    PERFUMES.forEach((p) => {
+      const alvo = el.querySelector('[data-vagas-info="' + p.foto + '"]');
+      if (!alvo) return;
+      const c = cont[p.foto] || { vendidos: 0, reservados: 0 };
+      alvo.textContent = total[p.foto] === undefined ? (c.vendidos ? c.vendidos + ' vendido(s) · sem controle de estoque' : 'Sem controle de estoque')
+        : c.vendidos + ' vendido(s) · ' + c.reservados + ' reservado(s) · ' + Math.max(0, total[p.foto] - c.vendidos - c.reservados) + ' disponível(is) no site';
+    });
+  }
 
   function desenharPedidosBF() {
     const alvo = el.querySelector('#pedidos-bf');
@@ -576,42 +602,40 @@ export function tela(el) {
   }
 
   const cupomLeadId = (codigo) => (listarCupons().find((c) => c.codigo === codigo && !c.repetido) || {}).lead?.id || '';
-  async function ajustarEstoque(itens, sinal) {
-    const atual = estoqueBF();
-    let negativo = false;
-    Object.entries(itens).forEach(([f, q]) => {
-      if (atual[f] === undefined) return;
-      atual[f] = atual[f] + sinal * q;
-      if (atual[f] < 0) { negativo = true; atual[f] = 0; }
-    });
-    await store.salvarConfig({ bfEstoque: atual });
-    await publicar();
-    return negativo;
-  }
-
   async function pixRecebido(botao, id) {
     const p = pedidoDoLead(store.get('leads', id) || {});
     if (!p) return;
     const atrasado = p.estado === 'expirado';
     if (!(await confirmar((atrasado ? 'ATENÇÃO: o prazo deste pedido acabou às ' + hora(p.prazo) + ' e os perfumes já voltaram ao site. Só confirme se o Pix chegou até esse horário. ' : '') +
-      'Confirmar o Pix de ' + money(p.total) + ' do pedido ' + p.codigo + ' (' + (p.lead.nome || 'cliente') + ')? O estoque baixa' + (p.cupom ? ' e o cupom ' + p.cupom + ' fica usado' : '') + '.',
+      'Confirmar o Pix de ' + money(p.total) + ' do pedido ' + p.codigo + ' (' + (p.lead.nome || 'cliente') + ')? Os frascos ficam vendidos' + (p.cupom ? ' e o cupom ' + p.cupom + ' fica usado' : '') + '.',
       { titulo: 'Pix recebido', botao: 'Confirmar pagamento', perigo: atrasado }))) return;
     botao.disabled = true;
     try {
       const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
-      const leituras = [{ col: 'leads', id }, { col: 'reservas-bf', id: p.codigo }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : []);
+      const leituras = [{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : [], p.vagas.map((v) => ({ col: 'vagas-bf', id: v })));
       const agora = new Date().toISOString();
-      await store.transacao(leituras, ([lead, reserva, cupom]) => {
+      let perdidas = [];
+      await store.transacao(leituras, (docs) => {
+        const [lead] = docs;
+        const cupom = idCupom ? docs[1] : null;
+        const vagasDocs = docs.slice(idCupom ? 2 : 1);
         if (!lead) throw new Error('pedido não encontrado');
         if (lead.pagoEm) throw new Error('este pedido já está pago');
         if (lead.canceladoEm) throw new Error('este pedido foi cancelado');
         const w = [{ col: 'leads', id, dados: { pagoEm: agora, status: 'Virou cliente' } }];
-        if (reserva) w.push({ col: 'reservas-bf', id: p.codigo, dados: { pagoEm: agora } });
+        perdidas = [];
+        vagasDocs.forEach((v, i) => {
+          // Se o prazo passou, outra cliente pode ter pegado a vaga: não mexe nela.
+          if (v && v.pedido === p.codigo) w.push({ col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: agora, canceladoEm: '' } });
+          else perdidas.push(p.vagas[i]);
+        });
         if (cupom && !cupom.cupomUsadoEm) w.push({ col: 'leads', id: idCupom, dados: { cupomUsadoEm: agora } });
         return w;
       });
-      const negativo = await ajustarEstoque(p.itens, -1);
-      toast('Pagamento confirmado. Estoque atualizado.' + (negativo ? ' Atenção: algum perfume ficou sem estoque suficiente; confira as quantidades.' : ''));
+      toast(perdidas.length
+        ? 'Pagamento confirmado, mas ' + perdidas.length + ' frasco(s) já tinham sido reservados por outra cliente depois do prazo. Aumente o estoque se tiver o produto.'
+        : 'Pagamento confirmado. Os frascos ficaram vendidos.');
+      atualizarVagas(true);
       render();
     } catch (e) { toast('Não foi possível confirmar: ' + e.message, 'erro'); botao.disabled = false; }
   }
@@ -624,11 +648,13 @@ export function tela(el) {
     botao.disabled = true;
     try {
       const agora = new Date().toISOString();
-      await store.transacao([{ col: 'leads', id }, { col: 'reservas-bf', id: p.codigo }], ([lead, reserva]) => {
+      await store.transacao([{ col: 'leads', id }].concat(p.vagas.map((v) => ({ col: 'vagas-bf', id: v }))), ([lead, ...vagasDocs]) => {
         if (!lead) throw new Error('pedido não encontrado');
         if (lead.pagoEm) throw new Error('este pedido já está pago');
-        return [{ col: 'leads', id, dados: { canceladoEm: agora } }].concat(reserva ? [{ col: 'reservas-bf', id: p.codigo, dados: { canceladoEm: agora } }] : []);
+        return [{ col: 'leads', id, dados: { canceladoEm: agora } }]
+          .concat(vagasDocs.map((v, i) => (v && v.pedido === p.codigo ? { col: 'vagas-bf', id: p.vagas[i], dados: { canceladoEm: agora } } : null)).filter(Boolean));
       });
+      atualizarVagas(true);
       toast('Pedido ' + p.codigo + ' cancelado.');
       render();
     } catch (e) { toast('Não foi possível cancelar: ' + e.message, 'erro'); botao.disabled = false; }
@@ -637,17 +663,21 @@ export function tela(el) {
   async function desfazerPix(botao, id) {
     const p = pedidoDoLead(store.get('leads', id) || {});
     if (!p) return;
-    if (!(await confirmar('Desfazer a confirmação do Pix do pedido ' + p.codigo + '? Os perfumes voltam ao estoque e o pedido fica cancelado.',
+    if (!(await confirmar('Desfazer a confirmação do Pix do pedido ' + p.codigo + '? Os frascos voltam ao site e o pedido fica cancelado.',
       { titulo: 'Desfazer pagamento', botao: 'Desfazer', perigo: true }))) return;
     botao.disabled = true;
     try {
       const idCupom = p.cupom ? cupomLeadId(p.cupom) : '';
       const agora = new Date().toISOString();
-      await store.transacao([{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : []), ([lead]) => {
+      await store.transacao([{ col: 'leads', id }].concat(idCupom ? [{ col: 'leads', id: idCupom }] : [], p.vagas.map((v) => ({ col: 'vagas-bf', id: v }))), (docs) => {
+        const [lead] = docs;
+        const vagasDocs = docs.slice(idCupom ? 2 : 1);
         if (!lead || !lead.pagoEm) throw new Error('este pedido não está pago');
-        return [{ col: 'leads', id, dados: { pagoEm: '', canceladoEm: agora, status: 'Em contato' } }].concat(idCupom ? [{ col: 'leads', id: idCupom, dados: { cupomUsadoEm: '' } }] : []);
+        return [{ col: 'leads', id, dados: { pagoEm: '', canceladoEm: agora, status: 'Em contato' } }]
+          .concat(idCupom ? [{ col: 'leads', id: idCupom, dados: { cupomUsadoEm: '' } }] : [])
+          .concat(vagasDocs.map((v, i) => (v && v.pedido === p.codigo ? { col: 'vagas-bf', id: p.vagas[i], dados: { pagoEm: '', canceladoEm: agora } } : null)).filter(Boolean));
       });
-      await ajustarEstoque(p.itens, +1);
+      atualizarVagas(true);
       toast('Pagamento desfeito; perfumes de volta ao estoque.');
       render();
     } catch (e) { toast('Não foi possível desfazer: ' + e.message, 'erro'); botao.disabled = false; }

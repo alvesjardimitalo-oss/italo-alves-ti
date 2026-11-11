@@ -2,9 +2,10 @@
 // Regras: 1 cupom por compra (a % da roleta vale para o carrinho todo, limitada a 10%);
 // a cliente tem 10 minutos para pagar o Pix; sem pagamento, o pedido é cancelado e o
 // cupom é perdido. Quem confirma o pagamento é a Karen, no painel.
-// Estoque: a compra cria uma reserva pública (ti/base/reservas-bf, sem dados pessoais).
-// Disponível = estoque publicado pela Karen − reservas dos últimos 10 min ainda não pagas
-// nem canceladas. Passados 10 minutos sem pagamento, a reserva deixa de contar sozinha.
+// Estoque: cada frasco é uma vaga numerada (ti/base/vagas-bf/{foto}-{n}, sem dados pessoais).
+// A Karen informa o total à venda (n = 1..total). Reservar = gravar as vagas num lote só:
+// as regras do Firebase recusam vaga ocupada, então duas clientes nunca pegam o mesmo frasco.
+// Vaga ocupada = paga, ou reservada há menos de 10 min e não cancelada.
 import { salvarLead } from './leads.js';
 
 const PRAZO_MIN = 10;
@@ -24,31 +25,65 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
   const porFoto = Object.fromEntries(perfumes.map((p) => [p.foto, p]));
   let itens = ler(K_CARRINHO, {});
   let timer = null;
+  const digitado = { nome: '', tel: '' }; // mantém o que a cliente digitou quando o carrinho é redesenhado
   let disponivel = {};   // foto -> unidades disponíveis (ausente = estoque não controlado)
 
   // ---------- Estoque ----------
+  let livres = {};       // foto -> números de vaga livres
   async function carregarDisponivel() {
     const base = contato().estoque || {};
-    const reservado = {};
+    const ocupadas = {};
     const fb = firebase();
     if (fb) {
       const { F, db } = fb;
-      const desde = F.Timestamp.fromMillis(Date.now() - (PRAZO_MIN + 1) * 60000);
-      const snap = await F.getDocs(F.query(F.collection(db, 'ti', 'base', 'reservas-bf'), F.where('criadoEm', '>', desde), F.limit(300)));
+      const snap = await F.getDocs(F.query(F.collection(db, 'ti', 'base', 'vagas-bf'), F.limit(500)));
       snap.forEach((d) => {
+        const m = /^(.+)-(\d+)$/.exec(d.id);
+        if (!m) return;
         const r = d.data();
         const criado = r.criadoEm && r.criadoEm.toMillis ? r.criadoEm.toMillis() : 0;
-        if (r.pagoEm || r.canceladoEm || criado + PRAZO_MIN * 60000 < Date.now()) return;
-        Object.entries(r.itens || {}).forEach(([f, q]) => { reservado[f] = (reservado[f] || 0) + Number(q || 0); });
+        const paga = r.pagoEm && r.pagoEm !== '';
+        const cancelada = r.canceladoEm && r.canceladoEm !== '';
+        if (paga || (!cancelada && criado + PRAZO_MIN * 60000 > Date.now())) (ocupadas[m[1]] = ocupadas[m[1]] || new Set()).add(Number(m[2]));
       });
     }
-    disponivel = {};
+    disponivel = {}; livres = {};
     perfumes.forEach((p) => {
       if (base[p.foto] === undefined || base[p.foto] === null || base[p.foto] === '') return;
-      disponivel[p.foto] = Math.max(0, Number(base[p.foto]) - (reservado[p.foto] || 0));
+      const total = Math.max(0, Math.floor(Number(base[p.foto]) || 0));
+      const occ = ocupadas[p.foto] || new Set();
+      livres[p.foto] = [];
+      for (let n = 1; n <= total; n++) if (!occ.has(n)) livres[p.foto].push(n);
+      disponivel[p.foto] = livres[p.foto].length;
     });
     document.dispatchEvent(new CustomEvent('karen:estoque', { detail: { ...disponivel } }));
     return disponivel;
+  }
+
+  // Reserva as vagas num lote atômico; se outra cliente pegou alguma antes, tenta de novo.
+  async function reservarVagas(codigo, linhas) {
+    const { F, db } = firebase();
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      await carregarDisponivel();
+      const escolhidas = [];
+      for (const l of linhas) {
+        if (livres[l.p.foto] === undefined) continue; // perfume sem controle de estoque
+        const opcoes = livres[l.p.foto].slice().sort(() => Math.random() - 0.5);
+        if (opcoes.length < l.q) return { faltando: [l] };
+        opcoes.slice(0, l.q).forEach((n) => escolhidas.push(l.p.foto + '-' + n));
+      }
+      if (!escolhidas.length) return { vagas: [] };
+      try {
+        const lote = F.writeBatch(db);
+        escolhidas.forEach((id) => lote.set(F.doc(db, 'ti', 'base', 'vagas-bf', id), { pedido: codigo, criadoEm: F.serverTimestamp() }));
+        await lote.commit();
+        return { vagas: escolhidas };
+      } catch (e) {
+        console.warn('Vaga disputada, tentando de novo:', e);
+        await new Promise((r) => setTimeout(r, 300 + Math.random() * 500));
+      }
+    }
+    return { erro: true };
   }
   const limite = (foto) => Math.min(MAX_POR_ITEM, disponivel[foto] ?? MAX_POR_ITEM);
 
@@ -127,7 +162,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       dlg.querySelector('.carrinho-x').onclick = () => dlg.close();
       return;
     }
-    const contatoSalvo = ultimo || {};
+    const contatoSalvo = { nome: digitado.nome || (ultimo && ultimo.nome) || '', whatsapp: digitado.tel || (ultimo && ultimo.whatsapp ? ultimo.whatsapp.replace(/^55/, '') : '') };
     dlg.innerHTML = '<div class="carrinho-topo"><h2>Seu carrinho</h2><button type="button" class="carrinho-x" aria-label="Fechar">×</button></div>' +
       '<ul class="carrinho-itens">' + linhas.map((l) => '<li><img src="/sacola-misteriosa/perfumes/' + esc(l.p.foto) + '.webp" alt="" width="56" height="70">' +
         '<div><strong>' + esc(l.p.nome) + '</strong><span>' + esc(l.p.marca) + ' · ' + brl(l.p.cheio) + ' cada</span></div>' +
@@ -141,7 +176,7 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
           ' Use o mesmo celular em que girou a roleta.</p>') + '</div>' +
       '<dl class="carrinho-total"></dl>' +
       '<form class="carrinho-dados"><div class="bf-campos"><div class="field"><label for="c-nome">Seu nome</label><input id="c-nome" required minlength="2" maxlength="80" autocomplete="name" value="' + esc(contatoSalvo.nome || '') + '"></div>' +
-      '<div class="field"><label for="c-tel">Seu WhatsApp</label><input id="c-tel" type="tel" inputmode="tel" required maxlength="20" autocomplete="tel" value="' + esc(contatoSalvo.whatsapp ? contatoSalvo.whatsapp.replace(/^55/, '') : '') + '"></div></div>' +
+      '<div class="field"><label for="c-tel">Seu WhatsApp</label><input id="c-tel" type="tel" inputmode="tel" required maxlength="20" autocomplete="tel" value="' + esc(contatoSalvo.whatsapp) + '"></div></div>' +
       '<p class="carrinho-aviso">Ao gerar o Pix você tem <b>' + PRAZO_MIN + ' minutos</b> para pagar. Sem pagamento, o pedido é cancelado' + (cupons.length ? ' e o cupom é perdido' : '') + '. A entrega é combinada com a Karen pelo WhatsApp.</p>' +
       '<button class="btn bf-girar" type="submit"></button><p class="carrinho-erro" role="status" hidden></p></form>';
     dlg.querySelector('.carrinho-x').onclick = () => dlg.close();
@@ -161,6 +196,8 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
       botao.textContent = 'Gerar Pix de ' + brl(t.total);
     };
     if (sel) sel.onchange = recalcular;
+    dlg.querySelector('#c-nome').oninput = (e) => { digitado.nome = e.target.value; };
+    dlg.querySelector('#c-tel').oninput = (e) => { digitado.tel = e.target.value; };
     recalcular();
     const pix = contato().pix;
     if (!pix || !pix.chave) {
@@ -200,21 +237,31 @@ export function criarCarrinho({ perfumes, chaveCupom, contato, firebase }) {
     const prazo = new Date(Date.now() + PRAZO_MIN * 60000).toISOString();
     const resumoItens = t.linhas.map((l) => l.q + 'x ' + l.p.nome + ' (' + brl(l.valor) + ')').join('; ');
     const tag = `[pedido:${codigo};cupom:${cupom ? cupom.codigo : ''};pct:${t.pct};sub:${t.subtotal.toFixed(2)};total:${t.total.toFixed(2)};` +
-      `itens:${t.linhas.map((l) => l.p.foto + '*' + l.q).join(',')}]`;
-    const detalhe = `Pedido ${codigo}: ${resumoItens}. Subtotal ${brl(t.subtotal)}` + (cupom ? `, cupom ${cupom.codigo} (${t.pct}%) −${brl(t.desconto)}` : '') +
+      `itens:${t.linhas.map((l) => l.p.foto + '*' + l.q).join(',')};vagas:VAGAS]`;
+    const detalhe0 = `Pedido ${codigo}: ${resumoItens}. Subtotal ${brl(t.subtotal)}` + (cupom ? `, cupom ${cupom.codigo} (${t.pct}%) −${brl(t.desconto)}` : '') +
       `. Total no Pix ${brl(t.total)}. ${tag}`;
-    // 1) Reserva o estoque (o pedido só existe se a reserva for aceita).
+    let detalhe = '';
+    // 1) Reserva as vagas (o pedido só existe se a reserva for aceita).
+    let vagas = [];
     try {
-      const { F, db } = fb;
-      await F.setDoc(F.doc(db, 'ti', 'base', 'reservas-bf', codigo), {
-        pedido: codigo, itens: Object.fromEntries(t.linhas.map((l) => [l.p.foto, l.q])), criadoEm: F.serverTimestamp(),
-      });
+      const r = await reservarVagas(codigo, t.linhas);
+      if (r.faltando) {
+        await carregarDisponivel().catch(() => {});
+        r.faltando.forEach((l) => { const d = disponivel[l.p.foto] || 0; if (d <= 0) delete itens[l.p.foto]; else itens[l.p.foto] = d; });
+        salvarItens(); telaItens();
+        const e2 = dlg.querySelector('.carrinho-erro'); e2.hidden = false;
+        e2.textContent = 'Acabou de esgotar: ' + r.faltando.map((l) => l.p.nome).join(', ') + '. Ajustamos seu carrinho.';
+        return;
+      }
+      if (r.erro) throw new Error('vagas indisponíveis');
+      vagas = r.vagas;
     } catch (e) {
       console.warn('Reserva recusada:', e);
       botao.disabled = false; botao.textContent = 'Tentar de novo';
       return mostrarErro('Não foi possível reservar os perfumes agora. Tente de novo em instantes ou fale com a Karen pelo WhatsApp.');
     }
     // 2) Registra o pedido para a Karen (dados de contato ficam só no painel).
+    detalhe = detalhe0.replace('VAGAS', vagas.join(','));
     const ok = await salvarLead({
       nome, whatsapp, cidade: '', equipamento: codigo, problema: 'Pedido Black Friday', detalhe,
       atendimento: 'Pix', servico: 'Pedido Black Friday', origem: 'black-friday-pedido', utm: 'black-friday',

@@ -82,6 +82,8 @@ export const store = {
   },
   /** Grava um documento com ID definido (fora das coleções carregadas, ex.: rastreio público). */
   async definir(col, id, dados) { return motor.definir(col, id, limpar(dados)); },
+  /** Lê uma coleção que não fica carregada em tempo real (ex.: vagas da Black Friday). */
+  async buscar(col) { return motor.buscar(col); },
   async apagarDoc(col, id) { return motor.remover(col, id); },
   /** Executa fn(id) depois de criar/atualizar documentos da coleção. */
   aposGravar(col, fn) { (gatilhos[col] = gatilhos[col] || []).push(fn); },
@@ -209,6 +211,7 @@ async function motorFirebase() {
     },
     remover: (col, id) => F.deleteDoc(F.doc(colRef(col), id)),
     definir: (col, id, dados) => F.setDoc(F.doc(colRef(col), id), dados),
+    async buscar(col) { const snap = await F.getDocs(colRef(col)); return snap.docs.map((d) => ({ id: d.id, ...normalizar(d.data()) })); },
     salvarConfig: (dados) => F.setDoc(cfgRef, dados, { merge: true }),
     async importar(itens, contadores) {
       for (let i = 0; i < itens.length; i += 400) {
@@ -265,6 +268,7 @@ function motorDemo() {
     },
     async remover(col, k) { if (db[col]) delete db[col][k]; mudou(); },
     async definir(col, k, dados) { db[col] = db[col] || {}; db[col][k] = dados; gravar(); },
+    async buscar(col) { return Object.entries(db[col] || {}).map(([id, v]) => ({ id, ...v })); },
     async salvarConfig(dados) { db.config = { ...db.config, ...dados }; mudou(); },
     async importar(itens, contadores) {
       itens.forEach(({ col, id: k, dados }) => { db[col][k] = dados; });
