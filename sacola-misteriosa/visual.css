@@ -386,3 +386,18 @@ body.bf{background:#1f0e18;color:#f6e9ee}
 @media(max-width:380px){
   nav{gap:9px}nav a{font-size:.8rem}nav .nav-bf{padding:5px 9px}nav a:nth-child(1),nav a:nth-child(3){display:none!important}
 }
+
+/* perfumes da Black Friday */
+.bf-perfumes{background:#2a1220;color:#f6e9ee}
+.bf-perfumes h2{color:#fff7f1;font-size:2rem;margin:0 0 8px}
+.sub-bf{color:#e3cbd6;margin:0 0 24px}
+.perfumes{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.perfume{display:flex;flex-direction:column;gap:3px;background:#381a2b;border:1px solid #57304a;border-radius:20px;padding:18px}
+.perfume-marca{font-size:.8rem;color:#e9c58f;font-weight:700}
+.perfume-nome{font:600 1.08rem/1.25 "Playfair Display",Georgia,serif;color:#fff7f1;margin-bottom:8px;min-height:2.5em}
+.perfume-cheio{font-size:.85rem;color:#c9aebb;text-decoration:line-through}
+.perfume-preco{font:800 1.3rem "DM Sans",sans-serif;color:#f3dcae}
+.perfume-nota{font-size:.8rem;color:#c9aebb}
+.perfume.com-cupom{border-color:#c99a5b;box-shadow:inset 0 0 0 1px #c99a5b55}
+.perfume-btn{margin-top:12px;justify-content:center;background:linear-gradient(135deg,#c99a5b,#e9c58f);color:#2a1220;padding:10px 14px}
+.perfume-preco small{display:block;font:600 .78rem "DM Sans",sans-serif;color:#e3cbd6;margin-top:6px}
