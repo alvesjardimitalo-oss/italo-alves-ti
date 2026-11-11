@@ -4,7 +4,7 @@
 import { FIREBASE_CONFIG, EMAILS_AUTORIZADOS } from './config.js';
 import { iniciarAppCheck } from './app-check.js';
 
-export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads', 'metricasSite', 'sacolas'];
+export const COLECOES = ['clientes', 'catalogo', 'os', 'orcamentos', 'pagamentos', 'notas', 'leads', 'metricasSite', 'sacolas', 'produtos'];
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 
 const estado = {
@@ -267,7 +267,7 @@ function motorDemo() {
       return feitas;
     },
     async remover(col, k) { if (db[col]) delete db[col][k]; mudou(); },
-    async definir(col, k, dados) { db[col] = db[col] || {}; db[col][k] = dados; gravar(); },
+    async definir(col, k, dados) { db[col] = db[col] || {}; db[col][k] = dados; if (COLECOES.includes(col)) mudou(); else gravar(); },
     async buscar(col) { return Object.entries(db[col] || {}).map(([id, v]) => ({ id, ...v })); },
     async salvarConfig(dados) { db.config = { ...db.config, ...dados }; mudou(); },
     async importar(itens, contadores) {

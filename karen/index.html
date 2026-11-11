@@ -49,12 +49,12 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 @media(max-width:550px){.wrap{padding:0 18px}.hero .wrap{padding-bottom:30px}nav a:nth-child(1){display:none}.features,.cards,.fields{grid-template-columns:1fr}.full{grid-column:auto}.scene{margin-top:15px}.form-card{padding:22px}section.pad{padding:63px 0}.hero .lead{font-size:1rem}h1{font-size:3.15rem}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
 </style>
-<link rel="stylesheet" href="/karen/visual.css?v=13">
+<link rel="stylesheet" href="/karen/visual.css?v=14">
 </head>
 <body class="bf loja">
 <div class="ribbon-top">✦ BLACK FRIDAY KAREN · PERFUMES COM PREÇO ESPECIAL ATÉ 30/11 ✦</div>
 
-<header><div class="wrap"><a class="brand" href="/karen/"><span class="brand-badge">KC</span><span>Karen Cosméticos<small>Loja virtual</small></span></a><nav aria-label="Menu"><a href="/karen/#perfumes-bf">Perfumes</a><a href="/karen/sacola-misteriosa/">Sacolas</a><a class="nav-bf" href="/karen/roleta/">Roleta BF</a></nav></div></header>
+<header><div class="wrap"><a class="brand" href="/karen/"><span class="brand-badge">KC</span><span>Karen Cosméticos<small>Loja virtual</small></span></a><nav aria-label="Menu"><a href="/karen/#perfumes-bf">Produtos</a><a href="/karen/sacola-misteriosa/">Sacolas</a><a href="/karen/pedidos/">Meus pedidos</a><a class="nav-bf" href="/karen/roleta/">Roleta BF</a></nav></div></header>
 
 <main>
 <section class="bf-hero loja-hero"><div class="wrap bf-grid">
@@ -63,7 +63,7 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <h1>Perfumes de Black Friday, direto da Karen.</h1>
 <p class="bf-lead">Natura, O Boticário e Avon com preço especial. Gire a roleta para ganhar até 10% de desconto, coloque no carrinho e pague por Pix.</p>
 <p class="cupom-loja" id="cupom-loja" hidden>Seu cupom <b></b> já está aplicado nos preços abaixo.</p>
-<div class="loja-acoes"><a class="btn bf-girar" href="/karen/roleta/">Girar a roleta e ganhar desconto</a><a class="btn secondary loja-sec" href="#perfumes-bf">Ver perfumes</a></div>
+<div class="loja-acoes"><a class="btn bf-girar" href="/karen/roleta/">Girar a roleta e ganhar desconto</a><a class="btn secondary loja-sec" href="#perfumes-bf">Ver produtos</a></div>
 </div>
 <div class="loja-vitrine" aria-hidden="true">
 <img class="lv lv1" src="/karen/perfumes/floratta-fleur-eclipse.webp" alt="" width="400" height="500">
@@ -71,7 +71,13 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 <img class="lv lv3" src="/karen/perfumes/humor-envolve.webp" alt="" width="400" height="500">
 </div>
 </div></section>
-<section class="pad bf-perfumes" id="perfumes-bf"><div class="wrap"><h2>Perfumes da Black Friday</h2><p class="sub-bf" id="perfumes-sub">O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.</p><ul class="perfumes" id="perfumes"></ul></div></section>
+<section class="pad bf-perfumes" id="perfumes-bf"><div class="wrap"><h2>Produtos da loja</h2><p class="sub-bf" id="perfumes-sub">O cupom da roleta é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.</p>
+<div class="catalogo-barra"><input type="search" id="busca-produtos" placeholder="Buscar por nome, marca ou fragrância" aria-label="Buscar produtos" autocomplete="off">
+<select id="filtro-marca" aria-label="Filtrar por marca"><option value="">Todas as marcas</option></select>
+<select id="ordenar" aria-label="Ordenar produtos"><option value="destaque">Destaques primeiro</option><option value="menor">Menor preço</option><option value="maior">Maior preço</option><option value="nome">Nome (A a Z)</option></select></div>
+<div class="catalogo-categorias" id="catalogo-categorias" role="group" aria-label="Categorias" hidden></div>
+<p class="catalogo-contagem" id="catalogo-contagem" aria-live="polite"></p>
+<ul class="perfumes" id="perfumes"></ul></div></section>
 <section class="pad loja-ofertas"><div class="wrap">
 <h2>Ações da loja</h2>
 <div class="loja-cards">
@@ -80,13 +86,13 @@ footer{border-top:1px solid var(--line);background:#fff;padding:37px 0}.footer-i
 </div></div></section>
 <section class="pad bf-regras"><div class="wrap">
 <h2>Como comprar</h2>
-<ol class="bf-passos loja-passos"><li><strong>Gire a roleta</strong><span>Ganhe um cupom de 1% a 10%. Ele entra sozinho no carrinho deste celular.</span></li><li><strong>Monte o carrinho</strong><span>Escolha os perfumes. Um cupom por compra.</span></li><li><strong>Pague o Pix em 10 minutos</strong><span>Os perfumes ficam reservados enquanto você paga. Errou? Cancele e refaça.</span></li><li><strong>Combine a entrega</strong><span>Envie o comprovante: a Karen confirma e combina a entrega pelo WhatsApp.</span></li></ol>
+<ol class="bf-passos loja-passos"><li><strong>Gire a roleta</strong><span>Ganhe um cupom de 1% a 10%. Ele entra sozinho no carrinho deste celular.</span></li><li><strong>Monte o carrinho</strong><span>Escolha os produtos. Um cupom por compra.</span></li><li><strong>Pague o Pix em 10 minutos</strong><span>Os produtos ficam reservados enquanto você paga. Errou? Cancele e refaça.</span></li><li><strong>Acompanhe e receba</strong><span>A Karen confirma o Pix e combina a entrega pelo WhatsApp. Siga cada etapa em <a href="/karen/pedidos/">Meus pedidos</a>.</span></li></ol>
 </div></section>
 </main>
 
-<footer><div class="wrap footer-inner"><div><b>Karen Cosméticos</b><div>Loja virtual · perfumes e cosméticos com entrega combinada pelo WhatsApp</div><div class="footer-links"><a href="/karen/">Loja</a> · <a href="/karen/roleta/">Roleta Black Friday</a> · <a href="/karen/sacola-misteriosa/">Sacola Misteriosa</a> · <a href="/politica-de-privacidade.html">Privacidade</a></div></div><div>Site hospedado e mantido por <a href="https://italoinfotec.com.br/" target="_blank" rel="noopener">Ítalo InfoTec</a></div></div></footer>
+<footer><div class="wrap footer-inner"><div><b>Karen Cosméticos</b><div>Loja virtual · perfumes e cosméticos com entrega combinada pelo WhatsApp</div><div class="footer-links"><a href="/karen/">Loja</a> · <a href="/karen/roleta/">Roleta Black Friday</a> · <a href="/karen/sacola-misteriosa/">Sacola Misteriosa</a> · <a href="/karen/pedidos/">Acompanhar pedido</a> · <a href="/politica-de-privacidade.html">Privacidade</a></div></div><div>Site hospedado e mantido por <a href="https://italoinfotec.com.br/" target="_blank" rel="noopener">Ítalo InfoTec</a></div></div></footer>
 
-<script type="module" src="/assets/js/roleta-bf.js?v=9"></script>
+<script type="module" src="/assets/js/roleta-bf.js?v=10"></script>
 <script defer src="/karen/som.js?v=3"></script>
 </body>
 </html>

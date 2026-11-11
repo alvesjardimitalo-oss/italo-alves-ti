@@ -4,8 +4,8 @@
 import { FIREBASE_CONFIG } from './config.js';
 import { iniciarAppCheck } from './app-check.js';
 import { salvarLead } from './leads.js';
-import { PERFUMES } from './perfumes-bf.js';
-import { criarCarrinho } from './carrinho-bf.js';
+import { PADRAO, carregarCatalogo, precoCom, precoMinimo, temDesconto } from './catalogo-loja.js?v=10';
+import { criarCarrinho } from './carrinho-bf.js?v=10';
 
 // ---------------- Configuração da campanha ----------------
 // Chance de cada desconto (soma 100). Descontos maiores são mais raros.
@@ -19,7 +19,6 @@ const CHAVE = 'karen-bf-cupom-2026';
 
 const DESCONTO_MAXIMO = 10;
 const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const comDesconto = (cheio, pct) => Math.round(cheio * (100 - Math.min(pct, DESCONTO_MAXIMO))) / 100;
 
 const FB = 'https://www.gstatic.com/firebasejs/12.2.1/';
 const $ = (s) => document.querySelector(s);
@@ -114,6 +113,7 @@ function mostrarPremio(c, repetido) {
   prepararIndicacao(c);
   atualizarCombo();
   desenharPerfumes();
+  desenharDetalhe();
   if (!premio) { // página da loja: mostra só o selo do cupom
     const selo = document.getElementById('cupom-loja');
     if (selo) { selo.hidden = false; selo.querySelector('b').textContent = c.codigo + ' · ' + c.pct + '%'; }
@@ -155,50 +155,158 @@ function confete() {
 }
 const aviso = (t, erro) => { retorno.hidden = false; retorno.textContent = t; retorno.classList.toggle('erro', !!erro); };
 
-// ---------------- Perfumes com o preço do cupom ----------------
+// ---------------- Catálogo com o preço do cupom ----------------
 let cupomAtual = null;
+let PRODUTOS = PADRAO;            // trocado pelo catálogo publicado no painel
+let catalogoCarregado = false;
+const filtros = { termo: '', categoria: '', marca: '', ordem: 'destaque' };
+const escH = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const linkProduto = (p) => '/karen/produto/?p=' + encodeURIComponent(p.id);
+
+function cartaoProduto(p, pct) {
+  const li = document.createElement('li');
+  const desconto = temDesconto(p);
+  const preco = pct ? precoCom(p, pct) : precoMinimo(p);
+  li.className = 'perfume' + (pct && desconto ? ' com-cupom' : '');
+  li.innerHTML = '<a class="perfume-link" href="' + escH(linkProduto(p)) + '"><span class="perfume-foto">' +
+    (p.img ? '<img src="' + escH(p.img) + '" width="400" height="500" loading="lazy" decoding="async" alt="' + escH(p.nome + (p.marca ? ' (' + p.marca + ')' : '')) + '">' : '<span class="perfume-sem-foto" aria-hidden="true">KC</span>') +
+    '</span><span class="perfume-marca">' + escH(p.marca || p.categoria) + '</span><strong class="perfume-nome">' + escH(p.nome) + '</strong></a>' +
+    (desconto && preco < p.cheio ? '<span class="perfume-cheio">Preço cheio ' + brl(p.cheio) + '</span>' : '') +
+    '<span class="perfume-preco"><small>' + (!desconto ? 'Preço' : pct ? 'Com seu cupom' : 'A partir de') + '</small>' + brl(desconto ? preco : p.cheio) + '</span>' +
+    '<span class="perfume-nota">' + escH(!desconto ? 'Cupom não se aplica a este item' : pct ? (preco < p.cheio ? 'Economia de ' + brl(p.cheio - preco) + ' com o cupom' : '') : 'com o cupom de ' + DESCONTO_MAXIMO + '%') + '</span>';
+  const restam = carrinho ? carrinho.disponivel()[p.foto] : undefined;
+  const esgotado = restam !== undefined && restam <= 0;
+  const selo = document.createElement('span');
+  selo.className = 'perfume-estoque' + (esgotado ? ' zero' : '');
+  selo.textContent = restam === undefined ? (p.destaque ? 'Destaque' : '') : esgotado ? 'Esgotado' : restam <= 3 ? (restam === 1 ? 'Última unidade' : 'Restam ' + restam) : (p.destaque ? 'Destaque' : '');
+  if (selo.textContent) li.querySelector('.perfume-foto').appendChild(selo);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn perfume-btn';
+  const noCarrinho = carrinho ? carrinho.noCarrinho(p.foto) : 0;
+  btn.textContent = esgotado ? 'Esgotado' : noCarrinho ? 'No carrinho (' + noCarrinho + ') · adicionar' : 'Adicionar ao carrinho';
+  btn.disabled = esgotado || !carrinho;
+  btn.addEventListener('click', () => {
+    if (!carrinho) return;
+    if (carrinho.adicionar(p.foto)) { desenharPerfumes(); desenharDetalhe(); carrinho.abrir(); }
+    else { btn.textContent = 'Limite disponível no carrinho'; }
+  });
+  li.appendChild(btn);
+  return li;
+}
+
+function filtrarProdutos() {
+  const termo = semAcento(filtros.termo).trim();
+  let xs = PRODUTOS.filter((p) => (!filtros.categoria || p.categoria === filtros.categoria) && (!filtros.marca || p.marca === filtros.marca) &&
+    (!termo || semAcento([p.nome, p.marca, p.categoria, p.descricao].join(' ')).includes(termo)));
+  const preco = (p) => precoMinimo(p);
+  if (filtros.ordem === 'menor') xs = xs.slice().sort((a, b) => preco(a) - preco(b));
+  else if (filtros.ordem === 'maior') xs = xs.slice().sort((a, b) => preco(b) - preco(a));
+  else if (filtros.ordem === 'nome') xs = xs.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  else xs = xs.slice().sort((a, b) => (Number(b.destaque) - Number(a.destaque)) || (a.ordem - b.ordem));
+  return xs;
+}
+
+/** Monta as categorias e marcas a partir do catálogo e liga a busca (só na página da loja). */
+function prepararFiltros() {
+  const cats = document.getElementById('catalogo-categorias');
+  const marca = document.getElementById('filtro-marca');
+  const busca = document.getElementById('busca-produtos');
+  const ordem = document.getElementById('ordenar');
+  if (cats) {
+    const lista = [...new Set(PRODUTOS.map((p) => p.categoria))];
+    cats.hidden = lista.length < 2;
+    cats.innerHTML = ['', ...lista].map((c) => '<button type="button" data-cat="' + escH(c) + '" aria-pressed="' + (filtros.categoria === c) + '">' + escH(c || 'Tudo') + '</button>').join('');
+    cats.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { filtros.categoria = b.dataset.cat; prepararFiltros(); desenharPerfumes(); });
+  }
+  if (marca) {
+    const marcas = [...new Set(PRODUTOS.map((p) => p.marca).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    marca.innerHTML = '<option value="">Todas as marcas</option>' + marcas.map((m) => '<option' + (m === filtros.marca ? ' selected' : '') + '>' + escH(m) + '</option>').join('');
+    marca.hidden = marcas.length < 2;
+    marca.onchange = () => { filtros.marca = marca.value; desenharPerfumes(); };
+  }
+  if (busca && !busca.dataset.ligado) { busca.dataset.ligado = '1'; busca.addEventListener('input', () => { filtros.termo = busca.value; desenharPerfumes(); }); }
+  if (ordem && !ordem.dataset.ligado) { ordem.dataset.ligado = '1'; ordem.addEventListener('change', () => { filtros.ordem = ordem.value; desenharPerfumes(); }); }
+}
+
 function desenharPerfumes() {
   const lista = document.getElementById('perfumes');
   if (!lista) return;
   const pct = cupomAtual ? cupomAtual.pct : null;
+  if (!catalogoCarregado) {
+    lista.innerHTML = '<li class="perfume carregando" aria-hidden="true"></li>'.repeat(4);
+    lista.setAttribute('aria-busy', 'true');
+    return;
+  }
+  lista.removeAttribute('aria-busy');
   lista.innerHTML = '';
-  PERFUMES.forEach((p) => {
-    const li = document.createElement('li');
-    li.className = 'perfume' + (pct ? ' com-cupom' : '');
-    const preco = pct ? comDesconto(p.cheio, pct) : comDesconto(p.cheio, DESCONTO_MAXIMO);
-    li.innerHTML = '<span class="perfume-foto"><img src="/karen/perfumes/' + p.foto + '.webp" width="400" height="500" loading="lazy" decoding="async" alt=""></span>' +
-      '<span class="perfume-marca"></span><strong class="perfume-nome"></strong>' +
-      '<span class="perfume-cheio"></span><span class="perfume-preco"></span><span class="perfume-nota"></span>';
-    li.querySelector('.perfume-marca').textContent = p.marca;
-    li.querySelector('.perfume-nome').textContent = p.nome;
-    li.querySelector('.perfume-foto img').alt = p.nome + ' (' + p.marca + ')';
-    li.querySelector('.perfume-cheio').textContent = 'Preço cheio ' + brl(p.cheio);
-    li.querySelector('.perfume-preco').innerHTML = '<small>' + (pct ? 'Com seu cupom' : 'A partir de') + '</small>' + brl(preco);
-    li.querySelector('.perfume-nota').textContent = pct ? pct + '% de desconto (economia de ' + brl(p.cheio - preco) + ')' : 'com o cupom de 10%';
-    const restam = carrinho ? carrinho.disponivel()[p.foto] : undefined;
-    const esgotado = restam !== undefined && restam <= 0;
-    const selo = document.createElement('span');
-    selo.className = 'perfume-estoque' + (esgotado ? ' zero' : '');
-    selo.textContent = restam === undefined ? '' : esgotado ? 'Esgotado' : restam <= 3 ? (restam === 1 ? 'Última unidade' : 'Restam ' + restam) : '';
-    if (selo.textContent) li.querySelector('.perfume-foto').appendChild(selo);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'btn perfume-btn';
-    const noCarrinho = carrinho ? carrinho.noCarrinho(p.foto) : 0;
-    btn.textContent = esgotado ? 'Esgotado' : noCarrinho ? 'No carrinho (' + noCarrinho + ') · adicionar' : 'Adicionar ao carrinho';
-    btn.disabled = esgotado || !carrinho;
-    btn.addEventListener('click', () => {
-      if (!carrinho) return;
-      if (carrinho.adicionar(p.foto)) { desenharPerfumes(); carrinho.abrir(); }
-      else { btn.textContent = 'Limite disponível no carrinho'; }
-    });
-    li.appendChild(btn);
-    lista.appendChild(li);
-  });
+  let xs;
+  const atual = lista.dataset.relacionados; // página do produto: outros produtos
+  if (atual !== undefined) {
+    const p0 = PRODUTOS.find((p) => p.id === atual);
+    xs = PRODUTOS.filter((p) => p.id !== atual).sort((a, b) => (Number(p0 && b.categoria === p0.categoria) - Number(p0 && a.categoria === p0.categoria)) || (a.ordem - b.ordem)).slice(0, 4);
+  } else xs = filtrarProdutos();
+  xs.forEach((p) => lista.appendChild(cartaoProduto(p, pct)));
+  const cont = document.getElementById('catalogo-contagem');
+  if (cont) cont.textContent = atual !== undefined ? '' : xs.length === PRODUTOS.length ? PRODUTOS.length + ' produtos' : xs.length + ' de ' + PRODUTOS.length + ' produtos';
+  if (!xs.length && atual === undefined) {
+    lista.innerHTML = '<li class="catalogo-vazio">Nenhum produto encontrado. <button type="button" id="limpar-filtros">Limpar a busca</button></li>';
+    lista.querySelector('#limpar-filtros').onclick = () => {
+      Object.assign(filtros, { termo: '', categoria: '', marca: '' });
+      const b = document.getElementById('busca-produtos'); if (b) b.value = '';
+      prepararFiltros(); desenharPerfumes();
+    };
+  }
   const titulo = document.getElementById('perfumes-sub');
   if (titulo) titulo.textContent = pct
-    ? 'Preços com o seu cupom de ' + pct + '%. O cupom é aplicado no carrinho; pagamento por Pix.'
-    : 'O cupom é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
+    ? 'Preços com o seu cupom de ' + pct + '%. O cupom é aplicado no carrinho e nunca passa do preço Black Friday; pagamento por Pix.'
+    : 'O cupom da roleta é aplicado sobre o preço cheio. Com 10%, você paga o preço Black Friday.';
+}
+
+// Página de um produto (/karen/produto/?p=id).
+function desenharDetalhe() {
+  const box = document.getElementById('produto-detalhe');
+  if (!box || !catalogoCarregado) return;
+  const id = params.get('p') || '';
+  const p = PRODUTOS.find((x) => x.id === id);
+  const rel = document.getElementById('perfumes');
+  if (rel) rel.dataset.relacionados = p ? p.id : '';
+  if (!p) {
+    document.title = 'Produto não encontrado · Karen Cosméticos';
+    box.innerHTML = '<div class="produto-vazio"><h1>Produto não encontrado</h1><p>Ele pode ter esgotado ou saído da loja. Veja os outros produtos disponíveis.</p><a class="btn bf-girar" href="/karen/#perfumes-bf">Ver a loja</a></div>';
+    return;
+  }
+  const pct = cupomAtual ? cupomAtual.pct : null;
+  const desconto = temDesconto(p);
+  const preco = desconto ? (pct ? precoCom(p, pct) : precoMinimo(p)) : p.cheio;
+  const restam = carrinho ? carrinho.disponivel()[p.foto] : undefined;
+  const esgotado = restam !== undefined && restam <= 0;
+  const noCarrinho = carrinho ? carrinho.noCarrinho(p.foto) : 0;
+  document.title = p.nome + ' · Karen Cosméticos';
+  const md = document.querySelector('meta[name="description"]');
+  if (md) md.setAttribute('content', (p.marca ? p.marca + ' · ' : '') + p.nome + ' na loja da Karen Cosméticos, com pagamento por Pix.');
+  const link = location.origin + linkProduto(p);
+  const textoWhats = 'Olha este produto na loja da Karen Cosméticos: ' + p.nome + ' — ' + link;
+  box.innerHTML = '<p class="produto-trilha"><a href="/karen/">Loja</a> / <a href="/karen/#perfumes-bf">' + escH(p.categoria) + '</a></p>' +
+    '<div class="produto-grid"><div class="produto-foto">' + (p.img ? '<img src="' + escH(p.img) + '" alt="' + escH(p.nome) + '" width="600" height="750">' : '<span class="perfume-sem-foto" aria-hidden="true">KC</span>') + '</div>' +
+    '<div class="produto-info"><span class="perfume-marca">' + escH(p.marca || p.categoria) + '</span><h1>' + escH(p.nome) + '</h1>' +
+    '<div class="produto-precos">' + (desconto && preco < p.cheio ? '<span class="perfume-cheio">Preço cheio ' + brl(p.cheio) + '</span>' : '') +
+    '<span class="produto-preco"><small>' + (!desconto ? 'Preço' : pct ? 'Com seu cupom de ' + pct + '%' : 'A partir de') + '</small>' + brl(preco) + '</span>' +
+    (desconto ? '<span class="perfume-nota">' + (pct ? 'O cupom entra no carrinho. Um cupom por compra.' : 'Com o cupom de 10% da roleta. <a href="/karen/roleta/">Girar a roleta</a>') + '</span>' : '') + '</div>' +
+    (restam !== undefined ? '<p class="produto-estoque' + (esgotado ? ' zero' : '') + '">' + (esgotado ? 'Esgotado no momento' : restam <= 3 ? (restam === 1 ? 'Última unidade' : 'Restam ' + restam + ' unidades') : 'Em estoque') + '</p>' : '') +
+    '<div class="produto-acoes"><button type="button" class="btn bf-girar" id="produto-comprar"' + (esgotado || !carrinho ? ' disabled' : '') + '>' + (esgotado ? 'Esgotado' : 'Comprar agora') + '</button>' +
+    '<button type="button" class="btn secondary" id="produto-add"' + (esgotado || !carrinho ? ' disabled' : '') + '>' + (noCarrinho ? 'No carrinho (' + noCarrinho + ') · adicionar' : 'Adicionar ao carrinho') + '</button></div>' +
+    (p.descricao ? '<div class="produto-desc">' + p.descricao.split(/\n{2,}|\r?\n/).filter(Boolean).map((t) => '<p>' + escH(t) + '</p>').join('') + '</div>' : '') +
+    '<ul class="produto-garantias"><li>Pagamento por Pix, com o produto reservado por 10 minutos</li><li>Entrega ou retirada combinada com a Karen pelo WhatsApp</li><li>Acompanhe o pedido em “Meus pedidos”</li></ul>' +
+    '<div class="produto-compartilhar"><a href="https://wa.me/?text=' + encodeURIComponent(textoWhats) + '" target="_blank" rel="noopener">Enviar no WhatsApp</a><button type="button" id="produto-copiar">Copiar link</button></div>' +
+    '</div></div>';
+  const add = () => carrinho && carrinho.adicionar(p.foto);
+  box.querySelector('#produto-comprar').onclick = () => { if (add() || noCarrinho) carrinho.abrir(); };
+  box.querySelector('#produto-add').onclick = (e) => { if (add()) { desenharDetalhe(); carrinho.abrir(); } else e.currentTarget.textContent = 'Limite disponível no carrinho'; };
+  box.querySelector('#produto-copiar').onclick = async (e) => {
+    try { await navigator.clipboard.writeText(link); e.currentTarget.textContent = 'Link copiado ✓'; } catch (_) { e.currentTarget.textContent = link; }
+  };
 }
 
 // Combo: pedir perfume e sacola misteriosa juntos (o cupom vale para o perfume).
@@ -277,14 +385,20 @@ function iniciar() {
   contagem();
   if (amiga) { const av = document.getElementById('aviso-amiga'); if (av) av.hidden = false; }
   carrinho = criarCarrinho({
-    perfumes: PERFUMES,
+    perfumes: PRODUTOS,
     chaveCupom: CHAVE,
     contato: () => ({ pix: publico.pix, estoque: publico.estoque, whatsapp: telefoneKaren }),
     firebase: () => (fbDb ? { F: fbF, db: fbDb } : null),
   });
-  document.addEventListener('karen:estoque', () => desenharPerfumes());
-  document.addEventListener('karen:cupons', () => desenharPerfumes());
+  document.addEventListener('karen:estoque', () => { desenharPerfumes(); desenharDetalhe(); });
+  document.addEventListener('karen:cupons', () => { desenharPerfumes(); desenharDetalhe(); });
   carregarContato().then(async () => {
+    PRODUTOS = await carregarCatalogo(fbF, fbDb);
+    catalogoCarregado = true;
+    carrinho.definirProdutos(PRODUTOS);
+    prepararFiltros();
+    desenharDetalhe();
+    desenharPerfumes();
     carrinho.carregarDisponivel().catch((e) => console.warn('Estoque indisponível:', e));
     atualizarCombo();
     mostrarPlacar();
@@ -295,7 +409,7 @@ function iniciar() {
     }
     const salvo = (() => { try { return JSON.parse(localStorage.getItem(chaveCupom()) || 'null'); } catch (_) { return null; } })();
     if (salvo && salvo.codigo) mostrarPremio(salvo, true);
-    else desenharPerfumes(); // agora com o WhatsApp da Karen carregado
+    else { desenharPerfumes(); desenharDetalhe(); } // agora com o WhatsApp da Karen carregado
   });
   if (!temRoleta) return;
   if (new Date() > FIM) {

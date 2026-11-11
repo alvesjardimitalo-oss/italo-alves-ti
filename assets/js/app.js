@@ -17,6 +17,7 @@ import * as vConversoes from './views/conversoes.js';
 import * as vDiv from './views/divulgacao.js';
 import * as vLemb from './views/lembretes.js';
 import * as vSacolas from './views/sacolas.js';
+import { leadsTI } from './loja-comum.js';
 
 const $ = (s) => document.querySelector(s);
 $('#versao').textContent = VERSAO;
@@ -32,28 +33,35 @@ const ROTAS = [
   ['/leads', vLeads.lista],
   ['/conversoes', vConversoes.tela],
   ['/divulgacao', vDiv.tela],
-  ['/sacolas', vSacolas.tela],
   ['/lembretes', vLemb.lista],
   ['/catalogo', vCat.lista],
   ['/config', vCfg.tela],
+  // Loja da Karen: área separada, com subpáginas.
+  ['/karen', vSacolas.tela], ['/karen/:secao', vSacolas.tela],
+  ['/sacolas', () => { location.replace('#/karen'); }],
 ];
 
 const MENU = [
-  ['Visão geral'],
+  ['Assistência técnica'],
   ['/', 'dashboard', 'Painel'],
-  ['Atendimento'],
-  ['/leads', 'chat', 'Pedidos do site', () => store.lista('leads').filter((l) => (l.status || 'Novo') === 'Novo').length],
-  ['/conversoes', 'dashboard', 'Conversões do site'],
+  ['/leads', 'chat', 'Pedidos do site', () => leadsTI().filter((l) => (l.status || 'Novo') === 'Novo').length],
   ['/os', 'os', 'Ordens de serviço', () => osAbertas().length],
   ['/orcamentos', 'orcamento', 'Orçamentos', () => store.lista('orcamentos').filter((o) => o.status === 'Pendente').length],
   ['/notas', 'nota', 'Notas de serviço'],
   ['/clientes', 'users', 'Clientes'],
-  ['Gestão'],
   ['/lembretes', 'clock', 'Lembretes de manutenção', () => lembretesManutencao().length],
   ['/financeiro', 'financeiro', 'Financeiro', () => aReceber().length],
+  ['/conversoes', 'trend', 'Conversões do site'],
   ['/divulgacao', 'globe', 'Divulgação e indicação'],
-  ['/sacolas', 'catalogo', 'Loja da Karen'],
-  ['/catalogo', 'catalogo', 'Produtos e serviços'],
+  ['/catalogo', 'catalogo', 'Serviços e preços'],
+  ['Loja da Karen'],
+  ['/karen', 'dashboard', 'Visão geral da loja'],
+  ['/karen/pedidos', 'bag', 'Pedidos da loja', () => vSacolas.contarPendencias()],
+  ['/karen/produtos', 'tag', 'Produtos', () => vSacolas.contarEsgotados()],
+  ['/karen/cupons', 'pix', 'Cupons e roleta'],
+  ['/karen/sacolas', 'gift', 'Sacola Misteriosa', () => vSacolas.contarSolicitacoes()],
+  ['/karen/config', 'config', 'Configurações da loja'],
+  ['Sistema'],
   ['/config', 'config', 'Configurações'],
 ];
 
@@ -93,12 +101,19 @@ export function ir(hash) { location.hash = hash; }
 window.ItaloTI = { ir };
 
 function desenharMenu() {
-  const atual = '/' + (lerHash().caminho.split('/').filter(Boolean)[0] || '');
+  // Item ativo = o endereço do menu mais específico que contém a página atual.
+  const partes = lerHash().caminho.split('/').filter(Boolean);
+  let ativoHref = '/', maior = 0;
+  MENU.forEach(([href, ico]) => {
+    if (!ico) return;
+    const h = href.split('/').filter(Boolean);
+    if (h.length > maior && h.length <= partes.length && h.every((seg, i) => seg === partes[i])) { ativoHref = href; maior = h.length; }
+  });
   $('#nav').innerHTML = MENU.map(([href, ico, rotulo, contar]) => {
     if (!ico) return `<div class="nav-sec">${esc(href)}</div>`;
-    const n = contar ? contar() : 0;
-    const ativo = href === atual || (href === '/' && atual === '/');
-    return `<a href="#${href}" class="nav-link ${ativo ? 'ativo' : ''}">${icon(ico)}<span>${esc(rotulo)}</span>${n ? `<span class="nav-count">${n}</span>` : ''}</a>`;
+    let n = 0;
+    try { n = contar ? contar() : 0; } catch (_) { n = 0; }
+    return `<a href="#${href}" class="nav-link ${href === ativoHref ? 'ativo' : ''}">${icon(ico)}<span>${esc(rotulo)}</span>${n ? `<span class="nav-count">${n}</span>` : ''}</a>`;
   }).join('');
 }
 

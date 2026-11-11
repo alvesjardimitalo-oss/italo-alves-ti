@@ -3,6 +3,7 @@
 import { store } from '../store.js';
 import { icon } from '../icons.js';
 import { esc } from '../util.js';
+import { leadsTI } from '../loja-comum.js';
 
 const TIPOS = {
   visita:'Sessões monitoradas', chat_aberto:'Conversas iniciadas',
@@ -81,7 +82,7 @@ export function tela(el) {
 
   let ultimo=null;
   const render=()=>{
-    const dados=calcularConversoes(store.lista('metricasSite'),store.lista('leads'),dias);
+    const dados=calcularConversoes(store.lista('metricasSite'),leadsTI(),dias);
     ultimo=dados;
     const k=dados.kpis;
     const card=(titulo,valor,sub)=>`<div class="kpi"><div class="kpi-top">${esc(titulo)}</div><div class="kpi-val">${valor}</div><div class="kpi-sub">${esc(sub)}</div></div>`;

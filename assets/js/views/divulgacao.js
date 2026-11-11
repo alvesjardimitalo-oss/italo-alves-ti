@@ -3,6 +3,7 @@ import { icon } from '../icons.js';
 import { esc, toast, whatsapp, lerForm, norm, vazio } from '../util.js';
 import { empresa, clientesOrdenados } from '../negocio.js';
 import { qrSvg } from '../../vendor/qrcode.js';
+import { leadsTI } from '../loja-comum.js';
 
 const ORIGENS = [
   ['instagram', 'Instagram (link da bio)'], ['whatsapp-status', 'Status do WhatsApp'], ['google-perfil', 'Perfil da Empresa no Google'],
@@ -101,7 +102,7 @@ export function tela(el) {
   el.querySelector('#cli').addEventListener('change', desenharIndic);
 
   const render = () => {
-    const leads = store.lista('leads');
+    const leads = leadsTI();
     const porOrigem = {};
     leads.forEach((l) => {
       const k = l.utm || (l.indicacao ? 'indicação' : 'direto / sem etiqueta');

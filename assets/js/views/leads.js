@@ -2,6 +2,7 @@ import { store } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, norm, dataBR, formatFone, whatsapp, badge, toast, confirmar, modal, vazio } from '../util.js';
 import { empresa } from '../negocio.js';
+import { leadsTI } from '../loja-comum.js';
 
 /** Remove os códigos internos [ref:...] (sacola) e [cupom:...] (roleta) gravados no detalhe. */
 export const semRef = (t) => String(t || '').replace(/\s*\[(ref|cupom|pedido):[^\]]*\]/g, '');
@@ -21,7 +22,7 @@ export function lista(el, _p, query) {
     <div class="card flush"><div class="tabela-wrap" id="tab"></div></div>`;
 
   const render = () => {
-    const todos = store.lista('leads').sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+    const todos = leadsTI().sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
     const cont = { abertos: todos.filter((l) => ['Novo', 'Em contato'].includes(l.status)).length, todos: todos.length };
     Object.keys(STATUS_LEAD).forEach((s) => { cont[s] = todos.filter((l) => l.status === s).length; });
     const mes = new Date().toISOString().slice(0, 7);

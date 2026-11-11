@@ -232,6 +232,21 @@ await test('Acompanhamento real de OS inexistente mostra resposta segura', async
   return 'Resposta de OS inexistente confirmada sem criar/alterar documentos';
 });
 
+await test('Loja da Karen: catálogo, produto e Meus pedidos abrem', async () => {
+  await p.goto(BASE + 'karen/', { waitUntil: 'networkidle' });
+  await p.waitForFunction(() => document.querySelectorAll('#perfumes .perfume:not(.carregando)').length > 0, null, { timeout: 20000 });
+  const n = await p.locator('#perfumes .perfume').count();
+  const href = await p.locator('#perfumes .perfume-link').first().getAttribute('href');
+  assert(href && href.startsWith('/karen/produto/?p='), 'Link do produto inesperado: ' + href);
+  await p.goto(new URL(href, BASE).href, { waitUntil: 'networkidle' });
+  await p.waitForSelector('#produto-detalhe h1', { timeout: 20000 });
+  const nome = await p.locator('#produto-detalhe h1').innerText();
+  await m.goto(BASE + 'karen/pedidos/?p=PTESTE00', { waitUntil: 'networkidle' });
+  await m.waitForSelector('.pedido-card', { timeout: 20000 });
+  const card = await m.locator('.pedido-card h2').first().innerText();
+  return n + ' produtos · ' + nome + ' · pedido de teste: ' + card;
+});
+
 await browser.close();
 console.log('RESUMO TESTES: ' + JSON.stringify({ total: results.length, passed: results.length - failures, failed: failures, results }));
 if (failures) process.exitCode = 1;
