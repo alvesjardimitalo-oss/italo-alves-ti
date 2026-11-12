@@ -3,7 +3,7 @@
   "404.html": "fecfb3430b4261dad8410c1f7f67628e17c8df3c699df19031e7911253ac5444",
   "acompanhar.html": "7afd0ee6237d60a18940ba0ebea4c422fa40f312bd8e81eb30b255d53d9d2675",
   "assets/js/site-config.js": "1dd1c6c87afbe923f34b9110c438cadd1917f61e3124e6551653ed75040dbe98",
-  "atendimento/frei-inocencio-mg.html": "0358402b536c081abed9d771cfcf8022c8d33206c373e68691f668dd5d5f3dae",
+  "atendimento/frei-inocencio-mg.html": "52b89055c7bae6f7a39cd02b5389d4157faf05f527cf1795d537ae8e12c9d857",
   "atendimento/index.html": "3f4e1c72f41dae3ebf978fb71f78a1b3a8a52df0536a3f0b027ed278fbffaaa9",
   "dicas/backup.html": "0c933791c7b3c690411247b36773ae55ca4784d6545a93fcbc8d961ea426e9ce",
   "dicas/bateria-notebook.html": "8f219aa2bece3282f779a7e2287f447d613c1d5f30a9083ef1c77e08ad0eda3d",
@@ -24,20 +24,20 @@
   "politica-de-privacidade.html": "480f60c91e458329e36e0e31a6b7edd38e5bfa4e092c4f0b4c43df9fc96f136a",
   "robots.txt": "105133b1be3661610b966a5e12897f6a0811f91c29d7a16f5fac1d4545e922cd",
   "site.webmanifest": "2bc3f5606fa5a6c797863e577e638ac4f160818979e65dc75c7294b7626bef4e",
-  "sitemap.xml": "efeb2588266cb070c6d87ec5133651c50806655f94625bde70aab111dea62c7f",
+  "sitemap.xml": "cb5c2a1b34b4dc39a3524e0d9258c8afbeae683c334fb0fe9eb30bc3a0f0cee9",
   "sobre.html": "2189ff008e9c0f002c7fdd0007dc178afe3655c0dc8246717008fd3b1f19d138",
-  "suporte-remoto.html": "2c37773ea08ede407484d3c1f408316883e8581f6099344f6900888b59882bf6"
+  "suporte-remoto.html": "03daef869369aaff28df40074ac308c9875b422cfeb4ad98b0ae2925a186906c"
  },
  "sitemap": {
-  "https://italoinfotec.com.br/": "d5c4fe8c1f1c3212de423700a40a65a7c20dfc874f8f39bc3c8a921602e54638",
+  "https://italoinfotec.com.br/": "7c1aab314cf64bab1db84c1ab0026c7f3ee6998d1090e9f69392b54e75efa441",
   "https://italoinfotec.com.br/acompanhar.html": "7afd0ee6237d60a18940ba0ebea4c422fa40f312bd8e81eb30b255d53d9d2675",
   "https://italoinfotec.com.br/agendar/": "6f62d241affb8e4dfbc413be7575c2f506b86447c25150b81f1d7aedb238d09f",
   "https://italoinfotec.com.br/analise/": "81d70b13c9b2dd952ec981a9053c51dca00f0ccf393ee42a1c346b28a2d528ed",
   "https://italoinfotec.com.br/atendimento-pessoal/": "977ffffa7509fdd93e4975b0c8ac1b4512ccc2aa497fc58c3d357b89b890aead",
   "https://italoinfotec.com.br/atendimento/": "3f4e1c72f41dae3ebf978fb71f78a1b3a8a52df0536a3f0b027ed278fbffaaa9",
-  "https://italoinfotec.com.br/atendimento/frei-inocencio-mg.html": "0358402b536c081abed9d771cfcf8022c8d33206c373e68691f668dd5d5f3dae",
+  "https://italoinfotec.com.br/atendimento/frei-inocencio-mg.html": "52b89055c7bae6f7a39cd02b5389d4157faf05f527cf1795d537ae8e12c9d857",
   "https://italoinfotec.com.br/avaliacao-empresarial/": "da2a00ecfc2e1e219cb1aac75d30479032a58760821d61ae5af06f8efd65b833",
-  "https://italoinfotec.com.br/desenvolvimento/": "16df31d5398ce5f6faa86a62d5e73542af819bee2b870ff698e8dafe4676c13e",
+  "https://italoinfotec.com.br/desenvolvimento/": "0c70ce034d3f1bff4e5be0f75b60e534cf80b982c4c9229332e4371c70b821d6",
   "https://italoinfotec.com.br/diagnostico/": "611ec5a86131ec0d8b07faff9d4dd8b585b3ab08ee84a7576bb5a362939c5c3e",
   "https://italoinfotec.com.br/dicas/": "f28f4ec3a790632146a9110a615e2ef26ba048c91453360c98ebb645f8a8d95d",
   "https://italoinfotec.com.br/dicas/backup.html": "0c933791c7b3c690411247b36773ae55ca4784d6545a93fcbc8d961ea426e9ce",
@@ -79,6 +79,6 @@
   "https://italoinfotec.com.br/problemas/": "c4b343dc16324e1adc860c73b3f0ecc61cf4656098984e37e97b1919789e3da1",
   "https://italoinfotec.com.br/servicos/": "9fd10d2c29dbfb214d435442e8d3b682f2aa01cc94b6185a4e64b0fd60cdab40",
   "https://italoinfotec.com.br/sobre.html": "2189ff008e9c0f002c7fdd0007dc178afe3655c0dc8246717008fd3b1f19d138",
-  "https://italoinfotec.com.br/suporte-remoto.html": "2c37773ea08ede407484d3c1f408316883e8581f6099344f6900888b59882bf6"
+  "https://italoinfotec.com.br/suporte-remoto.html": "03daef869369aaff28df40074ac308c9875b422cfeb4ad98b0ae2925a186906c"
  }
 }

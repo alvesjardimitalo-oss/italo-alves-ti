@@ -42,12 +42,7 @@
         && request.resource.data.tipo in ['visita', 'chat_aberto', 'sintoma_selecionado',
                       'ferramenta_iniciada', 'ferramenta_concluida', 'whatsapp_aberto']
         && request.resource.data.categoria is string
-        && request.resource.data.categoria.matches('^[a-z0-9-]{0,36} o visitante só LÊ um documento se souber o ID exato
-    // (hash do código da OS + telefone). Não dá para listar nem gravar.
-    match /ti/base/rastreio/{rastreioId} {
-      allow get: if true;
-    }
-)
+        && request.resource.data.categoria.matches('^[a-z0-9-]{0,36}$')
         && request.resource.data.pagina in ['inicio', 'ferramentas', 'dicas', 'atendimento', 'acompanhar', 'institucional']
         && request.resource.data.canal in ['social', 'whatsapp', 'busca', 'email', 'referencia', 'direto']
         && request.resource.data.criadoEm == request.time;
