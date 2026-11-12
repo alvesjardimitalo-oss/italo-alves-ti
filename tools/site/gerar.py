@@ -505,7 +505,7 @@ def gerar_institucionais():
         <div class="callout">Guarde a nota de serviço: ela traz a data e o prazo final da garantia.</div>''')
 
     # Suporte remoto
-    pagina_simples('suporte-remoto.html', './', f'Suporte técnico remoto para todo o Brasil · {NOME}', 'Suporte técnico remoto para computadores e notebooks em qualquer cidade do Brasil: programas, configurações, vírus, impressoras e orientação de compra. Seguro e acompanhado.',
+    pagina_simples('suporte-remoto.html', './', f'Suporte técnico remoto para todo o Brasil · {NOME}', 'Suporte remoto para computadores e notebooks em todo o Brasil: programas, configurações, vírus, impressoras e orientação de compra, com você acompanhando.',
                    '<a href="./">início</a> / suporte remoto', 'Suporte remoto para todo o Brasil', 'Muitos problemas se resolvem sem sair de casa. Você acompanha tudo pela tela e encerra a conexão quando quiser.', '''
         <h2>O que dá para resolver à distância</h2>
         <ul>
@@ -599,7 +599,7 @@ def gerar_institucionais():
         ])
         extra = ''.join(f'<p>{e(p)}</p>' for p in (c.get('texto') or '').split('\n') if p.strip())
         pagina_simples(arq, '../', f'Manutenção de computadores e notebooks em {nome_c} · {NOME}',
-                       f'Conserto e manutenção de notebooks e computadores em {nome_c}: diagnóstico, limpeza, SSD, formatação, Windows 11 e troca de peças, com orçamento antes do serviço.',
+                       f'Conserto de notebooks e computadores em {nome_c}: diagnóstico, limpeza, SSD, formatação, Windows 11 e troca de peças, com orçamento antes do serviço.',
                        f'<a href="../">início</a> / <a href="./">cidades</a> / {e(c["cidade"].lower())}', f'Manutenção de computadores e notebooks em {e(nome_c)}',
                        'Diagnóstico claro, orçamento antes do serviço e garantia na nota.', f'''
         {extra}

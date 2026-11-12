@@ -11,6 +11,7 @@ on:
       - 'sitemap.xml'
       - 'robots.txt'
       - 'sw.js'
+      - 'firebase/**'
       - 'site.webmanifest'
   workflow_dispatch:
 
@@ -51,5 +52,7 @@ jobs:
         run: node tools/site/testar-app-check.mjs
       - name: Testar regras da Loja da Karen
         run: node tools/site/testar-loja.mjs
+      - name: Conferir trecho de regras do Firestore
+        run: node tools/site/testar-regras.mjs
       - name: Verificar sintaxe do JavaScript
         run: find assets/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
