@@ -1025,6 +1025,10 @@ async function atualizarVitrine() {
     await c?.messages.fetch(id).then((m) => m.delete()).catch(() => {});
     delete estado.rvFixos["vitrine" + vaga]; salvar();
   }
+  // faxina: qualquer outra mensagem do bot no canal (sobras da vitrine antiga) sai
+  const atual = estado.rvFixos?.["vitrine:v2"]?.msg, c = await canal("vitrine");
+  const lote = atual && c ? await c.messages.fetch({ limit: 100 }).catch(() => null) : null;
+  for (const m of lote?.values() || []) if (m.author?.id === client.user.id && m.id !== atual) await m.delete().catch(() => {});
 }
 /** ✨ novidades: avisa quando um produto chega ou volta ao estoque (compara com a leitura anterior). */
 async function postarChegadas() {
