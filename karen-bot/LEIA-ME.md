@@ -107,6 +107,13 @@ se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot s
 
 Também: **🛍️ Revendi hoje** no resumo das 8h, **`/cliente`** com histórico de compras, aniversário, marca favorita e etiquetas,
 e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `sincronizar`).
+**Central e limpeza:** o canal **🎛️ central** (antigo #comandos) tem uma mensagem fixa com botões (vendas de hoje/semana/mês,
+crediário, estoque, entregas, aniversários, sumidas, consórcio, atrasados, atualizar Revendi). As respostas aparecem só para
+quem tocou e somem sozinhas; o que for digitado ali some em 1 minuto. Todo dia o bot apaga as mensagens antigas dele em:
+#crediario (3 dias), #aniversarios (7), #clientes-sumidas (8), #resumo-do-dia (15), #alertas (7), #logs-do-bot (10),
+#cobrancas e #comprovantes (40). Fixadas, painéis, relatórios do mês e backups ficam. Vendas, pagamentos, resgates, grupos,
+renovações, pedidos e desempenho guardam tudo. Ajuste: `LIMPEZA_CREDIARIO=5` (etc.) ou `LIMPEZA=nao` no .env.
+
 **Gráficos** (imagem anexada na mensagem): vendas dos últimos 14 dias no resumo das 8h, vendas por dia (este período × anterior)
 e mais vendidos em #desempenho e no `/revendi vendas`, crediário a receber por semana em #crediario e % que pagou por grupo no
 relatório do consórcio. Desenhados pelo QuickChart: só vão números e nomes de produtos/grupos, nunca nome ou telefone de cliente.

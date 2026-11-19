@@ -15,13 +15,6 @@ export const ESTRUTURA = [
     { chave: "resumo", nome: "📋・resumo-do-dia", topico: "Todo dia às 8h: parcelas do mês, atrasos, renovações e pedidos da loja." },
     { chave: "alertas", nome: "🔔・alertas", topico: "Avisos na hora: pedidos da loja, renovações, reservas e erros do bot." },
   ] },
-  { categoria: "🤝 CONSÓRCIO", area: "equipe", canais: [
-    { chave: "grupos", nome: "📁・grupos", tipo: "forum", topico: "Um tópico por grupo, sempre atualizado com membros, parcelas e atrasos. Configure os grupos no painel." },
-    { chave: "comprovantes", nome: "🧾・comprovantes", topico: "Cole aqui o print do Pix: o bot pergunta de quem é e já dá baixa na parcela." },
-    { chave: "cobrancas", nome: "📲・cobrancas", topico: "Lembrete 2 dias antes do vencimento e cobranças no dia seguinte, com WhatsApp pronto e baixa." },
-    { chave: "pagamentos", nome: "✅・pagamentos", topico: "Registro de cada parcela marcada como paga (pelo painel ou pelo bot)." },
-    { chave: "resgates", nome: "🎁・resgates", topico: "Resgates de prêmio registrados." },
-  ] },
   { categoria: "🛍️ REVENDI", area: "equipe", canais: [
     { chave: "rvVendas", nome: "💰・vendas", topico: "Cada venda lançada no Revendi: cliente, itens, valor, lucro e entrega, com agradecimento pronto no WhatsApp." },
     { chave: "crediario", nome: "💳・crediario", topico: "Todo dia às 9h: parcelas do crediário que vencem hoje e as atrasadas, com cobrança pronta no WhatsApp." },
@@ -30,6 +23,13 @@ export const ESTRUTURA = [
     { chave: "rvAniversarios", nome: "🎂・aniversarios", topico: "Aniversariantes do dia (8h) e da semana (segunda), com parabéns pronto no WhatsApp." },
     { chave: "rvReativar", nome: "💌・clientes-sumidas", topico: "Toda segunda: clientes sem comprar há mais de 60 dias, com mensagem pronta para chamar de volta." },
     { chave: "rvDesempenho", nome: "📈・desempenho", topico: "Toda segunda: a semana em números (vendas, lucro, ticket, campeões). No dia 1: o mês." },
+  ] },
+  { categoria: "🤝 CONSÓRCIO", area: "equipe", canais: [
+    { chave: "grupos", nome: "📁・grupos", tipo: "forum", topico: "Um tópico por grupo, sempre atualizado com membros, parcelas e atrasos. Configure os grupos no painel." },
+    { chave: "comprovantes", nome: "🧾・comprovantes", topico: "Cole aqui o print do Pix: o bot pergunta de quem é e já dá baixa na parcela." },
+    { chave: "cobrancas", nome: "📲・cobrancas", topico: "Lembrete 2 dias antes do vencimento e cobranças no dia seguinte, com WhatsApp pronto e baixa." },
+    { chave: "pagamentos", nome: "✅・pagamentos", topico: "Registro de cada parcela marcada como paga (pelo painel ou pelo bot)." },
+    { chave: "resgates", nome: "🎁・resgates", topico: "Resgates de prêmio registrados." },
   ] },
   { categoria: "📥 FORMULÁRIOS DO SITE", area: "equipe", canais: [
     { chave: "renovacoes", nome: "🔁・renovacoes", topico: "Respostas do formulário de renovação (nota, críticas, sugestões e se renova)." },
@@ -41,7 +41,7 @@ export const ESTRUTURA = [
     { chave: "roleta", nome: "🎡・roleta", topico: "Cupons ganhos na roleta da Black Friday." },
   ] },
   { categoria: "🗂️ ADMIN", area: "equipe", canais: [
-    { chave: "comandos", nome: "⌨️・comandos", topico: "Use os comandos do bot aqui: /consorcio, /loja, /servidor." },
+    { chave: "comandos", nome: "🎛️・central", topico: "Central com botões (respostas só para você). Mensagens digitadas aqui somem em 1 minuto." },
     { chave: "logs", nome: "🧾・logs-do-bot", topico: "O que o bot fez e eventuais erros." },
   ] },
   { categoria: "🌸 ÁREA DAS CLIENTES", area: "clientes", canais: [

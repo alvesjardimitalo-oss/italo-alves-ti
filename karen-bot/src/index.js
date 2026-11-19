@@ -14,7 +14,7 @@ import {
 } from "discord.js";
 import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
-import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
+import { montarServidor, alternarAreaClientes, completarCanais, ESTRUTURA } from "./servidor.js";
 import * as CR from "./crediario.js";
 import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
@@ -658,7 +658,7 @@ async function painelFixo(chave, conteudo) {
   } catch (e) { log(`painel ${chave}: ${e.message}`); }
 }
 
-async function painelEntregas() {
+function conteudoEntregas() {
   const hoje = CR.hojeISO();
   const lista = PR.entregasPendentes(painelRV.vendas, hoje);
   const e = new EmbedBuilder().setColor(lista.some((v) => v.esperando > 3) ? VERMELHO : lista.length ? 0xd4a72c : VERDE)
@@ -668,10 +668,11 @@ async function painelEntregas() {
       : "Tudo entregue! 🎉")
     .setFooter({ text: "Marque como entregue no Revendi; este painel se atualiza sozinho · 🟢 até 1 dia · 🟡 2-3 dias · 🔴 mais de 3" });
   const op = lista.filter((v) => v.whatsapp).map((v) => ({ label: curto(v.cliente, 100), value: v.id, description: curto(`${C.brl(v.valor)} · ${v.esperando} dia(s) esperando`, 100) }));
-  await painelFixo("rvEntregas", { embeds: [e], components: menuZap("rvw:en", "📲 Combinar entrega no WhatsApp…", op) });
+  return { embeds: [e], components: menuZap("rvw:en", "📲 Combinar entrega no WhatsApp…", op) };
 }
+async function painelEntregas() { await painelFixo("rvEntregas", conteudoEntregas()); }
 
-async function painelEstoque() {
+function conteudoEstoque() {
   const a = PR.alertasEstoque(painelRV.produtos, painelRV.vendas, CR.hojeISO());
   const e = new EmbedBuilder().setColor(a.vencendo.some((p) => p.faltam <= 15) ? VERMELHO : COR).setTitle("📦 Estoque")
     .setDescription(`**${a.totalProdutos}** produtos · **${a.totalUnidades}** unidades · valor de venda ${C.brl(a.valorEstoque)}`);
@@ -685,8 +686,9 @@ async function painelEstoque() {
     `• ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""} · ${p.unidades} un · ${C.brl(p.valorParado)}`).join("\n") +
     (a.parados.length > 12 ? `\n… e mais ${a.parados.length - 12}` : "") + "\n💡 Boa hora para promoção, kit ou brinde.", 1024) });
   e.setFooter({ text: `Atualizado ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} · dados do Revendi` });
-  await painelFixo("rvEstoque", { embeds: [e] });
+  return { embeds: [e] };
 }
+async function painelEstoque() { await painelFixo("rvEstoque", conteudoEstoque()); }
 
 async function aniversariosDoDia(segunda) {
   const hoje = CR.hojeISO();
@@ -771,8 +773,92 @@ async function rotinasRevendi(h) {
   if (h.hora >= 10 && (h.diaSemana === 1 || !estado.rvReativar) && estado.rvReativar !== h.data) { estado.rvReativar = h.data; salvar(); await reativacaoSemanal().catch((e) => log("reativar: " + e.message)); }
 }
 
+// ---------------------------------------------------------------- limpeza automática dos canais
+// Dias que cada canal guarda as mensagens do bot. Canais que não estão aqui (vendas, pagamentos, resgates,
+// desempenho, grupos, renovações, pedidos…) guardam tudo: são histórico. Mensagens fixadas e os painéis
+// fixos nunca são apagados. Mudar no .env: LIMPEZA_<CANAL>=dias (ex.: LIMPEZA_CREDIARIO=5) ou LIMPEZA=nao.
+const RETENCAO = { crediario: 3, rvAniversarios: 7, rvReativar: 8, resumo: 15, alertas: 7, logs: 10, cobrancas: 40, comprovantes: 40, comandos: 1 };
+const LIMPEZA_LIGADA = String(process.env.LIMPEZA || "").toLowerCase() !== "nao";
+const diasDe = (chave) => { const v = process.env["LIMPEZA_" + chave.replace(/^rv/, "").toUpperCase()]; return v !== undefined && v !== "" ? Number(v) : RETENCAO[chave]; };
+async function limparCanal(chave, dias) {
+  const c = await canal(chave);
+  if (!c?.messages || !(dias > 0)) return 0;
+  const corte = Date.now() - dias * 864e5, limite14 = Date.now() - 13.5 * 864e5;
+  const protegidas = new Set([estado.central?.msg, ...Object.values(estado.rvFixos || {}).map((x) => x.msg)].filter(Boolean));
+  const recentes = [], antigas = [];
+  let antes;
+  for (let pagina = 0; pagina < 10; pagina++) {
+    const lote = await c.messages.fetch({ limit: 100, ...(antes ? { before: antes } : {}) }).catch(() => null);
+    if (!lote?.size) break;
+    for (const m of lote.values()) {
+      if (m.pinned || protegidas.has(m.id) || m.createdTimestamp > corte) continue;
+      if (m.author?.id !== client.user.id && chave !== "comandos") continue;
+      if (m.embeds?.[0]?.title?.startsWith("📊") || (chave === "logs" && m.attachments?.size)) continue; // relatórios do mês e backups ficam
+      (m.createdTimestamp > limite14 ? recentes : antigas).push(m);
+    }
+    antes = lote.last().id;
+    if (lote.size < 100) break;
+  }
+  let n = 0;
+  for (let i = 0; i < recentes.length; i += 100) { try { const r = await c.bulkDelete(recentes.slice(i, i + 100), true); n += r.size; } catch (e) { log(`limpeza ${chave}: ${e.message}`); } }
+  for (const m of antigas.slice(0, 40)) { try { await m.delete(); n++; await new Promise((ok) => setTimeout(ok, 1200)); } catch {} }
+  return n;
+}
+async function limpezaDiaria(h) {
+  if (!LIMPEZA_LIGADA || estado.limpezaDia === h.data) return;
+  estado.limpezaDia = h.data; salvar();
+  const feitos = [];
+  for (const chave of Object.keys(RETENCAO)) { const n = await limparCanal(chave, diasDe(chave)).catch(() => 0); if (n) feitos.push(`${chave} ${n}`); }
+  if (feitos.length) log("🧹 limpeza: " + feitos.join(", "));
+}
+
+function embedAniv30() {
+  const l = PR.aniversariantes(painelRV.clientes, CR.hojeISO(), 30);
+  return new EmbedBuilder().setColor(ROSA_RV).setTitle("🎂 Aniversários · próximos 30 dias")
+    .setDescription(l.length ? curto(l.map((c) => `• ${C.dataBR(c.data).slice(0, 5)}${c.emDias === 0 ? " (hoje!)" : ""} · **${c.nome}**`).join("\n"), 4000) : "Ninguém nos próximos 30 dias (ou as clientes estão sem data de aniversário no Revendi).");
+}
+function embedCrediario() {
+  const r = CR.resumo(crediario);
+  const atr = clientesCrediario().filter((c) => c.atrasadas.length).sort((a, b) => b.emAtraso - a.emAtraso).slice(0, 15);
+  return new EmbedBuilder().setColor(r.atraso ? VERMELHO : 0x8e44ad).setTitle("💳 Crediário")
+    .setDescription(`A receber: **${C.brl(r.aReceber)}** · vence hoje ${C.brl(r.hoje)} · próximos 7 dias ${C.brl(r.semana)}\n⚠️ Em atraso: **${C.brl(r.atraso)}** (${r.clientesAtraso} cliente(s))`)
+    .addFields({ name: "Quem está em atraso", value: atr.length ? curto(atr.map((c) => `• **${curto(c.cliente, 40)}** · ${c.atrasadas.length} parcela(s) · ${C.brl(c.emAtraso)}`).join("\n"), 1024) : "Ninguém. 🎉" })
+    .setFooter({ text: "Para cobrar: /cliente ou o menu do post das 9h em #crediario" });
+}
+
+// ---------------------------------------------------------------- central de botões (#comandos)
+function conteudoCentral() {
+  const e = new EmbedBuilder().setColor(COR).setTitle("💝 Central da Karen")
+    .setDescription("Toque num botão: a resposta aparece **só para você** e some sozinha, sem encher o canal.\n" +
+      "Para buscar um produto: `/produto` · uma cliente: `/cliente` · dar baixa no consórcio: `/consorcio pagou`.")
+    .addFields(
+      { name: "🛍️ Revendi", value: "Vendas de hoje e da semana, estoque, entregas, crediário, aniversários e clientes sumidas.", inline: true },
+      { name: "🤝 Consórcio", value: "Resumo dos grupos e quem está em atraso.", inline: true })
+    .setFooter({ text: temPainel() ? `Revendi lido em ${new Date(painelRV.atualizadoEm).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : "Revendi ainda não lido" });
+  const b = (id, label, emoji, estilo = ButtonStyle.Secondary) => new ButtonBuilder().setCustomId("cen:" + id).setLabel(label).setEmoji(emoji).setStyle(estilo);
+  return { embeds: [e], components: [
+    new ActionRowBuilder().addComponents(b("hoje", "Vendas de hoje", "🛍️", ButtonStyle.Primary), b("semana", "Semana", "📈"), b("mes", "Mês", "📊"), b("crediario", "Crediário", "💳")),
+    new ActionRowBuilder().addComponents(b("estoque", "Estoque", "📦"), b("entregas", "Entregas", "🚚"), b("aniv", "Aniversários", "🎂"), b("sumidas", "Sumidas", "💌")),
+    new ActionRowBuilder().addComponents(b("grupos", "Consórcio", "🤝"), b("atrasados", "Atrasados", "⚠️"), b("sync", "Atualizar Revendi", "🔄", ButtonStyle.Success)),
+  ] };
+}
+async function centralFixa() {
+  const c = await canal("comandos");
+  if (!c) return;
+  estado.central = estado.central || {};
+  let msg = null;
+  if (estado.central.msg) { try { msg = await c.messages.fetch(estado.central.msg); } catch {} }
+  const conteudo = conteudoCentral();
+  try {
+    if (msg) await msg.edit(conteudo);
+    else { msg = await c.send(conteudo); await msg.pin().catch(() => {}); estado.central.msg = msg.id; salvar(); }
+  } catch (e) { log("central: " + e.message); }
+}
+
 async function rotinas() {
   const h = C.agoraSP();
+  await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
+  if (!estado.central?.msg || estado.central.lido !== painelRV.atualizadoEm) { await centralFixa(); if (estado.central) { estado.central.lido = painelRV.atualizadoEm; } }
   await rotinasRevendi(h);
   if (h.hora >= 8 && h.hora < 21 && estado.resumoDia !== h.data) {
     estado.resumoDia = h.data; salvar();
@@ -1023,11 +1109,7 @@ async function comando(i) {
     }
     if (sub === "entregas") { await painelEntregas(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEntregas}>.` }); }
     if (sub === "estoque") { estado.rvFixos = { ...(estado.rvFixos || {}), rvEstoque: { ...(estado.rvFixos?.rvEstoque || {}), marca: "" } }; await painelEstoque(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEstoque}>.` }); }
-    if (sub === "aniversarios") {
-      const l = PR.aniversariantes(painelRV.clientes, hoje, 30);
-      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🎂 Aniversários · próximos 30 dias")
-        .setDescription(l.length ? curto(l.map((c) => `• ${C.dataBR(c.data).slice(0, 5)}${c.emDias === 0 ? " (hoje!)" : ""} · **${c.nome}**`).join("\n"), 4000) : "Ninguém nos próximos 30 dias (ou as clientes estão sem data de aniversário no Revendi).")] });
-    }
+    if (sub === "aniversarios") return i.reply({ ...EFEMERA, embeds: [embedAniv30()] });
     if (sub === "sumidas") { await i.deferReply(EFEMERA); await reativacaoSemanal(); return i.editReply(`Lista enviada em <#${estado.canais?.rvReativar}>.`); }
   }
   if (nome === "loja") {
@@ -1159,6 +1241,45 @@ async function componente(i) {
     const lista = c.atrasadas.length ? c.atrasadas : c.abertas.slice(0, 1);
     return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + c.cliente, C.linkWhats(c.whatsapp, CR.mensagemCrediario(c, lista))) });
   }
+  if (tipo === "cen") {
+    const precisaRV = ["hoje", "semana", "mes", "estoque", "entregas", "aniv", "sumidas"].includes(acao);
+    if (precisaRV && !temPainel()) return i.reply({ ...EFEMERA, content: "Ainda não li o Revendi. Toque em 🔄 Atualizar Revendi." });
+    const hoje = CR.hojeISO();
+    if (["hoje", "semana", "mes"].includes(acao)) {
+      await i.deferReply(EFEMERA);
+      const ini = acao === "hoje" ? hoje : acao === "semana" ? PR.somarDias(hoje, -6) : hoje.slice(0, 8) + "01";
+      const dias = PR.diasEntre(ini, hoje) + 1;
+      const rel = await relatorioDesempenho(acao === "hoje" ? "🛍️ Vendas de hoje" : acao === "semana" ? "📈 Últimos 7 dias" : "📊 Este mês", ini, hoje, PR.somarDias(ini, -dias), PR.somarDias(ini, -1));
+      const lista = painelRV.vendas.filter((v) => v.data >= ini && v.data <= hoje).slice(0, 15);
+      if (lista.length) rel.embeds[0].addFields({ name: "Vendas", value: curto(lista.map((v) => `• ${C.dataBR(v.data).slice(0, 5)} · ${curto(v.cliente, 30)} · ${C.brl(v.valor)} · ${PR.ROTULO_PAG[PR.situacaoPagamento(v)]}`).join("\n"), 1024) });
+      return i.editReply(rel);
+    }
+    if (acao === "estoque") return i.reply({ ...EFEMERA, ...conteudoEstoque() });
+    if (acao === "entregas") return i.reply({ ...EFEMERA, ...conteudoEntregas() });
+    if (acao === "aniv") return i.reply({ ...EFEMERA, embeds: [embedAniv30()] });
+    if (acao === "crediario") return i.reply({ ...EFEMERA, embeds: [embedCrediario()] });
+    if (acao === "sumidas") {
+      const l = PR.paraReativar(painelRV.vendas, hoje, 60).slice(0, 25);
+      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(0x9b59b6).setTitle(`💌 ${l.length} clientes sem comprar há 60+ dias`)
+        .setDescription(l.length ? curto(l.map((h) => `• **${curto(h.cliente, 40)}** · ${h.semComprar} dias · ${C.brl(h.total)}`).join("\n"), 4000) : "Ninguém. 🎉")],
+        components: menuZap("rvw:re", "📲 Chamar no WhatsApp…", l.map((h) => ({ label: curto(h.cliente, 100), value: curto(h.chave, 100), description: curto(`${h.semComprar} dias · ${C.brl(h.total)}`, 100) }))) });
+    }
+    if (acao === "grupos" || acao === "atrasados") {
+      const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) !== "encerrado");
+      if (!ativos.length) return i.reply({ ...EFEMERA, content: "Nenhum grupo ativo no painel." });
+      if (acao === "grupos") return i.reply({ ...EFEMERA, embeds: ativos.slice(0, 10).map((g) => embedGrupo(g)) });
+      const linhas = ativos.flatMap((g) => (g.membros || []).map((m) => ({ g, m, x: C.resumoMembro(g, m) })).filter(({ x }) => x.atrasadas.length)
+        .map(({ g, m, x }) => `• **${curto(m.nome, 40)}** · ${g.codigo} · ${x.atrasadas.length} parcela(s) · ${C.brl(x.atrasadas.length * g.valorParcela)}`));
+      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(linhas.length ? VERMELHO : VERDE).setTitle("⚠️ Consórcio em atraso").setDescription(linhas.length ? curto(linhas.join("\n"), 4000) : "Ninguém em atraso. 🎉")] });
+    }
+    if (acao === "sync") {
+      if (!revendiAtivo()) return i.reply({ ...EFEMERA, content: "Este PC não tem o login do Revendi. O outro PC lê sozinho a cada 30 min." });
+      await i.deferReply(EFEMERA);
+      forcarSincronizacao(); await ciclo();
+      const st = estadoRevendi();
+      return i.editReply(st.ultimoErro ? `⚠️ ${st.ultimoErro}` : `✅ Revendi lido agora: ${painelRV.vendas.length} vendas, ${painelRV.clientes.length} clientes, ${painelRV.produtos.length} produtos.`);
+    }
+  }
   if (tipo === "rvw") {
     const id = acao === "ag" ? a : i.values?.[0];
     let alvo = null, texto = "";
@@ -1264,6 +1385,10 @@ client.on(Events.InteractionCreate, async (i) => {
 
 // #comprovantes: a cada print colado, o bot pergunta de quem é e dá baixa.
 client.on(Events.MessageCreate, async (msg) => {
+  if (LIMPEZA_LIGADA && !msg.author?.bot && estado.canais?.comandos && msg.channelId === estado.canais.comandos && !msg.pinned) {
+    setTimeout(() => msg.delete().catch(() => {}), 60000);
+    return;
+  }
   try {
     if (msg.author?.bot || !estado.canais?.comprovantes || msg.channelId !== estado.canais.comprovantes) return;
     const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) === "andamento" && (g.membros || []).some((m) => C.resumoMembro(g, m).abertas.length));
@@ -1283,6 +1408,17 @@ client.once(Events.ClientReady, async () => {
   else {
     const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
     if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
+    if (estado.ordemCategorias !== 2) {
+      try {
+        const cats = ESTRUTURA.map((b) => guild.channels.cache.get(estado.canais?.[b.canais[0].chave])?.parent).filter(Boolean);
+        await guild.channels.setPositions(cats.map((c, n) => ({ channel: c.id, position: n })));
+        for (const b of ESTRUTURA) for (const c of b.canais) {
+          const ch = guild.channels.cache.get(estado.canais?.[c.chave]);
+          if (ch && (ch.name !== c.nome || (ch.topic !== undefined && ch.topic !== c.topico))) await ch.edit({ name: c.nome, topic: c.topico }).catch((e) => log(`renomear ${c.nome}: ${e.message}`));
+        }
+        estado.ordemCategorias = 2; salvar();
+      } catch (e) { log("ordem das categorias: " + e.message); }
+    }
   }
   await ciclo();
   setInterval(ciclo, INTERVALO);
