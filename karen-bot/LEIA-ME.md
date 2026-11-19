@@ -118,6 +118,10 @@ Se não achar, vai para #alertas com **Aprovar**, **Corrigir WhatsApp e aprovar*
 grupo terminou → tira o cargo do grupo, apaga o cargo e o apelido volta a [CLIENTE]. Grupos vêm do painel do consórcio e das
 etiquetas "Consorcio G… a <mês> <ano>" do Revendi. `/servidor vincular` também faz o set.
 
+**Guias e painéis da equipe:** cada canal da equipe tem um **📌 guia fixado** (o que chega ali, quando e o que fazer).
+#pagamentos ganha o painel fixado **📅 Pagamentos do mês** (barra por grupo, recebido e quem falta) e #resgates o painel
+**🎁 Quitados aguardando resgate**. Para mudar o texto de um guia: edite `GUIAS` no index.js e aumente `GUIA_VERSAO`.
+
 **Para as clientes (atualiza sozinho):** **ℹ️ como-funciona** (comprar, pagar, receber, consórcio, voz + botões para a loja,
 reservar vaga, sacola misteriosa e meus pedidos) · **🛍️ pronta-entrega** (vitrine com tudo que tem no estoque do Revendi, foto
 do catálogo, preço e menu **🛒 Quero este** que abre o ticket de pedido já preenchido) · **✨ novidades** (posta sozinho quando um

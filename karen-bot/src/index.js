@@ -659,7 +659,7 @@ async function postarVendasNovas() {
 }
 
 /** Mensagem fixa num canal, editada quando o conteúdo muda (painéis de entregas e estoque). */
-async function painelFixo(chave, conteudo, vaga = "") {
+async function painelFixo(chave, conteudo, vaga = "", fixar = false) {
   delete conteudo.semCabecalho;
   V.decorar(conteudo);
   const c = await canal(chave);
@@ -673,7 +673,7 @@ async function painelFixo(chave, conteudo, vaga = "") {
   let msg = null;
   if (atual?.msg) { try { msg = await c.messages.fetch(atual.msg); } catch {} }
   try {
-    if (msg) await msg.edit(conteudo); else msg = await c.send(conteudo);
+    if (msg) await msg.edit(conteudo); else { msg = await c.send(conteudo); if (fixar) await msg.pin().catch(() => {}); }
     estado.rvFixos[chave] = { msg: msg.id, marca }; salvar();
   } catch (e) { log(`painel ${chave}: ${e.message}`); }
 }
@@ -1099,6 +1099,71 @@ function conteudoMeuConsorcio() {
     components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:parcelas").setLabel("Ver minhas parcelas").setEmoji("💳").setStyle(ButtonStyle.Success))] };
 }
 
+// ---------------------------------------------------------------- guias fixados (para que serve cada canal da equipe)
+const GUIA_VERSAO = 1;
+const GUIAS = {
+  hoje: ["🌸 Painel do dia", "Uma mensagem que se atualiza sozinha: vendas de hoje e do mês, **meta** (`/revendi meta`), crediário, consórcio, entregas, aniversários e estoque. Não precisa fazer nada aqui, é só olhar."],
+  resumo: ["📋 Resumo do dia", "**8h**: resumo com consórcio, crediário, vendas e o gráfico dos últimos 14 dias.\n**Dia 1**: relatório do mês do consórcio (com gráfico de quem pagou).\nMensagens com mais de 15 dias são apagadas sozinhas (os relatórios do mês ficam)."],
+  alertas: ["🔔 Alertas · o que pede ação", "Aqui chega o que precisa de alguém:\n• 🔔 **cliente aguardando na call**: toque em **Puxar** (ou entre num Atendimento e use *Puxar para a minha call*)\n• 🎫 **ticket aberto**, com a ficha da cliente\n• 🌸 **pedido de set** para conferir (Aprovar / Corrigir WhatsApp / Recusar)\n• 🔔 novo formulário do site\nMensagens com mais de 7 dias somem sozinhas."],
+  rvVendas: ["💰 Vendas do Revendi", "Cada venda lançada no Revendi aparece aqui (em até 30 min): cliente, itens com foto, valor, pagamento, lucro e entrega. Botão **Agradecer no WhatsApp** abre a mensagem pronta. Fica tudo guardado."],
+  crediario: ["💳 Crediário", "**9h**: quem vence hoje e quem está atrasado, com gráfico do que entra nas próximas semanas e menu para **cobrar no WhatsApp** (abre a mensagem pronta). Dar baixa é no Revendi. Guarda 3 dias."],
+  rvEntregas: ["🚚 Entregas", "Painel fixo com as vendas **não entregues** no Revendi e há quantos dias esperam (🟢 até 1 dia · 🟡 2-3 · 🔴 +3). Menu para combinar a entrega no WhatsApp. Marcou como entregue no Revendi? Some daqui sozinho."],
+  rvEstoque: ["📦 Estoque", "Painel fixo: produtos **vencendo** em 60 dias, **esgotados que vendem** (repor) e **parados** há 90 dias (ideia de promoção/kit). Atualiza com o Revendi."],
+  rvAniversarios: ["🎂 Aniversários", "**8h**: aniversariantes do dia com **parabéns pronto no WhatsApp**. **Segunda**: os da semana. Guarda 7 dias."],
+  rvReativar: ["💌 Clientes sumidas", "**Segunda 10h**: quem comprou e está há 60+ dias sem comprar, ordenadas por quanto já gastou. O menu abre uma mensagem no WhatsApp citando a marca favorita dela."],
+  rvDesempenho: ["📈 Desempenho", "**Segunda 9h**: a semana em números com gráficos (vendas por dia, mais vendidos, 🥇 clientes e marcas) comparada com a anterior. **Dia 1**: o mês. Também nos botões Semana/Mês da 🎛️ central."],
+  grupos: ["📁 Grupos do consórcio", "Um post fixado por grupo com cada membro e a barra de parcelas. Botões para dar baixa, cobrar e ver detalhes. Criar grupo: `/consorcio novo`."],
+  comprovantes: ["🧾 Comprovantes", "**Cole aqui o print do Pix** do consórcio: o bot pergunta de quem é, dá baixa na parcela e prepara o recibo para mandar no WhatsApp. Guarda 40 dias."],
+  cobrancas: ["📲 Cobranças do consórcio", "Lembretes de quem está com parcela do consórcio em aberto, com o WhatsApp pronto. Guarda 40 dias."],
+  pagamentos: ["✅ Pagamentos do consórcio", "Cada baixa (pelo bot ou pelo painel) aparece aqui. O **painel fixado** mostra o mês: quem já pagou e quem falta em cada grupo."],
+  resgates: ["🎁 Resgates", "Quem **quitou** o consórcio aparece aqui para lançar o resgate no Revendi (botão *Lançado no Revendi*). O **painel fixado** lista quem quitou e ainda não resgatou."],
+  renovacoes: ["🔁 Renovações (site)", "Respostas do formulário de renovação do consórcio no site (vai renovar? sim/talvez/não, nota). Botões: responder no WhatsApp e marcar respondida."],
+  reservas: ["📝 Banco de reserva (site)", "Quem pediu vaga no consórcio pelo site. Use **Responder no WhatsApp** e, quando abrir grupo, `/consorcio adicionar` (a pessoa aparece na lista)."],
+  pedidos: ["🛒 Pedidos da loja (site)", "Pedidos da loja do site (italoinfotec.com.br/karen) com itens e Pix. Confirme o Pix e combine a entrega. Resumo: `/loja pedidos`."],
+  sacola: ["🎁 Sacola misteriosa (site)", "Pedidos da Sacola Misteriosa feitos no site, com as preferências da cliente."],
+  roleta: ["🎡 Roleta (site)", "Quem girou a roleta no site e o desconto que ganhou."],
+  comandos: ["🎛️ Central", "Toque nos botões da mensagem fixada: a resposta aparece **só para você**. O que for digitado aqui some em 1 minuto."],
+  logs: ["🧾 Logs do bot", "Registro técnico do que o bot fez e eventuais erros, e o backup semanal. Guarda 10 dias (backups ficam)."],
+  ticketsFechados: ["🗂️ Tickets fechados", "Cada ticket fechado vem aqui com a conversa inteira em **.txt**. Os abertos ficam como canais nesta categoria."],
+};
+async function guiasFixados() {
+  estado.guias = estado.guias || {};
+  for (const [chave, [titulo, texto]] of Object.entries(GUIAS)) {
+    const c = await canal(chave);
+    if (!c) continue;
+    const reg = estado.guias[chave];
+    if (reg?.v === GUIA_VERSAO && reg.msg) continue;
+    const conteudo = V.decorar({ embeds: [new EmbedBuilder().setColor(V.CORES.neutro).setTitle(`📌 ${titulo}`).setDescription(texto).setFooter({ text: "Guia deste canal" })] });
+    let msg = reg?.msg ? await c.messages.fetch(reg.msg).catch(() => null) : null;
+    try {
+      if (msg) await msg.edit(conteudo); else { msg = await c.send(conteudo); await msg.pin().catch(() => {}); }
+      estado.guias[chave] = { msg: msg.id, v: GUIA_VERSAO }; salvar();
+    } catch (e) { log(`guia ${chave}: ${e.message}`); }
+  }
+}
+
+// ---------------------------------------------------------------- painéis do consórcio: pagamentos do mês e resgates pendentes
+function conteudoPagamentosMes() {
+  const ym = C.agoraSP().ym;
+  const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) === "andamento");
+  const e = new EmbedBuilder().setColor(VERDE).setTitle(`📅 Pagamentos de ${C.rotuloMes(ym, true)}`);
+  if (!ativos.length) return { embeds: [e.setDescription("Nenhum grupo em andamento.")] };
+  for (const g of ativos.slice(0, 20)) {
+    const ms = g.membros || [], pagos = ms.filter((m) => m.pagos?.[ym]), faltam = ms.filter((m) => !m.pagos?.[ym]);
+    e.addFields({ name: `${g.codigo} · ${C.brl(g.valorParcela)} · vence dia ${g.vencimento || 10}`,
+      value: curto(`\`${V.barra(pagos.length, ms.length, 12)}\` **${pagos.length}/${ms.length}** · ${C.brl(pagos.length * g.valorParcela)} recebido\n` +
+        (faltam.length ? `Faltam: ${faltam.map((m) => C.primeiroNome(m.nome)).join(", ")}` : "✅ Todo mundo pagou!"), 1024) });
+  }
+  return { embeds: [e.setFooter({ text: "Atualiza sozinho a cada baixa" })] };
+}
+function conteudoResgatesPendentes() {
+  const lista = C.ordenarGrupos([...grupos.values()]).flatMap((g) => (g.membros || []).filter((m) => !m.resgatadoEm && C.resumoMembro(g, m).quitado).map((m) => ({ g, m })));
+  const e = new EmbedBuilder().setColor(AMARELO).setTitle(`🎁 Quitados aguardando resgate (${lista.length})`)
+    .setDescription(lista.length ? curto(lista.map(({ g, m }) => `• **${curto(m.nome, 40)}** · ${g.codigo} · resgate de ${C.brl(g.premio)}` + (m.whatsapp ? ` · ${C.fone(m.whatsapp)}` : "")).join("\n"), 4000) : "Ninguém aguardando resgate. ✅")
+    .setFooter({ text: "Lançou o resgate no Revendi? Marque no painel do consórcio e some daqui" });
+  return { embeds: [e] };
+}
+
 // ---------------------------------------------------------------- tickets
 const TIPOS_TICKET = {
   pedido: { emoji: "🛍️", nome: "Pedido / encomenda" },
@@ -1219,6 +1284,9 @@ async function rotinas() {
   const h = C.agoraSP();
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
+  await guiasFixados().catch((e) => log("guias: " + e.message));
+  if (estado.canais?.pagamentos) await painelFixo("pagamentos", conteudoPagamentosMes(), "", true).catch(() => {});
+  if (estado.canais?.resgates) await painelFixo("resgates", conteudoResgatesPendentes(), "", true).catch(() => {});
   if (estado.canais?.abrirticket) await painelFixo("abrirticket", conteudoAbrirTicket()).catch(() => {});
   if (estado.canais?.comofunciona) await painelFixo("comofunciona", conteudoComoFunciona()).catch(() => {});
   if (estado.canais?.meuconsorcio) await painelFixo("meuconsorcio", conteudoMeuConsorcio()).catch(() => {});
