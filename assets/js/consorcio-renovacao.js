@@ -16,6 +16,12 @@ const normalizeWhatsApp = (v) => {
   return (d.length === 10 || d.length === 11) ? '55' + d : d;
 };
 const NOTAS = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
+const GRUPOS = {
+  G3: 'Consorcio G3 - 50,00 - Abril 2026 a Janeiro 2027',
+  G4: 'Consorcio G4 - 35,00 - Maio 2026 a Fevereiro 2027',
+  G5: 'Consorcio G5 - 50,00 - Junho 2026 a Abril 2027',
+  outro: 'Outro / não lembra o grupo',
+};
 const RENOVA = { sim: 'Sim, quero participar do novo consórcio', nao: 'Não vou participar desta vez' };
 const marcado = (nome) => { const r = form.querySelector('input[name="' + nome + '"]:checked'); return r ? r.value : ''; };
 const val = (id) => document.getElementById(id).value.trim();
@@ -33,10 +39,16 @@ function mostrar(texto, erro = false, waUrl = '') {
   }
 }
 
+// Link com ?g=G3 (ou G4, G5) já abre com o grupo escolhido.
+const seletorGrupo = document.getElementById('grupo');
+const grupoLink = String(new URLSearchParams(location.search).get('g') || '').toUpperCase();
+if (seletorGrupo && GRUPOS[grupoLink]) seletorGrupo.value = grupoLink;
+
 if (form) form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const nome = val('nome');
   const telefone = normalizeWhatsApp(val('telefone'));
+  const grupo = val('grupo');
   const nota = marcado('nota');
   const renova = marcado('renova');
   const elogios = val('elogios');
@@ -44,11 +56,13 @@ if (form) form.addEventListener('submit', async (ev) => {
   const sugestoes = val('sugestoes');
 
   if (nome.length < 2 || !/^55[0-9]{10,11}$/.test(telefone)) { mostrar('Informe seu nome e um WhatsApp válido com DDD.', true); return; }
+  if (!GRUPOS[grupo]) { mostrar('Escolha qual consórcio você participa.', true); return; }
   if (!NOTAS[nota]) { mostrar('Conte pra gente como foi o consórcio (escolha uma nota).', true); return; }
   if (!RENOVA[renova]) { mostrar('Diga se você deseja participar do novo consórcio.', true); return; }
   if (!document.getElementById('aceite').checked) { mostrar('Precisamos da sua autorização para o contato.', true); return; }
 
   const linhas = [
+    'Grupo: ' + GRUPOS[grupo],
     'Avaliação: ' + nota + '/5 (' + NOTAS[nota] + ')',
     'Renovação: ' + RENOVA[renova],
     elogios && 'O que gostou: ' + elogios,
@@ -64,7 +78,7 @@ if (form) form.addEventListener('submit', async (ev) => {
   enviar.textContent = 'Enviando…';
   const ok = await salvarLead({
     nome, whatsapp: telefone, cidade: '', equipamento: '', problema: 'Consórcio: feedback e renovação',
-    detalhe: linhas.join(' | ') + ' [ref:renova-' + renova + '][nota:' + nota + ']',
+    detalhe: linhas.join(' | ') + ' [ref:renova-' + renova + '][nota:' + nota + '][grupo:' + grupo + ']',
     atendimento: 'WhatsApp', servico: 'Consórcio Karen',
     origem: 'consorcio-renovacao', utm: 'consorcio-renovacao',
   });
@@ -76,6 +90,7 @@ if (form) form.addEventListener('submit', async (ev) => {
       ? 'Resposta registrada! Obrigada por continuar com a gente. Agora toque no botão para enviar também pelo WhatsApp.'
       : 'Resposta registrada! Obrigada por ter participado. Toque no botão para enviar também pelo WhatsApp.', false, url);
     form.reset();
+    if (GRUPOS[grupoLink]) seletorGrupo.value = grupoLink;
   } else {
     mostrar('Não conseguimos registrar sua resposta agora. Envie pelo WhatsApp para a Karen não perder:', true, url);
   }

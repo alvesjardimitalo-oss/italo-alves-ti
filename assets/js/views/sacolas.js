@@ -28,7 +28,9 @@ const URL_CONSORCIO = URL_SACOLA + 'renovacao/';
 const ehConsorcio = (p) => p.origem === 'consorcio-renovacao';
 const notaConsorcio = (p) => Number((String(p.detalhe || '').match(/\[nota:(\d)\]/) || [])[1]) || 0;
 const renovaConsorcio = (p) => (String(p.detalhe || '').match(/\[ref:renova-(sim|nao)\]/) || [])[1] || '';
-const textoConsorcio = (p) => String(p.detalhe || '').replace(/\s*\[(ref|nota):[^\]]*\]/g, '');
+const grupoConsorcio = (p) => (String(p.detalhe || '').match(/\[grupo:([^\]]+)\]/) || [])[1] || '';
+const GRUPOS_CONSORCIO = { G3: 'G3 · R$ 50 · abr/26 a jan/27', G4: 'G4 · R$ 35 · mai/26 a fev/27', G5: 'G5 · R$ 50 · jun/26 a abr/27', outro: 'Outro' };
+const textoConsorcio = (p) => String(p.detalhe || '').replace(/\s*\[(ref|nota|grupo):[^\]]*\]/g, '');
 export function contarRenovacoes() {
   return store.lista('leads').filter((p) => ehConsorcio(p) && (p.status || 'Novo') === 'Novo').length;
 }
@@ -371,10 +373,12 @@ const CARD_CONSORCIO = '<div class="card" style="margin-bottom:18px"><div class=
   '<a class="btn btn-sm" href="/karen/sacola-misteriosa/renovacao/" target="_blank" rel="noopener">Abrir formulário</a></div>' +
   '<p class="sub">Página escondida: não está no menu, na loja nem no Google. Só quem receber este link consegue responder. Cada resposta chega aqui e no WhatsApp da Karen.</p>' +
   '<div class="acoes" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap"><input class="mono" readonly value="' + URL_CONSORCIO + '" style="flex:1 1 280px" onclick="this.select()">' +
+  '<select id="link-grupo" style="flex:0 0 auto" title="O link já abre com o grupo escolhido"><option value="">Link geral</option><option value="G3">Link do G3</option><option value="G4">Link do G4</option><option value="G5">Link do G5</option></select>' +
   '<button type="button" class="btn" id="copiar-consorcio">' + icon('copy', 16) + ' Copiar mensagem com o link</button></div></div>' +
   '<div class="kpis" id="kpis-consorcio"></div>' +
   '<div class="card flush" style="margin-top:18px"><div class="card-head"><h2>Respostas</h2><span id="resumo-consorcio" class="sub"></span></div>' +
-  '<div class="barra-filtros" style="padding:12px 20px"><select id="filtro-consorcio" style="flex:0 0 auto"><option value="">Todas</option><option value="sim">Querem renovar</option><option value="nao">Não vão renovar</option><option value="novas">Ainda não respondidas</option></select></div>' +
+  '<div class="barra-filtros" style="padding:12px 20px"><select id="filtro-consorcio" style="flex:0 0 auto"><option value="">Todas</option><option value="sim">Querem renovar</option><option value="nao">Não vão renovar</option><option value="novas">Ainda não respondidas</option></select>' +
+  '<select id="grupo-consorcio" style="flex:0 0 auto"><option value="">Todos os grupos</option>' + Object.entries(GRUPOS_CONSORCIO).map(([k, v]) => '<option value="' + k + '">' + v + '</option>').join('') + '</select></div>' +
   '<div class="tabela-wrap" id="tabela-consorcio"></div></div>';
 
 export function tela(el, params = {}) {
@@ -420,9 +424,12 @@ export function tela(el, params = {}) {
   ['#busca-pedido', '#filtro-pedidos'].forEach((s) => ligar(s, s.startsWith('#busca') ? 'input' : 'change', () => desenharPedidosBF()));
   ['#busca-produto', '#filtro-produto'].forEach((s) => ligar(s, s.startsWith('#busca') ? 'input' : 'change', () => desenharProdutos()));
   ligar('#filtro-consorcio', 'change', () => desenharConsorcio());
+  ligar('#grupo-consorcio', 'change', () => desenharConsorcio());
+  const linkConsorcio = () => { const g = ($('#link-grupo') || {}).value; return URL_CONSORCIO + (g ? '?g=' + g : ''); };
+  ligar('#link-grupo', 'change', () => { const i = el.querySelector('#copiar-consorcio').parentElement.querySelector('input'); if (i) i.value = linkConsorcio(); });
   ligar('#copiar-consorcio', 'click', async () => {
     const msg = 'Oi! Aqui é a Karen 💝 Muito obrigada por participar do nosso consórcio! Vamos iniciar um novo consórcio e queria saber sua opinião ' +
-      'sobre como foi e se você quer continuar com a gente. Responde aqui, leva menos de 2 minutos: ' + URL_CONSORCIO;
+      'sobre como foi e se você quer continuar com a gente. Responde aqui, leva menos de 2 minutos: ' + linkConsorcio();
     try { await navigator.clipboard.writeText(msg); toast('Mensagem copiada. É só colar no WhatsApp das clientes.'); }
     catch (e) { toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'erro'); }
   });
@@ -655,9 +662,10 @@ export function tela(el, params = {}) {
       kpi('Nota média', 'trend', media, notas.length ? 'de 5, em ' + notas.length + ' avaliação(ões)' : 'sem avaliações');
     $('#resumo-consorcio').textContent = todas.length + ' resposta(s)';
     const f = $('#filtro-consorcio').value;
-    const lista = todas.filter((p) => !f || (f === 'novas' ? (p.status || 'Novo') === 'Novo' : renovaConsorcio(p) === f));
+    const g = $('#grupo-consorcio').value;
+    const lista = todas.filter((p) => (!f || (f === 'novas' ? (p.status || 'Novo') === 'Novo' : renovaConsorcio(p) === f)) && (!g || grupoConsorcio(p) === g));
     const estrelas = (n) => n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '—';
-    alvo.innerHTML = lista.length ? '<table class="tabela"><thead><tr><th>Data</th><th>Cliente</th><th>Nota</th><th>Renova?</th><th>Feedback</th><th>Status</th><th>Ação</th></tr></thead><tbody>' +
+    alvo.innerHTML = lista.length ? '<table class="tabela"><thead><tr><th>Data</th><th>Cliente</th><th>Grupo</th><th>Nota</th><th>Renova?</th><th>Feedback</th><th>Status</th><th>Ação</th></tr></thead><tbody>' +
       lista.map((p) => {
         const r = renovaConsorcio(p);
         const primeiro = (p.nome || '').split(' ')[0];
@@ -665,14 +673,15 @@ export function tela(el, params = {}) {
           ? 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada pelo seu retorno! Sua vaga no novo consórcio está garantida. Vou te passar os detalhes:'
           : 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada por ter participado do consórcio e pelo seu retorno! Quando quiser voltar, é só me chamar.';
         return '<tr><td class="nowrap">' + esc(dataBR(p.criadoEm, true)) + '</td><td><b>' + esc(p.nome) + '</b><div class="sub">' + esc(p.whatsapp) + '</div></td>' +
+          '<td class="nowrap">' + esc(GRUPOS_CONSORCIO[grupoConsorcio(p)] || '—') + '</td>' +
           '<td class="nowrap" style="color:#c98a00">' + estrelas(notaConsorcio(p)) + '</td><td>' +
           (r === 'sim' ? '<span class="badge b-ok">Sim</span>' : r === 'nao' ? '<span class="badge b-muted">Não</span>' : '—') + '</td>' +
-          '<td style="min-width:240px;white-space:pre-line">' + esc(textoConsorcio(p).split(' | ').filter((t) => !/^(Avaliação|Renovação):/.test(t)).join('\n') || '—') + '</td>' +
+          '<td style="min-width:240px;white-space:pre-line">' + esc(textoConsorcio(p).split(' | ').filter((t) => !/^(Grupo|Avaliação|Renovação):/.test(t)).join('\n') || '—') + '</td>' +
           '<td>' + esc(p.status || 'Novo') + '</td><td class="nowrap">' +
           ((p.status || 'Novo') === 'Novo' ? '<button type="button" class="btn btn-sm btn-primary" data-consorcio-ok="' + esc(p.id) + '">Marcar respondida</button> ' : '') +
           '<a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(p.whatsapp, resposta)) + '">WhatsApp</a></td></tr>';
       }).join('') + '</tbody></table>'
-      : '<div class="sub" style="padding:28px">' + (f ? 'Nenhuma resposta neste filtro.' : 'Ainda não chegou nenhuma resposta. Copie a mensagem acima e envie às participantes.') + '</div>';
+      : '<div class="sub" style="padding:28px">' + (f || g ? 'Nenhuma resposta neste filtro.' : 'Ainda não chegou nenhuma resposta. Copie a mensagem acima e envie às participantes.') + '</div>';
     alvo.querySelectorAll('[data-consorcio-ok]').forEach((b) => b.onclick = async () => {
       b.disabled = true;
       const l = store.get('leads', b.dataset.consorcioOk);
