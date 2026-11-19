@@ -14,3 +14,6 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 !tools/site/gerado.json
+
+# Bot do Discord da Karen: só o package.json (a chave do Firebase fica no .env do PC)
+!karen-bot/package.json
