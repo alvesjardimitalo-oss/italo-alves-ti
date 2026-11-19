@@ -9,10 +9,11 @@ import path from "node:path";
 import {
   Client, GatewayIntentBits, Events, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits, ChannelType,
+  AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
 } from "discord.js";
 import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
-import { montarServidor, alternarAreaClientes } from "./servidor.js";
+import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -54,7 +55,8 @@ async function carregarEstado() {
 }
 
 // ---------------------------------------------------------------- utilidades
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildMessages (não privilegiado) só para saber que chegou um print em #comprovantes.
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 let guild = null;
 let grupos = new Map();
 let ultimoCiclo = null, ultimoErro = "";
@@ -99,7 +101,13 @@ const comandos = [
       .addStringOption((o) => o.setName("grupo").setDescription("Grupo").setAutocomplete(true).setRequired(true))
       .addStringOption((o) => o.setName("membro").setDescription("Membro").setAutocomplete(true).setRequired(true)))
     .addSubcommand((s) => s.setName("links").setDescription("Links de renovação e do banco de reserva"))
-    .addSubcommand((s) => s.setName("atualizar").setDescription("Atualiza agora os tópicos dos grupos e as cobranças com o painel")),
+    .addSubcommand((s) => s.setName("atualizar").setDescription("Atualiza agora os tópicos dos grupos e as cobranças com o painel"))
+    .addSubcommand((s) => s.setName("novo-grupo").setDescription("Cria um grupo novo (abre um formulário)"))
+    .addSubcommand((s) => s.setName("adicionar").setDescription("Coloca uma pessoa num grupo (do banco de reserva, da renovação ou digitando)")
+      .addStringOption((o) => o.setName("grupo").setDescription("Grupo").setAutocomplete(true).setRequired(true))
+      .addStringOption((o) => o.setName("interessado").setDescription("Quem respondeu a renovação ou o banco de reserva").setAutocomplete(true))
+      .addStringOption((o) => o.setName("nome").setDescription("Nome (se não for da lista)"))
+      .addStringOption((o) => o.setName("whatsapp").setDescription("WhatsApp com DDD (se não for da lista)"))),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -120,6 +128,43 @@ async function registrarComandos() {
   log(`${comandos.length} comandos registrados`);
 }
 
+// ---------------------------------------------------------------- respostas de renovação e reservas
+let renovacoes = new Map(), reservas = [], respostasLidas = 0;
+const renovaDoLead = (l) => (String(l.detalhe || "").match(/\[ref:renova-(sim|talvez|nao)\]/) || [])[1] || "";
+const grupoDoLead = (l) => (String(l.detalhe || "").match(/\[grupo:([^\]]+)\]/) || [])[1] || "";
+async function carregarRespostas(forcar = false) {
+  if (!forcar && Date.now() - respostasLidas < 30 * 60000) return;
+  const [ren, res] = await Promise.all([db.leadsPorOrigem("consorcio-renovacao"), db.leadsPorOrigem("consorcio-reserva")]);
+  respostasLidas = Date.now();
+  const mapa = new Map();
+  ren.sort((a, b) => String(a.criadoEm).localeCompare(String(b.criadoEm))).forEach((l) => {
+    const t = C.chaveTel(l.whatsapp);
+    if (!t) return;
+    const info = { renova: renovaDoLead(l), grupo: grupoDoLead(l), criadoEm: l.criadoEm, nome: l.nome, whatsapp: l.whatsapp };
+    mapa.set(t + "|" + info.grupo, info); mapa.set(t, info);
+  });
+  renovacoes = mapa;
+  reservas = res.sort((a, b) => String(b.criadoEm).localeCompare(String(a.criadoEm)));
+}
+function renovacaoDe(g, m) {
+  const t = C.chaveTel(m.whatsapp);
+  return t ? renovacoes.get(t + "|" + g.codigo) || renovacoes.get(t) || null : null;
+}
+const ICONE_RENOVA = { sim: "🔁 renova", talvez: "🤔 talvez", nao: "❌ não renova" };
+/** Quem respondeu "sim/talvez" ou entrou no banco de reserva e ainda não está num grupo em formação. */
+function interessados() {
+  const emFormacao = new Set([...grupos.values()].filter((g) => C.situacao(g) === "formando").flatMap((g) => (g.membros || []).map((m) => C.chaveTel(m.whatsapp))));
+  const vistos = new Set(), out = [];
+  const add = (nome, whatsapp, tipo) => { const t = C.chaveTel(whatsapp); if (!t || vistos.has(t) || emFormacao.has(t)) return; vistos.add(t); out.push({ nome, whatsapp, tipo, tel: t }); };
+  [...renovacoes.entries()].filter(([k]) => !k.includes("|")).map(([, v]) => v).filter((v) => v.renova === "sim").forEach((v) => add(v.nome, v.whatsapp, "renova"));
+  [...renovacoes.entries()].filter(([k]) => !k.includes("|")).map(([, v]) => v).filter((v) => v.renova === "talvez").forEach((v) => add(v.nome, v.whatsapp, "talvez"));
+  reservas.forEach((l) => add(l.nome, l.whatsapp, "reserva R$ " + ((String(l.detalhe).match(/\[valor:([^\]]+)\]/) || [])[1] || "?")));
+  return out;
+}
+async function publicarGrupos() {
+  await db.definir("rastreio", "consorcio-grupos", { grupos: C.gruposPublicos([...grupos.values()]), atualizadoEm: new Date().toISOString() }).catch((e) => log("publicar grupos: " + e.message));
+}
+
 // ---------------------------------------------------------------- embeds do consórcio
 function grupoPorCodigo(v) {
   const s = String(v || "").trim().toUpperCase();
@@ -132,7 +177,10 @@ function embedGrupo(g) {
   const linhas = membros.map((m) => {
     const x = C.resumoMembro(g, m);
     const ic = x.quitado ? "✅" : x.atrasadas.length ? "⚠️" : sit === "formando" ? "🕒" : "🟢";
-    return `${ic} **${curto(m.nome, 40)}** · ${x.pagas}/${x.total}` + (x.atrasadas.length ? ` · ${x.atrasadas.length} atrasada(s)` : "") + (m.resgatadoEm ? " · 🎁 resgatou" : "");
+    const rv = sit !== "formando" ? renovacaoDe(g, m) : null;
+    const renova = sit === "formando" ? "" : rv ? ` · ${ICONE_RENOVA[rv.renova] || "respondeu"}` : " · ⏳ sem resposta";
+    return `${ic} **${curto(m.nome, 40)}** · ${x.pagas}/${x.total}` + (x.atrasadas.length ? ` · ${x.atrasadas.length} atrasada(s)` : "") +
+      (m.resgatadoEm ? " · 🎁 resgatou" : x.quitado ? " · 🎁 falta resgatar" : "") + renova;
   });
   const e = new EmbedBuilder().setColor(sit === "andamento" ? (r.comAtraso.length ? VERMELHO : VERDE) : sit === "formando" ? AZUL : 0x888888)
     .setTitle(C.nomeGrupo(g)).setURL(C.URL_PAINEL)
@@ -147,6 +195,11 @@ function embedGrupo(g) {
     )
     .setFooter({ text: `Atualizado ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` });
   if (sit === "andamento") e.addFields({ name: "Este mês", value: `${r.pagosNoMes} pagaram · ${r.faltamNoMes.length} faltam`, inline: true }, { name: "Em atraso", value: r.comAtraso.length ? `${r.comAtraso.length} · ${C.brl(r.emAtraso)}` : "ninguém 🎉", inline: true });
+  if (sit !== "formando" && membros.length) {
+    const cont = { sim: 0, talvez: 0, nao: 0, sem: 0 };
+    membros.forEach((m) => { const rv = renovacaoDe(g, m); cont[rv ? (rv.renova || "sem") : "sem"]++; });
+    e.addFields({ name: "Renovação", value: `🔁 ${cont.sim} · 🤔 ${cont.talvez} · ❌ ${cont.nao} · ⏳ ${cont.sem} sem resposta`, inline: false });
+  }
   if (g.obs) e.addFields({ name: "Observações", value: curto(g.obs, 1000) });
   return e;
 }
@@ -258,6 +311,11 @@ async function verificarLeads() {
       if (msg) {
         await db.atualizar("leads", l.id, { discordEm: new Date().toISOString() }).catch((e) => log("não marquei o lead: " + e.message));
         if (["renovacoes", "reservas", "pedidos"].includes(destino)) await enviar("alertas", { content: `🔔 Novo em <#${msg.channelId}>: **${curto(l.nome, 60)}**` });
+        if (destino === "renovacoes" || destino === "reservas") respostasLidas = 0;
+        if (destino === "renovacoes") {
+          const t = C.chaveTel(l.whatsapp);
+          for (const g of grupos.values()) if ((g.membros || []).some((m) => C.chaveTel(m.whatsapp) === t)) delete estado.versoes[g.id];
+        }
       }
     }
     estado.cursorLeads = l.criadoEm;
@@ -282,7 +340,12 @@ async function verificarGrupos() {
           await enviar("pagamentos", { content: `✅ **${m.nome}** · ${g.codigo} · ${novos.map((ym) => C.rotuloMes(ym, true)).join(", ")} · ${x.pagas}/${x.total} pagas` + (g.atualizadoPor === "bot-discord" ? "" : " _(pelo painel)_") });
         }
         if (agora[m.id].resgate && !a.resgate) {
-          await enviar("resgates", { content: `🎁 **${m.nome}** resgatou o prêmio do ${g.codigo} em ${C.dataBR(m.resgatadoEm)}` + (m.resgateValor ? ` · produtos ${C.brl(m.resgateValor)}` : "") + (m.resgateValor > g.premio ? ` · diferença ${C.brl(m.resgateValor - g.premio)}` : "") + (m.resgateObs ? `\n> ${curto(m.resgateObs, 300)}` : "") });
+          const dif = (m.resgateValor || 0) - (g.premio || 0);
+          const e = new EmbedBuilder().setColor(COR).setTitle(`🎁 ${m.nome} resgatou o prêmio do ${g.codigo}`)
+            .setDescription([`**Data:** ${C.dataBR(m.resgatadoEm)}`, `**Prêmio:** ${C.brl(g.premio)}`, m.resgateValor ? `**Produtos:** ${C.brl(m.resgateValor)}` : "",
+              dif > 0 ? `**Diferença a cobrar:** ${C.brl(dif)}` : "", m.resgateObs ? `**Itens:** ${curto(m.resgateObs, 600)}` : "",
+              "", "📝 **Lançar no Revendi:** venda para esta cliente com os itens acima, o valor do consórcio como desconto/zerado" + (dif > 0 ? ` e ${C.brl(dif)} a receber.` : ".")].filter((x) => x !== "").join("\n"));
+          await enviar("resgates", { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("rev:ok").setLabel("Lançado no Revendi").setEmoji("✅").setStyle(ButtonStyle.Success))] });
         }
       }
     }
@@ -320,6 +383,8 @@ async function resumoDoDia() {
   }
   if (!ativos.length) e.setDescription("Nenhum grupo em andamento. Cadastre os grupos no painel.");
   else e.setDescription(`💰 Recebido em ${C.rotuloMes(hoje.ym, true)}: **${C.brl(recebido)}** de ${C.brl(previsto)}`);
+  const pendentes = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => !m.resgatadoEm && C.resumoMembro(g, m).quitado).map((m) => `${m.nome} (${g.codigo})`));
+  if (pendentes.length) e.addFields({ name: `🎁 Quitaram e ainda não resgataram (${pendentes.length})`, value: curto(pendentes.join(" · "), 1000) });
   if (formando.length) e.addFields({ name: "🟦 Próximo grupo", value: formando.map((g) => `${g.codigo}: ${(g.membros || []).length}${g.vagas ? "/" + g.vagas : ""} membros · começa ${C.rotuloMes(g.inicio, true)}`).join("\n") });
   try {
     const semana = await db.leadsDesde(new Date(Date.now() - 864e5).toISOString(), 300);
@@ -365,6 +430,71 @@ async function atualizarCobranca(g) {
   await msg.edit(conteudoCobranca(g)).catch((e) => log("cobrança do " + g.codigo + ": " + e.message));
 }
 
+async function lembreteVencimento(g) {
+  const ym = C.mesAtual();
+  const faltam = C.resumoGrupo(g).faltamNoMes;
+  if (!faltam.length) return;
+  const lista = faltam.map((m) => ({ m, descricao: m.whatsapp ? C.fone(m.whatsapp) : "sem WhatsApp" }));
+  const e = new EmbedBuilder().setColor(0xd4a72c).setTitle(`⏰ ${g.codigo}: parcela de ${C.rotuloMes(ym, true)} vence dia ${g.vencimento || 10}`)
+    .setDescription(curto(`Ainda não pagaram (${faltam.length}):\n` + faltam.map((m) => `• ${m.nome}`).join("\n"), 4000))
+    .setFooter({ text: "Escolha no menu para abrir o WhatsApp com o lembrete pronto." });
+  await enviar("cobrancas", { embeds: [e], components: [menuMembros("lem", g, lista, "📲 Lembrar no WhatsApp…")].filter(Boolean) });
+}
+
+async function avisoFimDeGrupo(g, ultimo) {
+  const membros = g.membros || [];
+  const quitados = membros.filter((m) => C.resumoMembro(g, m).quitado).length;
+  const semResgate = membros.filter((m) => !m.resgatadoEm);
+  const semResposta = membros.filter((m) => !renovacaoDe(g, m));
+  const cont = { sim: 0, talvez: 0, nao: 0 };
+  membros.forEach((m) => { const r = renovacaoDe(g, m); if (r && cont[r.renova] !== undefined) cont[r.renova]++; });
+  const e = new EmbedBuilder().setColor(AZUL).setTitle(`🏁 ${g.codigo} ${ultimo ? "está no último mês" : "termina no mês que vem"} (${C.rotuloMes(C.fimDo(g), true)})`)
+    .setDescription([`**Quitados:** ${quitados}/${membros.length}`, `**Ainda não resgataram:** ${semResgate.length}` + (semResgate.length ? ` — ${curto(semResgate.map((m) => C.primeiroNome(m.nome)).join(", "), 700)}` : ""),
+      `**Renovação:** 🔁 ${cont.sim} · 🤔 ${cont.talvez} · ❌ ${cont.nao} · ⏳ ${semResposta.length} sem resposta`,
+      semResposta.length ? "\nUse o menu para mandar o link de renovação a quem ainda não respondeu." : "\nTodo mundo já respondeu a renovação. 🎉"].join("\n"));
+  const comp = [menuMembros("ren", g, semResposta.filter((m) => m.whatsapp).map((m) => ({ m, descricao: C.fone(m.whatsapp) })), "🔁 Mandar renovação para…")].filter(Boolean);
+  await enviar("alertas", { embeds: [e], components: comp });
+}
+
+async function relatorioMensal(ym) {
+  const e = new EmbedBuilder().setColor(COR).setTitle(`📊 Relatório do consórcio · ${C.rotuloMes(ym, true)}`);
+  let recebido = 0, previsto = 0;
+  const linhas = [];
+  for (const g of C.ordenarGrupos([...grupos.values()])) {
+    if (!C.mesesDo(g).includes(ym)) continue;
+    const membros = g.membros || [];
+    const pagaram = membros.filter((m) => m.pagos?.[ym]).length;
+    recebido += pagaram * g.valorParcela; previsto += membros.length * g.valorParcela;
+    linhas.push(`**${g.codigo}** · ${pagaram}/${membros.length} pagaram · ${C.brl(pagaram * g.valorParcela)}`);
+  }
+  const atrasoAgora = [...grupos.values()].filter((g) => C.situacao(g) === "andamento").reduce((t, g) => t + C.resumoGrupo(g).emAtraso, 0);
+  e.setDescription((linhas.join("\n") || "Nenhum grupo com parcela nesse mês.") + `\n\n💰 **Recebido:** ${C.brl(recebido)} de ${C.brl(previsto)}` +
+    (previsto ? ` (${Math.round((recebido / previsto) * 100)}%)` : "") + `\n⚠️ **Em atraso hoje:** ${C.brl(atrasoAgora)}`);
+  try {
+    await carregarRespostas(true);
+    const [ren, res] = await Promise.all([db.leadsPorOrigem("consorcio-renovacao"), db.leadsPorOrigem("consorcio-reserva")]);
+    const doMes = (l) => String(new Date(l.criadoEm).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })).startsWith(ym);
+    const r = ren.filter(doMes), rs = res.filter(doMes);
+    const notas = r.map((l) => Number((String(l.detalhe).match(/\[nota:(\d)\]/) || [])[1]) || 0).filter(Boolean);
+    const conta = (v) => r.filter((l) => renovaDoLead(l) === v).length;
+    if (r.length) e.addFields({ name: `🔁 Renovação (${r.length} respostas)`, value: `Sim ${conta("sim")} · Talvez ${conta("talvez")} · Não ${conta("nao")}` + (notas.length ? ` · nota média ${(notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1).replace(".", ",")}/5` : "") });
+    const criticas = r.map((l) => (String(l.detalhe).match(/Pode melhorar:\s*([^|\[]+)/) || [])[1]).filter(Boolean).map((t) => "• " + curto(t.trim(), 180));
+    if (criticas.length) e.addFields({ name: "💬 O que podemos melhorar", value: curto(criticas.join("\n"), 1000) });
+    const sugestoes = r.map((l) => (String(l.detalhe).match(/Sugestões:\s*([^|\[]+)/) || [])[1]).filter(Boolean).map((t) => "• " + curto(t.trim(), 180));
+    if (sugestoes.length) e.addFields({ name: "💡 Sugestões", value: curto(sugestoes.join("\n"), 1000) });
+    if (rs.length) e.addFields({ name: "📝 Banco de reserva", value: `${rs.length} nova(s) reserva(s) no mês` });
+  } catch (err) { log("relatório (respostas): " + err.message); }
+  const resgates = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => String(m.resgatadoEm || "").startsWith(ym)).map((m) => `${m.nome} (${g.codigo})`));
+  if (resgates.length) e.addFields({ name: `🎁 Resgates no mês (${resgates.length})`, value: curto(resgates.join(" · "), 1000) });
+  await enviar("resumo", { embeds: [e] });
+}
+
+async function backupSemanal() {
+  const dados = { geradoEm: new Date().toISOString(), grupos: [...grupos.values()].map(({ _atualizado, ...g }) => g) };
+  const arquivo = new AttachmentBuilder(Buffer.from(JSON.stringify(dados, null, 2), "utf8"), { name: `consorcio-backup-${C.agoraSP().data}.json` });
+  await enviar("logs", { content: `💾 Backup semanal dos grupos do consórcio (${dados.grupos.length} grupos). Guarde se quiser; o painel continua sendo a fonte oficial.`, files: [arquivo] });
+}
+
 async function rotinas() {
   const h = C.agoraSP();
   if (h.hora >= 8 && h.hora < 21 && estado.resumoDia !== h.data) {
@@ -372,8 +502,29 @@ async function rotinas() {
     await resumoDoDia().catch((e) => log("resumo: " + e.message));
   }
   if (h.hora >= 9 && h.hora < 21) {
+    if (h.dia === 1 && estado.relatorioMes !== h.ym) {
+      estado.relatorioMes = h.ym; salvar();
+      await relatorioMensal(C.somarMes(h.ym, -1)).catch((e) => log("relatório: " + e.message));
+    }
+    if (h.diaSemana === 0 && estado.backupData !== h.data) {
+      estado.backupData = h.data; salvar();
+      await backupSemanal().catch((e) => log("backup: " + e.message));
+    }
     for (const g of grupos.values()) {
       if (C.situacao(g) !== "andamento") continue;
+      const recente = g.criadoEm && Date.now() - Date.parse(g.criadoEm) < 6 * 3600e3;
+      const vDia = C.diaVencimento(g, h.ano, h.mes);
+      estado.lembreteMes = estado.lembreteMes || {}; estado.fimAviso = estado.fimAviso || {};
+      if (vDia > 2 && h.dia === vDia - 2 && estado.lembreteMes[g.id] !== h.ym && !recente) {
+        estado.lembreteMes[g.id] = h.ym; salvar();
+        await lembreteVencimento(g).catch((e) => log("lembrete: " + e.message));
+      }
+      const fim = C.fimDo(g);
+      if ((h.ym === fim || h.ym === C.somarMes(fim, -1)) && estado.fimAviso[g.id] !== h.ym) {
+        estado.fimAviso[g.id] = h.ym; salvar();
+        await carregarRespostas(true).catch(() => {});
+        await avisoFimDeGrupo(g, h.ym === fim).catch((e) => log("fim de grupo: " + e.message));
+      }
       const venc = Number(g.vencimento) || 10;
       const novo = g.criadoEm && Date.now() - Date.parse(g.criadoEm) < 6 * 3600e3;
       if (h.dia > venc && estado.cobrancaMes[g.id] !== h.ym && !novo) {
@@ -387,6 +538,7 @@ async function rotinas() {
 async function ciclo() {
   if (!guild || !db.firestoreConfigurado()) return;
   try {
+    await carregarRespostas().catch((e) => log("respostas: " + e.message));
     await verificarGrupos();
     await verificarLeads();
     await rotinas();
@@ -432,6 +584,7 @@ async function autocompletar(i) {
     opcoes = C.ordenarGrupos([...grupos.values()]).map((g) => ({ name: curto(`${g.codigo} · ${C.brl(g.valorParcela)} · ${C.ROTULO[C.situacao(g)]}`, 100), value: g.id }));
   } else {
     const g = grupoPorCodigo(i.options.getString("grupo"));
+    if (foco.name === "interessado") opcoes = interessados().map((p) => ({ name: curto(`${p.nome} · ${p.tipo}`, 100), value: p.tel }));
     if (g && foco.name === "membro") opcoes = (g.membros || []).map((m) => ({ name: curto(m.nome, 100), value: m.id }));
     if (g && foco.name === "mes") {
       const m = (g.membros || []).find((x) => x.id === i.options.getString("membro"));
@@ -460,8 +613,10 @@ async function comando(i) {
       "• **#cobrancas**: no dia seguinte ao vencimento, quem falta pagar, com cobrança pronta no WhatsApp.",
       "• **#renovacoes / #banco-de-reserva**: respostas dos formulários do site na hora.",
       "• **#pedidos-da-loja / #sacola-misteriosa / #roleta**: o que chega pela loja do site.",
-      "• **#resumo-do-dia**: todo dia às 8h.",
-      "Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`, `/consorcio links`, `/loja pedidos`.",
+      "• **#comprovantes**: cole o print do Pix e escolha de quem é — o bot dá baixa e prepara o recibo.",
+      "• **#resumo-do-dia**: todo dia às 8h; no dia 1, o relatório do mês anterior.",
+      "• Lembrete 2 dias antes do vencimento, aviso de fim de grupo, lançamento do resgate no Revendi e backup aos domingos.",
+      "Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`, `/consorcio novo-grupo`, `/consorcio adicionar`, `/consorcio links`, `/consorcio atualizar`, `/loja pedidos`.",
     ].join("\n") });
   }
   if (nome === "minhas-parcelas") {
@@ -507,6 +662,36 @@ async function comando(i) {
 
   // /consorcio
   const sub = i.options.getSubcommand();
+  if (sub === "novo-grupo") {
+    const proximo = "G" + (Math.max(0, ...[...grupos.values()].map((x) => Number(String(x.codigo).replace(/\D/g, "")) || 0)) + 1);
+    const p = C.somarMes(C.mesAtual(), 1).split("-");
+    const campo = (id, rotulo, valor, dica) => new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId(id).setLabel(rotulo).setStyle(TextInputStyle.Short).setRequired(true).setValue(valor).setPlaceholder(dica));
+    const modal = new ModalBuilder().setCustomId("ng").setTitle("Novo grupo do consórcio").addComponents(
+      campo("codigo", "Código do grupo", proximo, "G6"), campo("valor", "Mensalidade (R$)", "50,00", "50,00"),
+      campo("parcelas", "Número de parcelas", "10", "10"), campo("inicio", "Mês de início (MM/AAAA)", `${p[1]}/${p[0]}`, "01/2027"),
+      campo("vencimento", "Dia do vencimento", "10", "10"));
+    return i.showModal(modal);
+  }
+  if (sub === "adicionar") {
+    await i.deferReply(EFEMERA);
+    const alvo = grupoPorCodigo(i.options.getString("grupo"));
+    if (!alvo) return i.editReply("Grupo não encontrado.");
+    const tel = i.options.getString("interessado");
+    const p = tel ? interessados().find((x) => x.tel === tel) : null;
+    const nome = String(i.options.getString("nome") || p?.nome || "").trim();
+    let whats = C.soNumeros(i.options.getString("whatsapp") || p?.whatsapp || "");
+    if (whats.length === 10 || whats.length === 11) whats = "55" + whats;
+    if (nome.length < 2) return i.editReply("Escolha alguém da lista ou informe o nome.");
+    if (whats && !/^55\d{10,11}$/.test(whats)) return i.editReply("WhatsApp inválido. Use DDD + número.");
+    const g = await db.alterarConsorcio(alvo.id, (membros) => {
+      if (whats && membros.some((m) => C.chaveTel(m.whatsapp) === C.chaveTel(whats))) throw new Error(`${nome} já está no ${alvo.codigo}`);
+      membros.push({ id: "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), nome, whatsapp: whats, obs: p ? "Veio do " + (p.tipo.startsWith("reserva") ? "banco de reserva" : "formulário de renovação") : "", pagos: {}, entrouEm: C.agoraSP().data });
+      return membros;
+    });
+    grupos.set(g.id, g);
+    await publicarGrupos();
+    return i.editReply(`✅ **${nome}** entrou no **${g.codigo}** (${(g.membros || []).length}${g.vagas ? "/" + g.vagas : ""} membros).`);
+  }
   if (sub === "atualizar") {
     await i.deferReply(EFEMERA);
     estado.versoes = {};
@@ -550,6 +735,28 @@ function respostaBaixa(r, desfazer) {
     : `✅ Baixa: **${r.nome}** · ${r.g.codigo} · ${C.rotuloMes(r.ym, true)}. Agora ${x.pagas}/${x.total} pagas.` + (recibo ? `\n${linhaLink("📲 Mandar recibo no WhatsApp", recibo)}` : "") };
 }
 
+async function modalEnviado(i) {
+  if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode criar grupos." });
+  if (i.customId !== "ng") return;
+  const v = (id) => String(i.fields.getTextInputValue(id) || "").trim();
+  const codigo = v("codigo").toUpperCase().replace(/\s+/g, "");
+  const valor = Number(v("valor").replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."));
+  const parcelas = Number(v("parcelas"));
+  const [mm, aaaa] = v("inicio").split(/[\/\-]/).map((x) => x.trim());
+  const inicio = aaaa && mm ? `${aaaa.length === 2 ? "20" + aaaa : aaaa}-${String(mm).padStart(2, "0")}` : "";
+  const vencimento = Math.min(28, Math.max(1, Number(v("vencimento")) || 10));
+  if (!/^[A-Z0-9-]{1,10}$/.test(codigo)) return i.reply({ ...EFEMERA, content: "Código inválido (use algo como G6)." });
+  if (!(valor > 0) || !(parcelas > 0 && parcelas <= 36) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(inicio)) return i.reply({ ...EFEMERA, content: "Confira a mensalidade, as parcelas (1 a 36) e o início (MM/AAAA)." });
+  if ([...grupos.values()].some((g) => String(g.codigo).toUpperCase() === codigo)) return i.reply({ ...EFEMERA, content: `Já existe um grupo ${codigo}.` });
+  await i.deferReply(EFEMERA);
+  const agora = new Date().toISOString();
+  const g = await db.criar("consorcios", { codigo, valorParcela: valor, parcelas, inicio, vencimento, vagas: 0, premio: Math.round(valor * parcelas * 100) / 100, obs: "", membros: [], criadoEm: agora, criadoPor: "bot-discord" });
+  grupos.set(g.id, g);
+  await publicarGrupos();
+  await i.editReply(`✅ Grupo **${codigo}** criado: ${C.brl(valor)} × ${parcelas}, de ${C.rotuloMes(inicio, true)} a ${C.rotuloMes(C.fimDo(g), true)}, prêmio ${C.brl(g.premio)}.\nAgora use \`/consorcio adicionar\` para colocar as pessoas (o banco de reserva e quem disse "sim" aparecem na lista). Vagas e observações dá para ajustar no painel.`);
+  await atualizarTopico(g).catch(() => {});
+}
+
 async function componente(i) {
   const [tipo, acao, a, b] = i.customId.split(":");
   if (tipo === "srv") {
@@ -567,6 +774,40 @@ async function componente(i) {
   }
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode usar isso." });
 
+  if (tipo === "rev") {
+    const e = EmbedBuilder.from(i.message.embeds[0]).setFooter({ text: `✅ Lançado no Revendi por ${i.user.username} · ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` });
+    return i.update({ embeds: [e], components: [] });
+  }
+  if (tipo === "lem" || tipo === "ren") {
+    const g = grupos.get(acao); const m = g?.membros?.find((x) => x.id === i.values?.[0]);
+    if (!m?.whatsapp) return i.reply({ ...EFEMERA, content: "Esse membro está sem WhatsApp no painel." });
+    const texto = tipo === "lem" ? C.mensagemLembrete(g, m, C.mesAtual()) : C.mensagemRenovacao(g, m);
+    return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + m.nome, C.linkWhats(m.whatsapp, texto)) });
+  }
+  if (tipo === "comp") {
+    if (acao === "g") {
+      const g = grupos.get(i.values?.[0]);
+      if (!g) return i.update({ content: "Grupo não encontrado.", components: [] });
+      const lista = (g.membros || []).map((m) => ({ m, x: C.resumoMembro(g, m) })).filter(({ x }) => x.abertas.length)
+        .sort((a2, b2) => b2.x.atrasadas.length - a2.x.atrasadas.length || String(a2.m.nome).localeCompare(String(b2.m.nome), "pt-BR"))
+        .map(({ m, x }) => ({ m, descricao: `Vai dar baixa em ${C.rotuloMes(x.atrasadas[0] || x.abertas[0], true)}` }));
+      const menu = menuMembros(`comp:m:${a}`, g, lista, `De quem é? (${g.codigo})`);
+      return i.update({ content: menu ? `Grupo **${g.codigo}**. De quem é o comprovante?` : `Ninguém do ${g.codigo} tem parcela em aberto.`, components: menu ? [menu] : [] });
+    }
+    if (acao === "m") {
+      // customId: comp:m:<mensagem>:<grupo>
+      const [, , msgId, grupoId] = i.customId.split(":");
+      await i.deferUpdate();
+      const r = await darBaixa(grupoId, i.values?.[0], "");
+      const resp = respostaBaixa(r, false);
+      await i.editReply({ content: resp.content, components: [] });
+      const c = await canal("comprovantes");
+      const original = c && await c.messages.fetch(msgId).catch(() => null);
+      await original?.react("✅").catch(() => {});
+      await atualizarTopico(r.g).catch(() => {});
+      return;
+    }
+  }
   if (tipo === "g" && acao === "atualizar") {
     await i.deferUpdate();
     const g = await db.obter("consorcios", a);
@@ -619,11 +860,24 @@ client.on(Events.InteractionCreate, async (i) => {
     if (i.isAutocomplete()) return await autocompletar(i);
     if (i.isChatInputCommand()) return await comando(i);
     if (i.isButton() || i.isStringSelectMenu()) return await componente(i);
+    if (i.isModalSubmit()) return await modalEnviado(i);
   } catch (e) {
     log("interação: " + (e.stack || e.message));
     const msg = { content: "⚠️ " + e.message };
     try { if (i.deferred || i.replied) await i.editReply(msg); else await i.reply({ ...EFEMERA, ...msg }); } catch {}
   }
+});
+
+// #comprovantes: a cada print colado, o bot pergunta de quem é e dá baixa.
+client.on(Events.MessageCreate, async (msg) => {
+  try {
+    if (msg.author?.bot || !estado.canais?.comprovantes || msg.channelId !== estado.canais.comprovantes) return;
+    const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) === "andamento" && (g.membros || []).some((m) => C.resumoMembro(g, m).abertas.length));
+    if (!ativos.length) return void msg.reply("Não há grupo com parcela em aberto.").catch(() => {});
+    const menu = new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`comp:g:${msg.id}`).setPlaceholder("De qual grupo é este comprovante?")
+      .addOptions(ativos.slice(0, 25).map((g) => ({ label: `${g.codigo} · ${C.brl(g.valorParcela)}`, value: g.id, description: curto(`${C.resumoGrupo(g).faltamNoMes.length} faltam pagar ${C.rotuloMes(C.mesAtual())}`, 100) }))));
+    await msg.reply({ content: "🧾 Comprovante recebido! De qual grupo é?", components: [menu] });
+  } catch (e) { log("comprovante: " + e.message); }
 });
 
 client.once(Events.ClientReady, async () => {
@@ -632,6 +886,10 @@ client.once(Events.ClientReady, async () => {
   await guild.channels.fetch();
   await registrarComandos().catch((e) => log("registrar comandos: " + e.message));
   if (!estado.canais?.grupos) log("servidor ainda não montado: use /servidor montar no Discord");
+  else {
+    const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
+    if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
+  }
   await ciclo();
   setInterval(ciclo, INTERVALO);
 });

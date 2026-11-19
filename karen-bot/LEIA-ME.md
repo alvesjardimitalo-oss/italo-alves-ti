@@ -9,17 +9,23 @@ o que você faz no painel aparece no Discord, e o que você faz no Discord volta
 | Onde | O quê |
 | --- | --- |
 | **#grupos** | Um tópico por grupo do consórcio (G3, G4, G5…), atualizado sozinho: membros, parcelas pagas, atrasos, prêmio. Menu **Dar baixa na parcela de…** |
-| **#cobrancas** | No dia seguinte ao vencimento de cada grupo: quem falta pagar, com menu para **abrir o WhatsApp com a cobrança pronta** e para dar baixa |
+| **#comprovantes** | Cole o print do Pix: o bot pergunta **de qual grupo** e **de quem** é, dá baixa na parcela, reage ✅ no print e prepara o **recibo** no WhatsApp |
+| **#cobrancas** | **2 dias antes** do vencimento: quem ainda não pagou, com lembrete pronto no WhatsApp. **No dia seguinte** ao vencimento: quem atrasou, com cobrança pronta e baixa. A mensagem se atualiza sozinha quando alguém paga |
 | **#pagamentos / #resgates** | Registro de cada parcela paga e de cada resgate (pelo painel ou pelo bot) |
 | **#renovacoes** | Cada resposta do formulário de renovação: nota, o que gosta, o que melhorar, sugestões, se renova. Botões **Responder no WhatsApp** e **Marcar respondida** |
 | **#banco-de-reserva** | Quem se inscreveu em `/karen/consorcio/` para o próximo grupo |
 | **#pedidos-da-loja / #sacola-misteriosa / #roleta** | O que chega pela loja do site |
-| **#resumo-do-dia** | Todo dia às 8h: recebido no mês, quem falta, atrasos, próximo grupo e o que chegou nas últimas 24 h |
+| **#resumo-do-dia** | Todo dia às 8h: recebido no mês, quem falta, atrasos, **quem quitou e não resgatou**, próximo grupo e o que chegou nas últimas 24 h. **No dia 1:** relatório do mês anterior (recebido, %, atraso, renovação, nota média, críticas e sugestões, reservas e resgates) |
+| **Fim de grupo** | No penúltimo e no último mês de cada grupo, em #alertas: quitados, resgates pendentes, placar da renovação e menu para mandar o link a quem não respondeu |
+| **Renovação no tópico** | Ao lado de cada membro em #grupos: 🔁 renova · 🤔 talvez · ❌ não · ⏳ sem resposta (cruzado pelo WhatsApp do formulário) |
+| **#resgates** | Cada resgate vem com o **lembrete para lançar no Revendi** (itens, prêmio e diferença) e o botão *Lançado no Revendi* |
+| **Backup** | Todo domingo, um arquivo com os grupos em #logs-do-bot |
 | **#alertas** | Aviso na hora de renovação, reserva e pedido |
 | **🌸 Área das Clientes** | Já criada e **escondida**. `/servidor clientes abrir` mostra para quem tiver o cargo Cliente/Consorciada; `/minhas-parcelas` mostra a situação só para a própria cliente |
 
 Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`,
-`/consorcio links`, `/loja pedidos`, `/servidor montar`, `/servidor clientes`, `/servidor vincular`, `/minhas-parcelas`, `/ajuda`.
+`/consorcio novo-grupo` (formulário), `/consorcio adicionar` (puxa do banco de reserva e de quem disse "sim"), `/consorcio links`,
+`/consorcio atualizar`, `/loja pedidos`, `/servidor montar`, `/servidor clientes`, `/servidor vincular`, `/minhas-parcelas`, `/ajuda`.
 
 Os grupos (mensalidade, parcelas, prêmio, vagas, membros) são configurados no painel: **Loja da Karen › Consórcio**.
 
@@ -60,6 +66,8 @@ Depois dê o cargo **👑 Karen** para a Karen.
 | **Atualizar** | baixa a versão nova do GitHub e reinicia |
 | **Editar variaveis** | abre o `.env` (depois use Reiniciar) |
 
+Canais novos de versões futuras (ex.: #comprovantes) são criados sozinhos quando o bot atualiza.
+
 Arquivos em `%LOCALAPPDATA%\KarenBot` (variáveis em `.env`, log em `logs\bot.log`).
 O estado do bot (canais, tópicos, vínculos) também fica salvo no Firebase (`ti/base/botKaren`): reinstalar não perde nada.
 
@@ -76,5 +84,5 @@ O site e o painel funcionam normal. Quando o PC liga, o bot posta o que chegou e
 se o bot está ligado.
 
 ## Revendi
-O Revendi não tem integração aberta (API), então as vendas ficam só lá. Se um dia ele liberar exportação
-automática ou API, dá para o bot ler.
+O Revendi não tem integração aberta (API) nem exportação automática, então as vendas ficam só lá. O bot lembra de
+lançar cada resgate do consórcio no Revendi. Se o Revendi liberar API, webhook ou exportação em CSV, dá para o bot ler.

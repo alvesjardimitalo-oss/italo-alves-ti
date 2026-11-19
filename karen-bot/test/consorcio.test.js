@@ -34,3 +34,15 @@ test("textos e links", () => {
   assert.match(C.mensagemCobranca(g, { nome: "Maria Anita" }, ["2026-10", "2026-11"]), /Maria! .*Outubro 2026, Novembro 2026, total de R\$\s70,00/);
   assert.match(C.mensagemRenovacao(g, { nome: "Neuza" }), /\?g=G4$/);
 });
+
+test("lembrete, vencimento e dados públicos", () => {
+  const g = { codigo: "G6", valorParcela: 50, parcelas: 10, inicio: "2027-01", vencimento: 31, membros: [{ id: "a", nome: "Ana", whatsapp: "5533999999999" }] };
+  assert.equal(C.diaVencimento(g, 2027, 2), 28);
+  assert.match(C.mensagemLembrete(g, { nome: "Ana Paula" }, "2027-02"), /Ana! .*Fevereiro 2027.*vence dia 31/);
+  const [p] = C.gruposPublicos([g]);
+  assert.equal(p.fim, "2027-10");
+  assert.equal(p.ocupadas, 1);
+  assert.ok(!JSON.stringify(p).includes("5533999999999"));
+  assert.equal(C.chaveTel("+55 (33) 99999-9999"), "33999999999");
+  assert.ok(C.agoraSP().diaSemana >= 0 && C.agoraSP().diaSemana <= 6);
+});

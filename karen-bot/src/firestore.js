@@ -140,3 +140,16 @@ export async function alterarConsorcio(id, alterar, tentativas = 4) {
   }
   throw new Error("o grupo foi alterado ao mesmo tempo no painel; tente de novo");
 }
+
+/** Todos os leads de uma origem (filtro de igualdade simples, sem índice composto). */
+export async function leadsPorOrigem(origem, limite = 500) {
+  const corpo = { structuredQuery: { from: [{ collectionId: "leads" }], where: { fieldFilter: { field: { fieldPath: "origem" }, op: "EQUAL", value: { stringValue: origem } } }, limit: limite } };
+  const r = await chamar(`${API}/${BASE}:runQuery`, { method: "POST", body: JSON.stringify(corpo) });
+  return (r || []).filter((x) => x.document).map((x) => doc(x.document));
+}
+
+/** Cria um documento com ID automático. */
+export async function criar(colecao, campos) {
+  const d = await chamar(`${API}/${BASE}/${colecao}`, { method: "POST", body: JSON.stringify({ fields: gravarCampos(campos) }) });
+  return doc(d);
+}

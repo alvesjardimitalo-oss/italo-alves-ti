@@ -10,7 +10,9 @@ export const URL_PAINEL = "https://italoinfotec.com.br/sistema.html#/karen/grupo
 export function agoraSP(d = new Date()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: FUSO, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     .formatToParts(d).filter((x) => x.type !== "literal").map((x) => [x.type, x.value]));
-  return { ano: +p.year, mes: +p.month, dia: +p.day, hora: +p.hour, minuto: +p.minute, data: `${p.year}-${p.month}-${p.day}`, ym: `${p.year}-${p.month}` };
+  const semana = new Intl.DateTimeFormat("en-US", { timeZone: FUSO, weekday: "short" }).format(d);
+  return { ano: +p.year, mes: +p.month, dia: +p.day, hora: +p.hour, minuto: +p.minute, data: `${p.year}-${p.month}-${p.day}`, ym: `${p.year}-${p.month}`,
+    diaSemana: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(semana) };
 }
 export const mesAtual = () => agoraSP().ym;
 export function somarMes(ym, n) {
@@ -95,3 +97,20 @@ export function mensagemRecibo(g, m, ym) {
 
 /** Tira as marcações internas ([ref:..], [cupom:..], [vagas:..] etc.) do texto que vai para o Discord. */
 export const semMarcas = (t) => String(t || "").replace(/\s*\[[^\]]*\]/g, "").trim();
+
+export function mensagemLembrete(g, m, ym) {
+  return `Oi, ${primeiroNome(m.nome)}! Aqui é a Karen 💝 Passando para lembrar que a parcela de ${rotuloMes(ym, true)} do Consórcio ${g.codigo} ` +
+    `(${brl(g.valorParcela)}) vence dia ${g.vencimento || 10}. Se já pagou, é só me mandar o comprovante. Obrigada! 🌸`;
+}
+/** Último dia do mês em que o vencimento cai (vencimento maior que o mês = último dia). */
+export const diaVencimento = (g, ano, mes) => Math.min(Number(g.vencimento) || 10, new Date(ano, mes, 0).getDate());
+/** Normaliza telefone para comparar (últimos 11 dígitos). */
+export const chaveTel = (v) => soNumeros(v).slice(-11);
+/** Dados públicos dos grupos (sem nomes nem telefones), no mesmo formato do painel. */
+export function gruposPublicos(lista) {
+  return ordenarGrupos(lista).map((g) => ({
+    codigo: String(g.codigo || ""), nome: `Consorcio ${g.codigo} - ${Number(g.valorParcela || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} - ${g.inicio ? rotuloMes(g.inicio, true) + " a " + rotuloMes(fimDo(g), true) : "datas a definir"}`,
+    valorParcela: Number(g.valorParcela) || 0, parcelas: Number(g.parcelas) || 0, inicio: g.inicio || "", fim: fimDo(g), premio: Number(g.premio) || 0,
+    situacao: situacao(g), vagas: Number(g.vagas) || 0, ocupadas: (g.membros || []).length,
+  })).filter((g) => g.codigo);
+}

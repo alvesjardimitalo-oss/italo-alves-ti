@@ -17,7 +17,8 @@ export const ESTRUTURA = [
   ] },
   { categoria: "🤝 CONSÓRCIO", area: "equipe", canais: [
     { chave: "grupos", nome: "📁・grupos", tipo: "forum", topico: "Um tópico por grupo, sempre atualizado com membros, parcelas e atrasos. Configure os grupos no painel." },
-    { chave: "cobrancas", nome: "📲・cobrancas", topico: "No dia seguinte ao vencimento: quem falta pagar, com botão para cobrar no WhatsApp e dar baixa." },
+    { chave: "comprovantes", nome: "🧾・comprovantes", topico: "Cole aqui o print do Pix: o bot pergunta de quem é e já dá baixa na parcela." },
+    { chave: "cobrancas", nome: "📲・cobrancas", topico: "Lembrete 2 dias antes do vencimento e cobranças no dia seguinte, com WhatsApp pronto e baixa." },
     { chave: "pagamentos", nome: "✅・pagamentos", topico: "Registro de cada parcela marcada como paga (pelo painel ou pelo bot)." },
     { chave: "resgates", nome: "🎁・resgates", topico: "Resgates de prêmio registrados." },
   ] },
@@ -125,4 +126,27 @@ export async function alternarAreaClientes(guild, estado, abrir) {
   const alvos = bloco.canais.map((c) => guild.channels.cache.get(estado.canais?.[c.chave])).filter(Boolean);
   const cat = alvos[0]?.parent;
   for (const c of [cat, ...alvos].filter(Boolean)) await c.permissionOverwrites.set(permissoes(guild, "clientes", cargos, abrir));
+}
+
+/** Cria os canais que faltam (versões novas do bot) sem mexer no resto. Devolve os ids novos. */
+export async function completarCanais(guild, estado, log = () => {}) {
+  await guild.channels.fetch();
+  const cargos = Object.fromEntries(Object.entries(estado.cargos || {}).map(([k, id]) => [k, guild.roles.cache.get(id)]));
+  if (!cargos.dona || !cargos.admin || !cargos.cliente || !cargos.consorciada) return {};
+  const novos = {};
+  for (const bloco of ESTRUTURA) {
+    for (const c of bloco.canais) {
+      if (estado.canais?.[c.chave] && guild.channels.cache.get(estado.canais[c.chave])) continue;
+      const irmao = bloco.canais.map((x) => guild.channels.cache.get(estado.canais?.[x.chave])).find(Boolean);
+      let cat = irmao?.parent || guild.channels.cache.find((x) => x.type === ChannelType.GuildCategory && x.name === bloco.categoria);
+      if (!cat) cat = await guild.channels.create({ name: bloco.categoria, type: ChannelType.GuildCategory, permissionOverwrites: permissoes(guild, bloco.area, cargos, estado.clientesAbertos) });
+      const tipo = c.tipo === "forum" ? ChannelType.GuildForum : ChannelType.GuildText;
+      try {
+        const canal = await guild.channels.create({ name: c.nome, type: tipo, parent: cat.id, topic: c.topico, permissionOverwrites: permissoes(guild, bloco.area, cargos, bloco.area === "clientes" && estado.clientesAbertos) });
+        novos[c.chave] = canal.id;
+        log("canal novo criado: " + c.nome);
+      } catch (e) { log("não criei o canal " + c.nome + ": " + e.message); }
+    }
+  }
+  return novos;
 }
