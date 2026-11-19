@@ -60,6 +60,7 @@ const MENU = [
   ['/karen/produtos', 'tag', 'Produtos', () => vSacolas.contarEsgotados()],
   ['/karen/cupons', 'pix', 'Cupons e roleta'],
   ['/karen/sacolas', 'gift', 'Sacola Misteriosa', () => vSacolas.contarSolicitacoes()],
+  ['/karen/consorcio', 'chat', 'Consórcio', () => vSacolas.contarRenovacoes()],
   ['/karen/config', 'config', 'Configurações da loja'],
   ['Sistema'],
   ['/config', 'config', 'Configurações'],
