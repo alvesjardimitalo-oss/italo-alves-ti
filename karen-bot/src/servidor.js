@@ -12,6 +12,7 @@ export const CARGOS = [
 // tipo: texto | forum | anuncio. area: equipe (só Karen/Admin) | clientes (oculta até abrir).
 export const ESTRUTURA = [
   { categoria: "📊 PAINEL", area: "equipe", canais: [
+    { chave: "hoje", nome: "🌸・hoje", topico: "Painel ao vivo do dia: vendas, meta do mês, crediário, consórcio, entregas e aniversários. Atualiza sozinho." },
     { chave: "resumo", nome: "📋・resumo-do-dia", topico: "Todo dia às 8h: parcelas do mês, atrasos, renovações e pedidos da loja." },
     { chave: "alertas", nome: "🔔・alertas", topico: "Avisos na hora: pedidos da loja, renovações, reservas e erros do bot." },
   ] },

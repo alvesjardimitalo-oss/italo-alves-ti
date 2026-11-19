@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="600" viewBox="0 0 1500 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a3558"/><stop offset="0.6" stop-color="#4d243b"/><stop offset="1" stop-color="#351827"/></linearGradient>
+    <linearGradient id="ouro" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b58a52" stop-opacity="0"/><stop offset="0.5" stop-color="#e6c78f"/><stop offset="1" stop-color="#b58a52" stop-opacity="0"/></linearGradient>
+    <radialGradient id="luz" cx="78%" cy="20%" r="60%"><stop offset="0" stop-color="#f3a6c4" stop-opacity="0.28"/><stop offset="1" stop-color="#f3a6c4" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1500" height="600" fill="url(#bg)"/>
+  <rect width="1500" height="600" fill="url(#luz)"/>
+  <g fill="none" stroke="#e6c78f" stroke-opacity="0.18" stroke-width="2">
+    <circle cx="1290" cy="120" r="210"/><circle cx="1290" cy="120" r="150"/><circle cx="170" cy="560" r="180"/>
+  </g>
+  <text x="750" y="285" text-anchor="middle" font-family="Lora" font-weight="600" font-size="96" fill="#fff4ee">Karen Martins</text>
+  <rect x="450" y="318" width="600" height="3" fill="url(#ouro)"/>
+  <text x="750" y="382" text-anchor="middle" font-family="Lora" font-size="38" letter-spacing="16" fill="#e6c78f">COSMÉTICOS</text>
+  <text x="750" y="452" text-anchor="middle" font-family="DM Sans" font-size="26" letter-spacing="3" fill="#f9e8e9" fill-opacity="0.8">O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio</text>
+</svg>

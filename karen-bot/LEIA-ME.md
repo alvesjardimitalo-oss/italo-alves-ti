@@ -107,6 +107,13 @@ se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot s
 
 Também: **🛍️ Revendi hoje** no resumo das 8h, **`/cliente`** com histórico de compras, aniversário, marca favorita e etiquetas,
 e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `sincronizar`).
+**Visual:** foto, banner e cores da Karen (monograma KC, vinho, rosé e dourado) no bot e no ícone do servidor; logo no topo e
+no rodapé de todo post; cores fixas (rosé = resumo, rosa = venda, verde = pago, amarelo = atenção, vermelho = atraso,
+roxo = crediário, azul = informação); emojis das marcas (oB, Eu, QDB, OUi) nos produtos; barras de progresso no consórcio;
+pódio 🥇🥈🥉 no desempenho; status ao vivo do bot ("🛍️ 3 vendas hoje · 🚚 1 entrega"). Canal novo **🌸 hoje** no topo:
+painel ao vivo com vendas de hoje e do mês, **meta do mês** (`/revendi meta 5000`) com barra, ritmo e quanto falta por dia,
+crediário, consórcio, entregas, aniversários e estoque. Imagens em `karen-bot/assets`.
+
 **Central e limpeza:** o canal **🎛️ central** (antigo #comandos) tem uma mensagem fixa com botões (vendas de hoje/semana/mês,
 crediário, estoque, entregas, aniversários, sumidas, consórcio, atrasados, atualizar Revendi). As respostas aparecem só para
 quem tocou e somem sozinhas; o que for digitado ali some em 1 minuto. Todo dia o bot apaga as mensagens antigas dele em:

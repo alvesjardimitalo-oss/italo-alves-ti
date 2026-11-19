@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import {
-  Client, GatewayIntentBits, Events, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
+  ActivityType, Client, GatewayIntentBits, Events, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits, ChannelType,
   AttachmentBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
 } from "discord.js";
@@ -19,13 +19,14 @@ import * as CR from "./crediario.js";
 import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
 import * as G from "./graficos.js";
+import * as V from "./visual.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
 const PORTA = Number(process.env.PORT || 3100);
 const PASTA = process.env.KAREN_BOT_DATA || path.resolve("dados");
 const INTERVALO = Math.max(45, Number(process.env.INTERVALO_SEGUNDOS || 90)) * 1000;
-const COR = 0xab4c78, VERDE = 0x2e7d4f, VERMELHO = 0xc0392b, AZUL = 0x3b6ea5;
+const COR = V.CORES.marca, VERDE = V.CORES.pago, VERMELHO = V.CORES.atraso, AZUL = V.CORES.info, AMARELO = V.CORES.atencao, ROXO = V.CORES.crediario;
 const EFEMERA = { flags: MessageFlags.Ephemeral };
 // Revezamento entre PCs: só um bot fica ligado ao Discord; os outros esperam de reserva.
 const PC = String(process.env.NOME_DO_PC || process.env.COMPUTERNAME || os.hostname()).slice(0, 60);
@@ -57,6 +58,7 @@ async function carregarEstado() {
   const usarRemoto = remoto && (!local || String(remoto._salvoEm) > String(local._salvoEm || ""));
   estado = { ...estado, ...(usarRemoto ? remoto : local || {}) };
   if (usarRemoto) log("estado recuperado do Firestore");
+  V.usarEmojis(estado.emojis);
 }
 
 // ---------------------------------------------------------------- utilidades
@@ -74,7 +76,7 @@ async function canal(chave) {
 async function enviar(chave, conteudo) {
   const c = await canal(chave);
   if (!c) return null;
-  try { return await c.send(conteudo); } catch (e) { log(`não consegui postar em ${chave}: ${e.message}`); return null; }
+  try { return await c.send(V.decorar(conteudo)); } catch (e) { log(`não consegui postar em ${chave}: ${e.message}`); return null; }
 }
 async function avisarLog(texto) { log(texto); await enviar("logs", { content: texto.slice(0, 1900) }); }
 const curto = (t, n) => { const s = String(t || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
@@ -123,7 +125,9 @@ const comandos = [
     .addSubcommand((s) => s.setName("estoque").setDescription("Vencendo, esgotados e parados"))
     .addSubcommand((s) => s.setName("aniversarios").setDescription("Aniversariantes dos próximos 30 dias"))
     .addSubcommand((s) => s.setName("sumidas").setDescription("Clientes sem comprar há 60+ dias"))
-    .addSubcommand((s) => s.setName("sincronizar").setDescription("Lê o Revendi agora (em vez de esperar 30 min)")),
+    .addSubcommand((s) => s.setName("sincronizar").setDescription("Lê o Revendi agora (em vez de esperar 30 min)"))
+    .addSubcommand((s) => s.setName("meta").setDescription("Define a meta de vendas do mês (aparece no painel 🌸 hoje)")
+      .addNumberOption((o) => o.setName("valor").setDescription("Meta em R$ (0 = sem meta)").setRequired(true).setMinValue(0))),
   new SlashCommandBuilder().setName("produto").setDescription("Catálogo das marcas: foto, preço sugerido e se tem no estoque")
     .addStringOption((o) => o.setName("busca").setDescription("Código da revista ou nome").setAutocomplete(true).setRequired(true)),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
@@ -215,10 +219,10 @@ function embedGrupo(g) {
     const ic = x.quitado ? "✅" : x.atrasadas.length ? "⚠️" : sit === "formando" ? "🕒" : "🟢";
     const rv = sit !== "formando" ? renovacaoDe(g, m) : null;
     const renova = sit === "formando" ? "" : rv ? ` · ${ICONE_RENOVA[rv.renova] || "respondeu"}` : " · ⏳ sem resposta";
-    return `${ic} **${curto(m.nome, 40)}** · ${x.pagas}/${x.total}` + (x.atrasadas.length ? ` · ${x.atrasadas.length} atrasada(s)` : "") +
+    return `${ic} **${curto(m.nome, 40)}** \`${V.barra(x.pagas, x.total, 10)}\` ${x.pagas}/${x.total}` + (x.atrasadas.length ? ` · ${x.atrasadas.length} atrasada(s)` : "") +
       (m.resgatadoEm ? " · 🎁 resgatou" : x.quitado ? " · 🎁 falta resgatar" : "") + renova;
   });
-  const e = new EmbedBuilder().setColor(sit === "andamento" ? (r.comAtraso.length ? VERMELHO : VERDE) : sit === "formando" ? AZUL : 0x888888)
+  const e = new EmbedBuilder().setColor(sit === "andamento" ? (r.comAtraso.length ? VERMELHO : VERDE) : sit === "formando" ? AZUL : V.CORES.neutro)
     .setTitle(C.nomeGrupo(g)).setURL(C.URL_PAINEL)
     .setDescription(curto(linhas.join("\n") || "_Sem membros. Adicione pelo painel._", 4000))
     .addFields(
@@ -312,7 +316,7 @@ function mensagemLead(l) {
   if (destino === "renovacoes") {
     const renova = (String(l.detalhe).match(/\[ref:renova-(sim|talvez|nao)\]/) || [])[1] || "";
     const nota = Number((String(l.detalhe).match(/\[nota:(\d)\]/) || [])[1]) || 0;
-    e.setColor(renova === "sim" ? VERDE : renova === "talvez" ? 0xd4a72c : 0x888888)
+    e.setColor(renova === "sim" ? VERDE : renova === "talvez" ? AMARELO : V.CORES.neutro)
       .setTitle(`🔁 ${l.nome} respondeu a renovação`)
       .setDescription([
         `**Grupo:** ${campo(l.detalhe, "Grupo") || "—"}`,
@@ -414,7 +418,7 @@ async function resumoDoDia() {
     recebido += r.pagosNoMes * g.valorParcela; previsto += r.membros * g.valorParcela;
     const venc = Number(g.vencimento) || 10;
     e.addFields({ name: `${g.codigo} · parcela ${r.parcelaAtual}/${g.parcelas} · vence dia ${venc}`, value: curto(
-      `${r.pagosNoMes}/${r.membros} pagaram ${C.rotuloMes(hoje.ym)}` + (r.comAtraso.length ? ` · ⚠️ ${r.comAtraso.length} em atraso (${C.brl(r.emAtraso)})` : " · sem atrasos") +
+      `\`${V.barra(r.pagosNoMes, r.membros, 10)}\` ${r.pagosNoMes}/${r.membros} pagaram ${C.rotuloMes(hoje.ym)}` + (r.comAtraso.length ? ` · ⚠️ ${r.comAtraso.length} em atraso (${C.brl(r.emAtraso)})` : " · sem atrasos") +
       (hoje.dia === venc ? "\n📅 **Vence hoje!**" : hoje.dia === venc - 1 ? "\n📅 Vence amanhã" : ""), 1000) });
   }
   if (!ativos.length) e.setDescription("Nenhum grupo em andamento. Cadastre os grupos no painel.");
@@ -498,7 +502,7 @@ async function lembreteVencimento(g) {
   const faltam = C.resumoGrupo(g).faltamNoMes;
   if (!faltam.length) return;
   const lista = faltam.map((m) => ({ m, descricao: m.whatsapp ? C.fone(m.whatsapp) : "sem WhatsApp" }));
-  const e = new EmbedBuilder().setColor(0xd4a72c).setTitle(`⏰ ${g.codigo}: parcela de ${C.rotuloMes(ym, true)} vence dia ${g.vencimento || 10}`)
+  const e = new EmbedBuilder().setColor(AMARELO).setTitle(`⏰ ${g.codigo}: parcela de ${C.rotuloMes(ym, true)} vence dia ${g.vencimento || 10}`)
     .setDescription(curto(`Ainda não pagaram (${faltam.length}):\n` + faltam.map((m) => `• ${m.nome}`).join("\n"), 4000))
     .setFooter({ text: "Escolha no menu para abrir o WhatsApp com o lembrete pronto." });
   await enviar("cobrancas", { embeds: [e], components: [menuMembros("lem", g, lista, "📲 Lembrar no WhatsApp…")].filter(Boolean) });
@@ -583,7 +587,7 @@ async function cobrancasCrediario() {
     return `• **${c.cliente}** · ` + [atr.length ? `⚠️ ${atr.length} atrasada(s) ${C.brl(c.emAtraso)}` : "", hoje.length ? `📅 vence hoje ${C.brl(hoje.reduce((t, p) => t + p.valor, 0))}` : ""].filter(Boolean).join(" · ");
   });
   const opcoes = clientes.filter((c) => c.whatsapp).slice(0, 25).map((c) => ({ label: curto(c.cliente, 100), value: curto(C.chaveTel(c.whatsapp), 100), description: curto(`Em aberto ${C.brl(c.devendo)}`, 100) }));
-  const e = new EmbedBuilder().setColor(0x8e44ad).setTitle(`💳 Crediário de hoje · ${C.dataBR(CR.hojeISO())}`).setDescription(curto(linhas.join("\n"), 4000))
+  const e = new EmbedBuilder().setColor(ROXO).setTitle(`💳 Crediário de hoje · ${C.dataBR(CR.hojeISO())}`).setDescription(curto(linhas.join("\n"), 4000))
     .setFooter({ text: "Dados do Revendi (só leitura). Dê baixa no Revendi; aqui atualiza na próxima sincronização." });
   const comp = opcoes.length ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("crd").setPlaceholder("📲 Cobrar no WhatsApp…").addOptions(opcoes))] : [];
   const files = [];
@@ -599,15 +603,15 @@ async function cobrancasCrediario() {
 }
 
 // ---------------------------------------------------------------- Revendi no Discord
-const ROSA_RV = 0xd63384;
+const ROSA_RV = V.CORES.venda;
 const menuZap = (id, placeholder, itens) => itens.length
   ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(id).setPlaceholder(placeholder).addOptions(itens.slice(0, 25)))] : [];
-const linhaItem = (it) => `${it.brinde ? "🎁" : "•"} ${it.qtd}× ${curto(it.nome, 55)}${it.marca ? ` · ${curto(it.marca, 20)}` : ""}${it.brinde ? " (brinde)" : ` · ${C.brl(it.preco * it.qtd)}`}`;
+const linhaItem = (it) => `${it.brinde ? "🎁" : V.emojiMarca(it.marca) || "•"} ${it.qtd}× ${curto(it.nome, 55)}${it.marca ? ` · ${curto(it.marca, 20)}` : ""}${it.brinde ? " (brinde)" : ` · ${C.brl(it.preco * it.qtd)}`}`;
 
 function embedVenda(v) {
   const sit = PR.situacaoPagamento(v);
   const itens = v.itens?.length ? v.itens.map(linhaItem).join("\n") : `${v.qtdItens || "?"} item(ns)`;
-  const e = new EmbedBuilder().setColor(sit === "pago" ? VERDE : sit === "parcial" ? 0xd4a72c : ROSA_RV)
+  const e = new EmbedBuilder().setColor(sit === "pago" ? VERDE : sit === "parcial" ? AMARELO : ROSA_RV)
     .setTitle(`🛍️ ${curto(v.cliente, 60)} · ${C.brl(v.valor)}`)
     .setDescription(curto(itens, 3500) + (v.obs ? `\n\n📝 ${curto(v.obs, 200)}` : ""))
     .addFields(
@@ -644,6 +648,7 @@ async function postarVendasNovas() {
 
 /** Mensagem fixa num canal, editada quando o conteúdo muda (painéis de entregas e estoque). */
 async function painelFixo(chave, conteudo) {
+  V.decorar(conteudo);
   const c = await canal(chave);
   if (!c) return;
   estado.rvFixos = estado.rvFixos || {};
@@ -661,7 +666,7 @@ async function painelFixo(chave, conteudo) {
 function conteudoEntregas() {
   const hoje = CR.hojeISO();
   const lista = PR.entregasPendentes(painelRV.vendas, hoje);
-  const e = new EmbedBuilder().setColor(lista.some((v) => v.esperando > 3) ? VERMELHO : lista.length ? 0xd4a72c : VERDE)
+  const e = new EmbedBuilder().setColor(lista.some((v) => v.esperando > 3) ? VERMELHO : lista.length ? AMARELO : VERDE)
     .setTitle(`🚚 Entregas pendentes (${lista.length})`)
     .setDescription(lista.length ? curto(lista.map((v) => `${v.esperando > 3 ? "🔴" : v.esperando > 1 ? "🟡" : "🟢"} **${curto(v.cliente, 40)}** · ${C.brl(v.valor)} · vendida ${C.dataBR(v.data)}` +
       ` · ${v.esperando === 0 ? "hoje" : v.esperando + " dia(s)"}` + (v.itens?.length ? `\n  ${curto(v.itens.map((it) => `${it.qtd}× ${it.nome}`).join(", "), 180)}` : "")).join("\n"), 4000)
@@ -681,9 +686,9 @@ function conteudoEstoque() {
     (p.faltam >= 0 ? ` (${p.faltam} dias)` : "")).join("\n"), 1024) });
   else e.addFields({ name: "⏰ Vencendo nos próximos 60 dias", value: "Nada vencendo. ✅" });
   if (a.esgotados.length) e.addFields({ name: `🛒 Esgotados que vendem (repor) (${a.esgotados.length})`, value: curto(a.esgotados.map((p) =>
-    `• ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""}${p.codigo ? " · cód. " + p.codigo : ""} · ${p.vendidos} vendido(s) em 90 dias`).join("\n"), 1024) });
+    `${V.emojiMarca(p.marca) || "•"} ${curto(p.nome, 50)}${p.codigo ? " · cód. " + p.codigo : ""} · ${p.vendidos} vendido(s) em 90 dias`).join("\n"), 1024) });
   if (a.parados.length) e.addFields({ name: `💤 Parados há mais de 90 dias (${a.parados.length} · ${C.brl(a.valorParado)})`, value: curto(a.parados.slice(0, 12).map((p) =>
-    `• ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""} · ${p.unidades} un · ${C.brl(p.valorParado)}`).join("\n") +
+    `${V.emojiMarca(p.marca) || "•"} ${curto(p.nome, 50)} · ${p.unidades} un · ${C.brl(p.valorParado)}`).join("\n") +
     (a.parados.length > 12 ? `\n… e mais ${a.parados.length - 12}` : "") + "\n💡 Boa hora para promoção, kit ou brinde.", 1024) });
   e.setFooter({ text: `Atualizado ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} · dados do Revendi` });
   return { embeds: [e] };
@@ -703,7 +708,7 @@ async function aniversariosDoDia(segunda) {
   }
   if (segunda) {
     const semana = PR.aniversariantes(painelRV.clientes, hoje, 6).filter((c) => c.emDias > 0);
-    const e = new EmbedBuilder().setColor(0xf3a6c4).setTitle("📅 Aniversários desta semana")
+    const e = new EmbedBuilder().setColor(ROSA_RV).setTitle("📅 Aniversários desta semana")
       .setDescription(semana.length ? semana.map((c) => `• ${C.dataBR(c.data).slice(0, 5)} · **${c.nome}**${extra(c)}`).join("\n") : "Ninguém faz aniversário nos próximos 6 dias.")
       .setFooter({ text: "No dia, o parabéns aparece aqui com o WhatsApp pronto." });
     await enviar("rvAniversarios", { embeds: [e] });
@@ -712,7 +717,7 @@ async function aniversariosDoDia(segunda) {
 
 async function reativacaoSemanal() {
   const lista = PR.paraReativar(painelRV.vendas, CR.hojeISO(), 60).slice(0, 25);
-  const e = new EmbedBuilder().setColor(0x9b59b6).setTitle(`💌 Clientes sumidas · ${lista.length} para chamar de volta`)
+  const e = new EmbedBuilder().setColor(COR).setTitle(`💌 Clientes sumidas · ${lista.length} para chamar de volta`)
     .setDescription(lista.length ? curto(lista.map((h) => `• **${curto(h.cliente, 40)}** · ${h.semComprar} dias sem comprar · ${h.compras} compra(s), ${C.brl(h.total)}` +
       (h.marcaFavorita ? ` · gosta de ${h.marcaFavorita}` : "")).join("\n"), 4000) : "Todas as clientes compraram nos últimos 60 dias. 🎉")
     .setFooter({ text: "Ordenadas por quanto já compraram no último ano · a mensagem cita a marca favorita dela" });
@@ -720,14 +725,15 @@ async function reativacaoSemanal() {
   await enviar("rvReativar", { embeds: [e], components: menuZap("rvw:re", "📲 Chamar no WhatsApp…", op) });
 }
 
+const MEDALHA = ["🥇", "🥈", "🥉"];
 function embedDesempenho(titulo, d, ant) {
   const e = new EmbedBuilder().setColor(COR).setTitle(titulo)
     .setDescription(`**${d.qtd}** venda(s) · **${C.brl(d.total)}** (${PR.variacao(d.total, ant.total)})\n` +
       `💰 Lucro ${C.brl(d.lucro)} · margem ${d.margem}% (${PR.variacao(d.lucro, ant.lucro)})\n` +
       `🧾 Ticket médio ${C.brl(d.ticket)} (${PR.variacao(d.ticket, ant.ticket)}) · recebido ${C.brl(d.recebido)}\n` +
       `👥 ${d.topClientes.length} cliente(s), ${d.clientesNovas} nova(s)`);
-  if (d.topProdutos.length) e.addFields({ name: "🏆 Mais vendidos", value: curto(d.topProdutos.slice(0, 5).map((p, n) => `${n + 1}. ${curto(p.nome, 50)} · ${p.qtd} un · ${C.brl(p.total)}`).join("\n"), 1024) });
-  if (d.topClientes.length) e.addFields({ name: "💖 Clientes que mais compraram", value: curto(d.topClientes.slice(0, 5).map((c, n) => `${n + 1}. ${curto(c.cliente, 40)} · ${C.brl(c.total)}`).join("\n"), 1024), inline: true });
+  if (d.topProdutos.length) e.addFields({ name: "🏆 Mais vendidos", value: curto(d.topProdutos.slice(0, 5).map((p, n) => `${MEDALHA[n] || n + 1 + "."} ${V.emojiMarca(p.marca)} ${curto(p.nome, 50)} · ${p.qtd} un · ${C.brl(p.total)}`).join("\n"), 1024) });
+  if (d.topClientes.length) e.addFields({ name: "💖 Clientes que mais compraram", value: curto(d.topClientes.slice(0, 5).map((c, n) => `${MEDALHA[n] || n + 1 + "."} ${curto(c.cliente, 40)} · ${C.brl(c.total)}`).join("\n"), 1024), inline: true });
   if (d.topMarcas.length) e.addFields({ name: "🏷️ Marcas", value: curto(d.topMarcas.slice(0, 5).map((m) => `• ${m.marca} · ${C.brl(m.total)}`).join("\n"), 1024), inline: true });
   return e.setFooter({ text: `Comparação com o período anterior de mesmo tamanho · dados do Revendi` });
 }
@@ -820,10 +826,62 @@ function embedAniv30() {
 function embedCrediario() {
   const r = CR.resumo(crediario);
   const atr = clientesCrediario().filter((c) => c.atrasadas.length).sort((a, b) => b.emAtraso - a.emAtraso).slice(0, 15);
-  return new EmbedBuilder().setColor(r.atraso ? VERMELHO : 0x8e44ad).setTitle("💳 Crediário")
+  return new EmbedBuilder().setColor(r.atraso ? VERMELHO : ROXO).setTitle("💳 Crediário")
     .setDescription(`A receber: **${C.brl(r.aReceber)}** · vence hoje ${C.brl(r.hoje)} · próximos 7 dias ${C.brl(r.semana)}\n⚠️ Em atraso: **${C.brl(r.atraso)}** (${r.clientesAtraso} cliente(s))`)
     .addFields({ name: "Quem está em atraso", value: atr.length ? curto(atr.map((c) => `• **${curto(c.cliente, 40)}** · ${c.atrasadas.length} parcela(s) · ${C.brl(c.emAtraso)}`).join("\n"), 1024) : "Ninguém. 🎉" })
     .setFooter({ text: "Para cobrar: /cliente ou o menu do post das 9h em #crediario" });
+}
+
+// ---------------------------------------------------------------- painel 🌸 hoje (ao vivo) e status do bot
+const metaDoMes = (ym) => Number(estado.metas?.[ym] ?? process.env.META_VENDAS_MES ?? 0) || 0;
+function conteudoHoje() {
+  const h = C.agoraSP(), hoje = h.data, ini = h.ym + "-01";
+  const e = new EmbedBuilder().setColor(COR).setTitle(`🌸 Hoje · ${PR.rotuloDia(hoje)}`);
+  if (temPainel()) {
+    const dHoje = PR.desempenho(painelRV.vendas, hoje, hoje), dMes = PR.desempenho(painelRV.vendas, ini, hoje), meta = metaDoMes(h.ym);
+    const diasMes = new Date(h.ano, h.mes, 0).getDate();
+    const linhasMes = [`**${C.brl(dMes.total)}** em ${dMes.qtd} venda(s) · lucro ${C.brl(dMes.lucro)}`];
+    if (meta) {
+      const esperado = meta * (h.dia / diasMes), falta = Math.max(0, meta - dMes.total), porDia = falta / Math.max(1, diasMes - h.dia + 1);
+      linhasMes.push(`🎯 \`${V.barra(dMes.total, meta, 12)}\` **${V.pct(dMes.total, meta)}%** de ${C.brl(meta)}`,
+        dMes.total >= meta ? "🏆 Meta batida!" : `${dMes.total >= esperado ? "✅ No ritmo" : "⚠️ Abaixo do ritmo"} · faltam ${C.brl(falta)} (≈ ${C.brl(porDia)}/dia)`);
+    } else linhasMes.push("🎯 Sem meta: use `/revendi meta`");
+    e.addFields({ name: "🛍️ Vendas de hoje", value: dHoje.qtd ? `**${dHoje.qtd}** · ${C.brl(dHoje.total)} · lucro ${C.brl(dHoje.lucro)}` : "Nenhuma ainda", inline: true },
+      { name: `📅 ${C.rotuloMes(h.ym, true)}`, value: linhasMes.join("\n"), inline: true });
+    const ent = PR.entregasPendentes(painelRV.vendas, hoje), aniv = PR.aniversariantes(painelRV.clientes, hoje, 0);
+    const est = PR.alertasEstoque(painelRV.produtos, painelRV.vendas, hoje, { diasValidade: 30 });
+    e.addFields(
+      { name: "🚚 Entregas", value: ent.length ? `**${ent.length}** pendente(s)` + (ent.some((v) => v.esperando > 3) ? " · 🔴 atrasada" : "") : "✅ Tudo entregue", inline: true },
+      { name: "🎂 Aniversários", value: aniv.length ? curto(aniv.map((c) => C.primeiroNome(c.nome)).join(", "), 200) : "Ninguém hoje", inline: true },
+      { name: "📦 Estoque", value: [est.vencendo.length ? `⏰ ${est.vencendo.length} vencendo` : "", est.esgotados.length ? `🛒 ${est.esgotados.length} p/ repor` : ""].filter(Boolean).join(" · ") || "✅ Em dia", inline: true });
+  }
+  if (crediario.length) {
+    const r = CR.resumo(crediario);
+    e.addFields({ name: "💳 Crediário", value: `Hoje ${C.brl(r.hoje)} · ⚠️ atraso ${C.brl(r.atraso)} (${r.clientesAtraso})\n7 dias ${C.brl(r.semana)} · a receber ${C.brl(r.aReceber)}`, inline: false });
+  }
+  const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) === "andamento");
+  if (ativos.length) e.addFields({ name: `🤝 Consórcio · ${C.rotuloMes(h.ym, true)}`, value: curto(ativos.map((g) => { const r = C.resumoGrupo(g);
+    return `**${g.codigo}** \`${V.barra(r.pagosNoMes, r.membros, 10)}\` ${r.pagosNoMes}/${r.membros}` + (r.comAtraso.length ? ` · ⚠️ ${r.comAtraso.length}` : " · ✅"); }).join("\n"), 1024) });
+  if (!temPainel() && !crediario.length && !ativos.length) e.setDescription("Aguardando a primeira leitura do Revendi e do painel.");
+  e.setFooter({ text: `Atualizado ${new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })} · atualiza sozinho` });
+  return { embeds: [e] };
+}
+async function painelHoje() { if (estado.canais?.hoje) await painelFixo("hoje", conteudoHoje()); }
+
+let statusAtual = "";
+function atualizarStatus() {
+  if (!client.user) return;
+  const hoje = CR.hojeISO();
+  const partes = [];
+  if (temPainel()) {
+    const d = PR.desempenho(painelRV.vendas, hoje, hoje), ent = PR.entregasPendentes(painelRV.vendas, hoje).length;
+    partes.push(d.qtd ? `🛍️ ${d.qtd} venda(s) hoje · ${C.brl(d.total)}` : "🛍️ Sem vendas hoje ainda");
+    if (ent) partes.push(`🚚 ${ent} entrega(s)`);
+  } else partes.push("💝 Karen Martins Cosméticos");
+  const texto = curto(partes.join(" · "), 120);
+  if (texto === statusAtual) return;
+  statusAtual = texto;
+  try { client.user.setPresence({ status: "online", activities: [{ name: texto, state: texto, type: ActivityType.Custom }] }); } catch {}
 }
 
 // ---------------------------------------------------------------- central de botões (#comandos)
@@ -848,7 +906,7 @@ async function centralFixa() {
   estado.central = estado.central || {};
   let msg = null;
   if (estado.central.msg) { try { msg = await c.messages.fetch(estado.central.msg); } catch {} }
-  const conteudo = conteudoCentral();
+  const conteudo = V.decorar(conteudoCentral());
   try {
     if (msg) await msg.edit(conteudo);
     else { msg = await c.send(conteudo); await msg.pin().catch(() => {}); estado.central.msg = msg.id; salvar(); }
@@ -860,6 +918,8 @@ async function rotinas() {
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (!estado.central?.msg || estado.central.lido !== painelRV.atualizadoEm) { await centralFixa(); if (estado.central) { estado.central.lido = painelRV.atualizadoEm; } }
   await rotinasRevendi(h);
+  await painelHoje().catch((e) => log("painel hoje: " + e.message));
+  atualizarStatus();
   if (h.hora >= 8 && h.hora < 21 && estado.resumoDia !== h.data) {
     estado.resumoDia = h.data; salvar();
     await resumoDoDia().catch((e) => log("resumo: " + e.message));
@@ -1060,7 +1120,7 @@ async function comando(i) {
       embeds.push(e);
     }
     embeds.push(...consorcios.slice(0, 7).map(({ g, m }) => embedMembro(g, m)));
-    if (cred) embeds.push(new EmbedBuilder().setColor(cred.atrasadas.length ? VERMELHO : 0x8e44ad).setTitle(`💳 ${cred.cliente} · crediário (Revendi)`)
+    if (cred) embeds.push(new EmbedBuilder().setColor(cred.atrasadas.length ? VERMELHO : ROXO).setTitle(`💳 ${cred.cliente} · crediário (Revendi)`)
       .setDescription(cred.abertas.length ? curto(cred.abertas.map((p) => `${CR.atrasada(p) ? "⚠️" : CR.venceHoje(p) ? "📅" : "▫️"} ${C.dataBR(p.vencimento)} · ${p.numero}/${p.total} · ${C.brl(p.valor)}${p.venda ? " · venda " + p.venda : ""}`).join("\n"), 4000) + `\n\n**Em aberto:** ${C.brl(cred.devendo)}` + (cred.emAtraso ? ` · **em atraso:** ${C.brl(cred.emAtraso)}` : "")
         : "Nada em aberto no crediário. 🎉"));
     const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp || rvCli?.whatsapp);
@@ -1087,6 +1147,12 @@ async function comando(i) {
   }
   if (nome === "revendi") {
     const sub = i.options.getSubcommand();
+    if (sub === "meta") {
+      const v = Math.round(i.options.getNumber("valor") * 100) / 100, ym = C.mesAtual();
+      estado.metas = { ...(estado.metas || {}), [ym]: v }; salvar();
+      await painelHoje().catch(() => {});
+      return i.reply({ ...EFEMERA, content: v ? `🎯 Meta de ${C.rotuloMes(ym, true)}: **${C.brl(v)}**. Acompanhe em <#${estado.canais?.hoje}>.` : "Meta do mês removida." });
+    }
     if (sub === "sincronizar") {
       if (!revendiAtivo()) return i.reply({ ...EFEMERA, content: "Este PC não tem o login do Revendi (REVENDI_EMAIL/SENHA no .env). Se o outro PC tiver, ele lê sozinho a cada 30 min." });
       await i.deferReply(EFEMERA);
@@ -1260,7 +1326,7 @@ async function componente(i) {
     if (acao === "crediario") return i.reply({ ...EFEMERA, embeds: [embedCrediario()] });
     if (acao === "sumidas") {
       const l = PR.paraReativar(painelRV.vendas, hoje, 60).slice(0, 25);
-      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(0x9b59b6).setTitle(`💌 ${l.length} clientes sem comprar há 60+ dias`)
+      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(COR).setTitle(`💌 ${l.length} clientes sem comprar há 60+ dias`)
         .setDescription(l.length ? curto(l.map((h) => `• **${curto(h.cliente, 40)}** · ${h.semComprar} dias · ${C.brl(h.total)}`).join("\n"), 4000) : "Ninguém. 🎉")],
         components: menuZap("rvw:re", "📲 Chamar no WhatsApp…", l.map((h) => ({ label: curto(h.cliente, 100), value: curto(h.chave, 100), description: curto(`${h.semComprar} dias · ${C.brl(h.total)}`, 100) }))) });
     }
@@ -1408,7 +1474,8 @@ client.once(Events.ClientReady, async () => {
   else {
     const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
     if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
-    if (estado.ordemCategorias !== 2) {
+    await V.aplicarIdentidade(client, guild, estado, salvar, log).catch((e) => log("identidade visual: " + e.message));
+    if (estado.ordemCategorias !== 3) {
       try {
         const cats = ESTRUTURA.map((b) => guild.channels.cache.get(estado.canais?.[b.canais[0].chave])?.parent).filter(Boolean);
         await guild.channels.setPositions(cats.map((c, n) => ({ channel: c.id, position: n })));
@@ -1416,7 +1483,10 @@ client.once(Events.ClientReady, async () => {
           const ch = guild.channels.cache.get(estado.canais?.[c.chave]);
           if (ch && (ch.name !== c.nome || (ch.topic !== undefined && ch.topic !== c.topico))) await ch.edit({ name: c.nome, topic: c.topico }).catch((e) => log(`renomear ${c.nome}: ${e.message}`));
         }
-        estado.ordemCategorias = 2; salvar();
+        const pos = [];
+        for (const b of ESTRUTURA) b.canais.forEach((c, n) => { const ch = guild.channels.cache.get(estado.canais?.[c.chave]); if (ch) pos.push({ channel: ch.id, position: n }); });
+        await guild.channels.setPositions(pos).catch((e) => log("ordem dos canais: " + e.message));
+        estado.ordemCategorias = 3; salvar();
       } catch (e) { log("ordem das categorias: " + e.message); }
     }
   }
