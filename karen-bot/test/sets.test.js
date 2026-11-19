@@ -29,3 +29,13 @@ test("acha no Revendi por WhatsApp ou nome completo", () => {
   assert.equal(S.acharNoRevendi(cl, "", "Juscélia Matos Fernandes").nome, "Juscelia Matos Fernandes");
   assert.equal(S.acharNoRevendi(cl, "", "Juscelia"), null);
 });
+
+test("níveis por valor comprado", () => {
+  assert.equal(S.nivel(0).atual, null); assert.equal(S.nivel(0).proximo.chave, "bronze"); assert.equal(S.nivel(0).faltam, 300);
+  assert.equal(S.nivel(850.9).atual.chave, "prata"); assert.equal(S.nivel(850.9).faltam, 650);
+  assert.equal(S.nivel(5000).atual.chave, "ouro"); assert.equal(S.nivel(5000).proximo, null);
+});
+test("dia de vencimento respeita o fim do mês", () => {
+  assert.equal(S.diaVencimento("2026-02", 30), "2026-02-28");
+  assert.equal(S.diaVencimento("2026-11", 10), "2026-11-10");
+});

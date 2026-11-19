@@ -51,3 +51,25 @@ export function acharNoRevendi(clientes, whats, nome) {
   const n = sem(nome).trim();
   return n.split(" ").length >= 2 ? clientes.find((x) => sem(x.nome).trim() === n) || null : null;
 }
+
+// ---------------------------------------------------------------- níveis (pontos = R$ comprados nos últimos 12 meses)
+const lim = (k, d) => Number(process.env[k] || d) || d;
+export const NIVEIS = [
+  { chave: "bronze", nome: "Bronze", emoji: "🥉", min: lim("NIVEL_BRONZE", 300), cor: 0xb0793f },
+  { chave: "prata", nome: "Prata", emoji: "🥈", min: lim("NIVEL_PRATA", 800), cor: 0xaab4bd },
+  { chave: "ouro", nome: "Ouro", emoji: "🥇", min: lim("NIVEL_OURO", 1500), cor: 0xd8b04c },
+];
+/** Nível pelo total gasto: { atual (ou null), proximo (ou null), pontos, faltam }. */
+export function nivel(total) {
+  const pontos = Math.floor(Number(total) || 0);
+  const atual = [...NIVEIS].reverse().find((n) => pontos >= n.min) || null;
+  const proximo = NIVEIS.find((n) => pontos < n.min) || null;
+  return { atual, proximo, pontos, faltam: proximo ? proximo.min - pontos : 0 };
+}
+
+/** Dia (AAAA-MM-DD) do vencimento da parcela do mês `ym` com vencimento no dia `dia` (limitado ao fim do mês). */
+export function diaVencimento(ym, dia) {
+  const [a, m] = ym.split("-").map(Number);
+  const ult = new Date(Date.UTC(a, m, 0)).getUTCDate();
+  return `${ym}-${String(Math.min(Math.max(1, Number(dia) || 10), ult)).padStart(2, "0")}`;
+}

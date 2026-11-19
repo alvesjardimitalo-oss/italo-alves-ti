@@ -118,6 +118,13 @@ Se não achar, vai para #alertas com **Aprovar**, **Corrigir WhatsApp e aprovar*
 grupo terminou → tira o cargo do grupo, apaga o cargo e o apelido volta a [CLIENTE]. Grupos vêm do painel do consórcio e das
 etiquetas "Consorcio G… a <mês> <ano>" do Revendi. `/servidor vincular` também faz o set.
 
+**Fidelização:** 💳 **lembrete de parcela por mensagem (DM)** 2 dias antes do vencimento, para quem tem set e não pagou o mês
+(botão "Não quero lembretes") · ⭐ **avaliação** de 1 a 5 enviada por DM quando o ticket fecha (nota em 🗂️ tickets-fechados,
+média no 📈 desempenho) · 🔔 **Me avise quando chegar** na vitrine (produtos esgotados que já venderam): DM com "Quero este"
+quando voltam ao estoque · 💎 **pontos e níveis**: R$ 1 comprado nos últimos 12 meses = 1 ponto; cargos 🥉 Bronze (300),
+🥈 Prata (800), 🥇 Ouro (1.500), ajustáveis com `NIVEL_BRONZE`/`NIVEL_PRATA`/`NIVEL_OURO` no .env; botão **💎 Meus pontos**
+em #boas-vindas. O nível aparece na ficha do ticket.
+
 **Guias e painéis da equipe:** cada canal da equipe tem um **📌 guia fixado** (o que chega ali, quando e o que fazer).
 #pagamentos ganha o painel fixado **📅 Pagamentos do mês** (barra por grupo, recebido e quem falta) e #resgates o painel
 **🎁 Quitados aguardando resgate**. Para mudar o texto de um guia: edite `GUIAS` no index.js e aumente `GUIA_VERSAO`.

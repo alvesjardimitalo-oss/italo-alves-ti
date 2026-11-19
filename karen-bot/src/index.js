@@ -749,12 +749,14 @@ function embedDesempenho(titulo, d, ant) {
       `👥 ${d.topClientes.length} cliente(s), ${d.clientesNovas} nova(s)`);
   if (d.topProdutos.length) e.addFields({ name: "🏆 Mais vendidos", value: curto(d.topProdutos.slice(0, 5).map((p, n) => `${MEDALHA[n] || n + 1 + "."} ${V.emojiMarca(p.marca)} ${curto(p.nome, 50)} · ${p.qtd} un · ${C.brl(p.total)}`).join("\n"), 1024) });
   if (d.topClientes.length) e.addFields({ name: "💖 Clientes que mais compraram", value: curto(d.topClientes.slice(0, 5).map((c, n) => `${MEDALHA[n] || n + 1 + "."} ${curto(c.cliente, 40)} · ${C.brl(c.total)}`).join("\n"), 1024), inline: true });
+  if (d.avaliacao) e.addFields({ name: "⭐ Atendimento", value: `${"⭐".repeat(Math.round(d.avaliacao.media))} **${String(d.avaliacao.media).replace(".", ",")}** de 5 · ${d.avaliacao.n} avaliação(ões)`, inline: false });
   if (d.topMarcas.length) e.addFields({ name: "🏷️ Marcas", value: curto(d.topMarcas.slice(0, 5).map((m) => `• ${m.marca} · ${C.brl(m.total)}`).join("\n"), 1024), inline: true });
   return e.setFooter({ text: `Comparação com o período anterior de mesmo tamanho · dados do Revendi` });
 }
 /** Desempenho com gráficos: barras por dia (período × anterior) e ranking dos mais vendidos. */
 async function relatorioDesempenho(titulo, ini, fim, iniAnt, fimAnt) {
   const d = PR.desempenho(painelRV.vendas, ini, fim), ant = PR.desempenho(painelRV.vendas, iniAnt, fimAnt);
+  d.avaliacao = mediaAvaliacoes(ini, fim);
   const e = embedDesempenho(titulo, d, ant);
   const dias = PR.diasDoPeriodo(ini, fim), longo = dias.length > 10;
   const files = [], embeds = [e];
@@ -909,9 +911,11 @@ function conteudoBoasVindas() {
   const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
     .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
       "👉 Toque em **🌸 Entrar** e peça seu **set** com nome e WhatsApp. Se você já é cliente da Karen, é liberado na hora; se estiver no consórcio, ganha a tag do seu grupo.")
-    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n🎫 **abrir-ticket**: fale com a Karen em particular\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
+    .addFields({ name: "💎 Pontos e níveis", value: "Cada R$ 1 em compras vira 1 ponto. Suba de nível: 🥉 Bronze · 🥈 Prata · 🥇 Ouro. Toque em **Meus pontos**." },
+      { name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n🎫 **abrir-ticket**: fale com a Karen em particular\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
     .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
-  return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar · pedir set").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar · pedir set").setEmoji("🌸").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("cli:pontos").setLabel("Meus pontos").setEmoji("💎").setStyle(ButtonStyle.Secondary))] };
 }
 
 // ---------------------------------------------------------------- fila de atendimento por voz
@@ -1004,7 +1008,7 @@ function conteudoVitrine() {
   const itens = painelRV.produtos.filter((p) => p.unidades > 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome)).map((p) => ({ ...p, nome: nomeBonito(p.nome) }))
     .sort((a, b) => posMarca(a.marca) - posMarca(b.marca) || a.marca.localeCompare(b.marca) || a.nome.localeCompare(b.nome)).slice(0, 75);
   const capa = new EmbedBuilder().setColor(COR).setTitle(`🛍️ Pronta entrega · ${itens.length} produto(s)`)
-    .setDescription(itens.length ? "Tudo aqui está no estoque da Karen para entrega rápida.\nEscolha no menu **🛒 Quero este** lá embaixo e a gente abre seu pedido. 💝" : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
+    .setDescription(itens.length ? "Tudo aqui está no estoque da Karen para entrega rápida.\nEscolha no menu **🛒 Quero este** lá embaixo e a gente abre seu pedido. 💝\nProcura algo que esgotou? Use **🔔 Me avise quando chegar**." : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
     .setFooter({ text: "Atualiza sozinho com o estoque · preços podem mudar" });
   const marcas = new Map();
   for (const p of itens) { const k = p.marca || "Outras marcas"; if (!marcas.has(k)) marcas.set(k, []); marcas.get(k).push(p); }
@@ -1022,6 +1026,8 @@ function conteudoVitrine() {
     const lote = itens.slice(n, n + 25);
     rows.push(...menuZap(`vit:quero:${n}`, `🛒 Quero este… (${n + 1} a ${n + lote.length})`, lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}${p.codigo ? " · cód. " + p.codigo : ""}`, 100) }))));
   }
+  const esp = opcoesAvisar();
+  if (esp.length && rows.length < 5) rows.push(...menuZap("vit:avisar", "🔔 Esgotou? Me avise quando chegar…", esp));
   // limite de 6000 caracteres por mensagem: corta blocos do fim se passar
   while (embeds.length > 1 && embeds.reduce((t, e) => t + JSON.stringify(e.toJSON()).length, 0) > 5600) embeds.pop();
   return { embeds, components: rows, semCabecalho: false };
@@ -1048,6 +1054,7 @@ async function postarChegadas() {
   if (!estado.estoqueVisto) { estado.estoqueVisto = agora; salvar(); return; }
   const chegaram = painelRV.produtos.filter((p) => p.unidades > 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome) && !(estado.estoqueVisto[p.id] > 0)).map((p) => ({ ...p, nome: nomeBonito(p.nome) }));
   estado.estoqueVisto = agora; salvar();
+  for (const p of chegaram) await avisarQuemEsperava(p).catch((e) => log("aviso de chegada: " + e.message));
   if (!chegaram.length) return;
   const embeds = chegaram.slice(0, 10).map((p) => {
     const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`✨ Chegou: ${curto(p.nome, 200)}`)
@@ -1100,7 +1107,7 @@ function conteudoMeuConsorcio() {
 }
 
 // ---------------------------------------------------------------- guias fixados (para que serve cada canal da equipe)
-const GUIA_VERSAO = 1;
+const GUIA_VERSAO = 2;
 const GUIAS = {
   hoje: ["🌸 Painel do dia", "Uma mensagem que se atualiza sozinha: vendas de hoje e do mês, **meta** (`/revendi meta`), crediário, consórcio, entregas, aniversários e estoque. Não precisa fazer nada aqui, é só olhar."],
   resumo: ["📋 Resumo do dia", "**8h**: resumo com consórcio, crediário, vendas e o gráfico dos últimos 14 dias.\n**Dia 1**: relatório do mês do consórcio (com gráfico de quem pagou).\nMensagens com mais de 15 dias são apagadas sozinhas (os relatórios do mês ficam)."],
@@ -1124,7 +1131,7 @@ const GUIAS = {
   roleta: ["🎡 Roleta (site)", "Quem girou a roleta no site e o desconto que ganhou."],
   comandos: ["🎛️ Central", "Toque nos botões da mensagem fixada: a resposta aparece **só para você**. O que for digitado aqui some em 1 minuto."],
   logs: ["🧾 Logs do bot", "Registro técnico do que o bot fez e eventuais erros, e o backup semanal. Guarda 10 dias (backups ficam)."],
-  ticketsFechados: ["🗂️ Tickets fechados", "Cada ticket fechado vem aqui com a conversa inteira em **.txt**. Os abertos ficam como canais nesta categoria."],
+  ticketsFechados: ["🗂️ Tickets fechados", "Cada ticket fechado vem aqui com a conversa inteira em **.txt**, e depois a ⭐ nota que a cliente deu (1 a 5). A média aparece no 📈 desempenho. Os abertos ficam como canais nesta categoria."],
 };
 async function guiasFixados() {
   estado.guias = estado.guias || {};
@@ -1162,6 +1169,84 @@ function conteudoResgatesPendentes() {
     .setDescription(lista.length ? curto(lista.map(({ g, m }) => `• **${curto(m.nome, 40)}** · ${g.codigo} · resgate de ${C.brl(g.premio)}` + (m.whatsapp ? ` · ${C.fone(m.whatsapp)}` : "")).join("\n"), 4000) : "Ninguém aguardando resgate. ✅")
     .setFooter({ text: "Lançou o resgate no Revendi? Marque no painel do consórcio e some daqui" });
   return { embeds: [e] };
+}
+
+// ---------------------------------------------------------------- 💎 pontos e níveis (para a cliente)
+function embedPontos(userId) {
+  const set = estado.sets?.[userId];
+  if (!set) return null;
+  const n = S.nivel(gastoNoAno(set.tel));
+  const prox = n.proximo;
+  const e = new EmbedBuilder().setColor(n.atual?.cor || COR).setTitle(`💎 Seus pontos · ${n.atual ? `${n.atual.emoji} ${n.atual.nome}` : "começando"}`)
+    .setDescription(`Você tem **${n.pontos.toLocaleString("pt-BR")} pontos** (R$ 1 em compras nos últimos 12 meses = 1 ponto).\n` +
+      (prox ? `\`${V.barra(n.pontos - (n.atual?.min || 0), prox.min - (n.atual?.min || 0), 12)}\` faltam **${n.faltam.toLocaleString("pt-BR")}** para ${prox.emoji} **${prox.nome}**` : "🏆 Você está no nível mais alto! Obrigada pelo carinho 💝"))
+    .addFields({ name: "Níveis", value: S.NIVEIS.map((x) => `${x.emoji} **${x.nome}** · a partir de ${x.min.toLocaleString("pt-BR")} pontos`).join("\n") })
+    .setFooter({ text: "Os pontos contam as compras registradas pela Karen" });
+  return e;
+}
+
+// ---------------------------------------------------------------- 💳 lembrete de parcela por mensagem (DM), 2 dias antes
+async function lembretesDeParcela(h) {
+  if (h.hora < 9 || h.hora >= 20 || estado.lembretesDia === h.data) return;
+  estado.lembretesDia = h.data;
+  estado.lembretes = estado.lembretes || {};
+  let n = 0;
+  for (const [userId, set] of Object.entries(estado.sets || {})) {
+    if (estado.semLembrete?.[userId]) continue;
+    const k = C.chaveTel(set.tel);
+    for (const g of [...grupos.values()].filter((x) => C.situacao(x) === "andamento")) {
+      const m = (g.membros || []).find((x) => C.chaveTel(x.whatsapp) === k);
+      if (!m || m.pagos?.[h.ym]) continue;
+      const venc = S.diaVencimento(h.ym, g.vencimento);
+      if (PR.somarDias(venc, -2) !== h.data) continue;
+      const chave = `${userId}:${g.codigo}:${h.ym}`;
+      if (estado.lembretes[chave]) continue;
+      const user = await client.users.fetch(userId).catch(() => null);
+      if (!user) continue;
+      const ok = await user.send(V.decorar({ embeds: [new EmbedBuilder().setColor(AMARELO).setTitle(`💳 Lembrete do consórcio ${g.codigo}`)
+        .setDescription(`Oi, ${C.primeiroNome(m.nome)}! 💝 Sua parcela de **${C.rotuloMes(h.ym, true)}** (**${C.brl(g.valorParcela)}**) vence **${C.dataBR(venc)}**.\n\nJá pagou? Envie o comprovante num 🎫 ticket em *Consórcio* no servidor da Karen.`)
+        .setFooter({ text: "Lembrete automático" })],
+        components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("lem:off").setLabel("Não quero lembretes").setStyle(ButtonStyle.Secondary))] })).then(() => true).catch(() => false);
+      estado.lembretes[chave] = ok ? "enviado" : "dm-fechada"; n += ok ? 1 : 0;
+    }
+  }
+  salvar();
+  if (n) log(`💳 ${n} lembrete(s) de parcela enviado(s) por mensagem`);
+}
+
+// ---------------------------------------------------------------- ⭐ avaliação do atendimento (depois do ticket)
+async function pedirAvaliacao(t) {
+  const user = await client.users.fetch(t.user).catch(() => null);
+  if (!user) return;
+  estado.avaliar = { ...(estado.avaliar || {}), [t.num]: { user: t.user, atendente: t.assumido || "", tipo: t.tipo } }; salvar();
+  const linha = new ActionRowBuilder().addComponents(...[1, 2, 3, 4, 5].map((n) =>
+    new ButtonBuilder().setCustomId(`tk:nota:${t.num}:${n}`).setLabel(String(n)).setEmoji("⭐").setStyle(n >= 4 ? ButtonStyle.Success : ButtonStyle.Secondary)));
+  await user.send(V.decorar({ embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("⭐ Como foi seu atendimento?")
+    .setDescription(`Seu ticket **${t.num}** foi fechado. Dá uma nota de 1 a 5? Leva 1 segundo e ajuda muito a Karen 💝`)], components: [linha] })).catch(() => {});
+}
+function mediaAvaliacoes(ini, fim) {
+  const l = (estado.avaliacoes || []).filter((a) => a.em.slice(0, 10) >= ini && a.em.slice(0, 10) <= fim);
+  return l.length ? { media: Math.round((l.reduce((t, a) => t + a.nota, 0) / l.length) * 10) / 10, n: l.length } : null;
+}
+
+// ---------------------------------------------------------------- 🔔 me avise quando chegar
+function opcoesAvisar() {
+  const vendidos = new Map();
+  for (const v of painelRV.vendas) for (const it of v.itens || []) vendidos.set(it.produtoId, (vendidos.get(it.produtoId) || 0) + it.qtd);
+  return painelRV.produtos.filter((p) => p.unidades <= 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome) && vendidos.has(p.id))
+    .sort((a, b) => (vendidos.get(b.id) || 0) - (vendidos.get(a.id) || 0)).slice(0, 25)
+    .map((p) => ({ label: curto(nomeBonito(p.nome), 100), value: p.id, description: curto(`${p.marca || ""} · esgotado`, 100) }));
+}
+async function avisarQuemEsperava(p) {
+  const fila = estado.avisarChegada?.[p.id] || [];
+  if (!fila.length) return;
+  delete estado.avisarChegada[p.id]; salvar();
+  for (const userId of fila) {
+    const user = await client.users.fetch(userId).catch(() => null);
+    await user?.send(V.decorar({ content: "🔔 Chegou o que você estava esperando! 💝", embeds: [cartaoProduto(p, true)],
+      components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`vitq:${p.id}`).setLabel("Quero este").setEmoji("🛒").setStyle(ButtonStyle.Success))] })).catch(() => {});
+  }
+  log(`🔔 ${fila.length} cliente(s) avisada(s) da chegada de ${p.nome}`);
 }
 
 // ---------------------------------------------------------------- tickets
@@ -1210,6 +1295,7 @@ async function abrirTicket(i, tipo, texto) {
     const h = PR.historicoClientes(painelRV.vendas).find((x) => C.chaveTel(x.whatsapp) === C.chaveTel(tel));
     if (h) linhas.push(`🛍️ ${h.compras} compra(s) no ano · ${C.brl(h.total)} · última ${C.dataBR(h.ultima)}`);
     if (set?.grupos?.length) linhas.push(`💳 Consórcio: ${set.grupos.join(", ")}`);
+    const nv = S.nivel(gastoNoAno(tel)); if (nv.atual) linhas.push(`${nv.atual.emoji} Nível ${nv.atual.nome} · ${nv.pontos} pontos`);
     const cr = clientesCrediario().find((x) => C.chaveTel(x.whatsapp) === C.chaveTel(tel));
     if (cr?.atrasadas?.length) linhas.push(`⚠️ Crediário: ${cr.atrasadas.length} parcela(s) em atraso (${C.brl(cr.emAtraso)})`);
   } else linhas.push("❔ Sem set (WhatsApp não ligado)");
@@ -1237,6 +1323,7 @@ async function fecharTicket(chId, quem, motivo = "") {
     .setDescription(`${TIPOS_TICKET[t.tipo]?.emoji || ""} ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · <@${t.user}>\nFechado por ${quem}${motivo ? ` (${motivo})` : ""}` + (t.assumido ? ` · atendido por ${t.assumido}` : ""))],
     files: [new AttachmentBuilder(Buffer.from(txt, "utf8"), { name: `ticket-${t.num}.txt` })] });
   delete estado.tickets[chId]; salvar();
+  if (!/3 dias sem mensagens/.test(motivo)) await pedirAvaliacao(t).catch(() => {});
   await ch.delete(`Ticket fechado por ${quem}`).catch((e) => log("fechar ticket: " + e.message));
 }
 async function revisarTickets() {
@@ -1285,6 +1372,7 @@ async function rotinas() {
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
   await guiasFixados().catch((e) => log("guias: " + e.message));
+  await lembretesDeParcela(h).catch((e) => log("lembretes: " + e.message));
   if (estado.canais?.pagamentos) await painelFixo("pagamentos", conteudoPagamentosMes(), "", true).catch(() => {});
   if (estado.canais?.resgates) await painelFixo("resgates", conteudoResgatesPendentes(), "", true).catch(() => {});
   if (estado.canais?.abrirticket) await painelFixo("abrirticket", conteudoAbrirTicket()).catch(() => {});
@@ -1719,8 +1807,10 @@ async function aplicarSet(userId) {
   const membro = await guild.members.fetch(userId).catch(() => null);
   if (!membro) return null;
   const cods = gruposDaPessoa(set.tel);
-  const querer = new Set([estado.cargos?.cliente, ...(cods.length ? [estado.cargos?.consorciada] : []), ...cods.map((c) => estado.cargosGrupo[c])].filter(Boolean));
-  const gerenciados = new Set([estado.cargos?.consorciada, ...Object.values(estado.cargosGrupo || {})].filter(Boolean));
+  const nv = temPainel() ? S.nivel(gastoNoAno(set.tel)).atual : null;
+  const querer = new Set([estado.cargos?.cliente, ...(cods.length ? [estado.cargos?.consorciada] : []), ...cods.map((c) => estado.cargosGrupo[c]),
+    ...(nv ? [estado.cargosNivel?.[nv.chave]] : [])].filter(Boolean));
+  const gerenciados = new Set([estado.cargos?.consorciada, ...Object.values(estado.cargosGrupo || {}), ...(temPainel() ? Object.values(estado.cargosNivel || {}) : [])].filter(Boolean));
   const add = [...querer].filter((id) => !membro.roles.cache.has(id));
   const tirar = [...gerenciados].filter((id) => !querer.has(id) && membro.roles.cache.has(id));
   if (add.length) await membro.roles.add(add, "Set da cliente").catch((e) => log(`cargos de ${membro.user.tag}: ${e.message}`));
@@ -1730,8 +1820,26 @@ async function aplicarSet(userId) {
   if (cods.join() !== (set.grupos || []).join()) { set.grupos = cods; salvar(); }
   return { membro, cods, nick };
 }
+/** Cargos 🥉 Bronze / 🥈 Prata / 🥇 Ouro (criados uma vez). */
+async function cargosDosNiveis() {
+  estado.cargosNivel = estado.cargosNivel || {};
+  for (const n of S.NIVEIS) {
+    if (estado.cargosNivel[n.chave] && guild.roles.cache.get(estado.cargosNivel[n.chave])) continue;
+    const nomeCargo = `${n.emoji} ${n.nome}`;
+    const r = guild.roles.cache.find((x) => x.name === nomeCargo) ||
+      await guild.roles.create({ name: nomeCargo, colors: { primaryColor: n.cor }, hoist: false, mentionable: false, reason: "Níveis das clientes" }).catch((e) => { log(`cargo ${nomeCargo}: ${e.message}`); return null; });
+    if (r) estado.cargosNivel[n.chave] = r.id;
+  }
+  salvar();
+}
+/** Total comprado no Revendi nos últimos 12 meses por esse WhatsApp. */
+function gastoNoAno(tel) {
+  const k = C.chaveTel(tel), desde = PR.somarDias(CR.hojeISO(), -365);
+  return painelRV.vendas.filter((v) => v.data >= desde && C.chaveTel(v.whatsapp) === k).reduce((t, v) => t + v.valor, 0);
+}
 async function revisarSets() {
   await cargosDosGrupos().catch((e) => log("cargos dos grupos: " + e.message));
+  await cargosDosNiveis().catch((e) => log("cargos dos níveis: " + e.message));
   for (const [id, tel] of Object.entries(estado.vinculos || {})) {
     if (estado.sets?.[id]) continue;
     const rv = S.acharNoRevendi(painelRV.clientes, tel, "");
@@ -1826,6 +1934,37 @@ async function componente(i) {
       (r.preservados.length ? `\n\nMantive em 🔒 SISTEMA: ${r.preservados.join(", ")}` : ""))] });
     estado.versoes = {}; await ciclo();
     return;
+  }
+  if (tipo === "cli" && acao === "pontos") {
+    const e = embedPontos(i.user.id);
+    return i.reply({ ...EFEMERA, ...(e ? { embeds: [e] } : { content: "Peça seu set primeiro (botão 🌸 Entrar) para eu achar suas compras 💝" }) });
+  }
+  if (tipo === "lem" && acao === "off") {
+    estado.semLembrete = { ...(estado.semLembrete || {}), [i.user.id]: true }; salvar();
+    return i.update({ components: [] }).then(() => i.followUp({ content: "Combinado, não mando mais lembretes. 💝 Se quiser voltar, é só pedir num ticket." }));
+  }
+  if (tipo === "tk" && acao === "nota") {
+    const pend = estado.avaliar?.[a];
+    if (!pend || pend.user !== i.user.id) return i.update({ components: [] });
+    const nota = Math.min(5, Math.max(1, Number(b) || 0));
+    estado.avaliacoes = [...(estado.avaliacoes || []), { num: a, nota, em: new Date().toISOString(), atendente: pend.atendente, tipo: pend.tipo }].slice(-500);
+    delete estado.avaliar[a]; salvar();
+    await enviar("ticketsFechados", { embeds: [new EmbedBuilder().setColor(nota >= 4 ? VERDE : nota === 3 ? AMARELO : VERMELHO)
+      .setTitle(`${"⭐".repeat(nota)} Ticket ${a} avaliado: ${nota}/5`).setDescription(pend.atendente ? `Atendido por ${pend.atendente}` : "Sem atendente marcado")] });
+    return i.update({ content: `Obrigada pela nota ${"⭐".repeat(nota)}! 💝`, embeds: [], components: [] });
+  }
+  if (tipo === "vit" && acao === "avisar") {
+    const pid = i.values?.[0], p = painelRV.produtos.find((x) => x.id === pid);
+    if (!p) return i.reply({ ...EFEMERA, content: "Não achei esse produto." });
+    const fila = new Set(estado.avisarChegada?.[pid] || []); fila.add(i.user.id);
+    estado.avisarChegada = { ...(estado.avisarChegada || {}), [pid]: [...fila] }; salvar();
+    return i.reply({ ...EFEMERA, content: `🔔 Combinado! Te mando uma mensagem aqui no Discord quando **${nomeBonito(p.nome)}** chegar. 💝\n(Deixe as mensagens diretas do servidor ligadas.)` });
+  }
+  if (tipo.startsWith("vitq")) {
+    const p = painelRV.produtos.find((x) => x.id === i.customId.split(":")[1]);
+    await i.deferReply(EFEMERA);
+    if (!p) return i.editReply("Esse produto saiu do estoque. Abra um 🎫 ticket no servidor que a Karen te ajuda!");
+    return abrirTicket(i, "pedido", `Quero: ${nomeBonito(p.nome)}${p.marca ? " (" + p.marca + ")" : ""}${p.codigo ? " · cód. " + p.codigo : ""} · ${C.brl(p.preco)}`);
   }
   if (tipo === "vit" && acao === "quero") {
     const p = painelRV.produtos.find((x) => x.id === i.values?.[0]);
