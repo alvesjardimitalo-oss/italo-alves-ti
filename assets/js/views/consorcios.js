@@ -150,7 +150,7 @@ export function montarGrupos(el) {
     if (!st || !st.vistoEm) { alvo.innerHTML = icon('cloud', 14) + ' Bot do Discord ainda não instalado'; return; }
     const min = Math.round((Date.now() - Date.parse(st.vistoEm)) / 60000);
     const ok = min <= 20 && st.discord;
-    alvo.innerHTML = '<span class="badge ' + (ok ? 'b-ok' : 'b-warn') + '">' + (ok ? 'Bot do Discord ligado' : 'Bot do Discord desligado') + '</span> ' +
+    alvo.innerHTML = '<span class="badge ' + (ok ? 'b-ok' : 'b-warn') + '">' + (ok ? 'Bot do Discord ligado' + (st.pc ? ' no PC ' + esc(st.pc) : '') : 'Bot do Discord desligado') + '</span> ' +
       '<span class="sub">visto há ' + (min < 60 ? min + ' min' : Math.round(min / 60) + ' h') + (ok ? '' : ' · o PC pode estar desligado; nada se perde, ele põe tudo em dia quando ligar') + '</span>';
   }).catch(() => {});
   $('#importar-grupos').onclick = importarIniciais;

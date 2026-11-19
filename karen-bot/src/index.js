@@ -4,6 +4,7 @@
 import "dotenv/config";
 import http from "node:http";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import {
   Client, GatewayIntentBits, Events, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
@@ -20,6 +21,10 @@ const PASTA = process.env.KAREN_BOT_DATA || path.resolve("dados");
 const INTERVALO = Math.max(45, Number(process.env.INTERVALO_SEGUNDOS || 90)) * 1000;
 const COR = 0xab4c78, VERDE = 0x2e7d4f, VERMELHO = 0xc0392b, AZUL = 0x3b6ea5;
 const EFEMERA = { flags: MessageFlags.Ephemeral };
+// Revezamento entre PCs: só um bot fica ligado ao Discord; os outros esperam de reserva.
+const PC = String(process.env.NOME_DO_PC || process.env.COMPUTERNAME || os.hostname()).slice(0, 60);
+const LIDER_EXPIRA = 3 * 60000;
+let papel = "iniciando";
 
 if (!TOKEN || !GUILD_ID) { console.error("Faltam DISCORD_TOKEN e/ou DISCORD_GUILD_ID no .env."); process.exit(1); }
 if (!db.firestoreConfigurado()) console.error("ATENÇÃO: falta FIREBASE_SERVICE_ACCOUNT_JSON no .env — o bot não consegue ler o painel.");
@@ -31,18 +36,21 @@ let estado = { canais: {}, cargos: {}, threads: {}, versoes: {}, vistos: {}, cur
 function carregarLocal() { try { return JSON.parse(fs.readFileSync(ARQ, "utf8")); } catch { return null; } }
 let salvarTimer = null;
 function salvar() {
+  estado._salvoEm = new Date().toISOString();
   fs.writeFileSync(ARQ, JSON.stringify(estado, null, 2));
   clearTimeout(salvarTimer);
   // Cópia no Firestore: reinstalar o bot em outro PC não perde canais, tópicos nem vínculos.
-  salvarTimer = setTimeout(() => db.definir("botKaren", "estado", { json: JSON.stringify(estado), salvoEm: new Date().toISOString() }).catch((e) => log("cópia do estado falhou: " + e.message)), 5000);
+  salvarTimer = setTimeout(() => db.definir("botKaren", "estado", { json: JSON.stringify(estado), salvoEm: estado._salvoEm }).catch((e) => log("cópia do estado falhou: " + e.message)), 5000);
 }
 async function carregarEstado() {
+  // Com dois PCs revezando, vale o estado mais novo (o do Firestore costuma ser o do outro PC).
   const local = carregarLocal();
-  if (local) { estado = { ...estado, ...local }; return; }
-  try {
-    const remoto = await db.obter("botKaren", "estado");
-    if (remoto?.json) { estado = { ...estado, ...JSON.parse(remoto.json) }; log("estado recuperado do Firestore"); }
-  } catch (e) { log("sem estado anterior: " + e.message); }
+  let remoto = null;
+  try { const d = await db.obter("botKaren", "estado"); if (d?.json) remoto = { ...JSON.parse(d.json), _salvoEm: d.salvoEm || "" }; }
+  catch (e) { log("estado do Firestore indisponível: " + e.message); }
+  const usarRemoto = remoto && (!local || String(remoto._salvoEm) > String(local._salvoEm || ""));
+  estado = { ...estado, ...(usarRemoto ? remoto : local || {}) };
+  if (usarRemoto) log("estado recuperado do Firestore");
 }
 
 // ---------------------------------------------------------------- utilidades
@@ -363,7 +371,7 @@ async function ciclo() {
     // Sinal de vida para o painel (a cada ~10 min).
     if (!ciclo.sinal || Date.now() - ciclo.sinal > 9 * 60000) {
       ciclo.sinal = Date.now();
-      await db.definir("botKaren", "status", { vistoEm: ultimoCiclo, discord: client.isReady(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size }).catch(() => {});
+      await db.definir("botKaren", "status", { vistoEm: ultimoCiclo, discord: client.isReady(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, pc: PC }).catch(() => {});
     }
   } catch (e) {
     if (ultimoErro !== e.message) await avisarLog("⚠️ Erro ao ler o painel: " + e.message);
@@ -602,8 +610,44 @@ client.once(Events.ClientReady, async () => {
 // Status para o atalho "Status" do PC.
 http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify({ ok: true, discordReady: client.isReady(), firebase: db.firestoreConfigurado(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, ultimoCiclo, ultimoErro }));
+  res.end(JSON.stringify({ ok: true, papel, pc: PC, discordReady: client.isReady(), firebase: db.firestoreConfigurado(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, ultimoCiclo, ultimoErro }));
 }).listen(PORTA, "127.0.0.1", () => log(`status em http://127.0.0.1:${PORTA}/health`));
 
-await carregarEstado();
-client.login(TOKEN);
+/** Tenta ser o PC principal. Ganha se ninguém renovou o revezamento nos últimos 3 minutos. */
+async function assumirLideranca() {
+  const agora = new Date().toISOString();
+  const atual = await db.obter("botKaren", "lider");
+  const livre = !atual || atual.dono === PC || !atual.vistoEm || Date.now() - Date.parse(atual.vistoEm) > LIDER_EXPIRA;
+  if (!livre) return { ok: false, dono: atual.dono, vistoEm: atual.vistoEm };
+  try {
+    if (atual) await db.atualizar("botKaren", "lider", { dono: PC, vistoEm: agora }, atual._atualizado);
+    else await db.definir("botKaren", "lider", { dono: PC, vistoEm: agora });
+    return { ok: true };
+  } catch { return { ok: false, dono: "outro PC", vistoEm: agora }; }
+}
+
+async function iniciar() {
+  if (!db.firestoreConfigurado()) { papel = "principal"; await carregarEstado(); return client.login(TOKEN); }
+  let aviso = "";
+  for (;;) {
+    let r;
+    try { r = await assumirLideranca(); } catch (e) { r = { ok: false, dono: "?", erro: e.message }; }
+    if (r.ok) break;
+    papel = "reserva";
+    const msg = r.erro ? `reserva: sem acesso ao Firebase (${r.erro}); tentando de novo` : `reserva: o PC "${r.dono}" está com o bot; assumo se ele ficar 3 min sem sinal`;
+    if (msg !== aviso) { log(msg); aviso = msg; }
+    await new Promise((ok) => setTimeout(ok, 60000));
+  }
+  papel = "principal";
+  log(`principal: este PC (${PC}) está com o bot`);
+  // Renova a cada minuto. Se outro PC assumiu (este ficou sem rede ou dormiu), sai e volta como reserva.
+  setInterval(async () => {
+    try {
+      const r = await assumirLideranca();
+      if (!r.ok) { log(`o PC "${r.dono}" assumiu o bot; este volta para a reserva`); client.destroy(); process.exit(0); }
+    } catch (e) { log("revezamento: " + e.message); }
+  }, 60000);
+  await carregarEstado();
+  return client.login(TOKEN);
+}
+iniciar();

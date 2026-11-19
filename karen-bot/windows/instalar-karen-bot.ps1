@@ -97,6 +97,19 @@ function Completo { (Valor $EnvFile 'DISCORD_TOKEN') -and (Valor $EnvFile 'DISCO
 if (-not (Completo)) {
   $firebase = Valor $EnvFile 'FIREBASE_SERVICE_ACCOUNT_JSON'
   if (-not $firebase) { $firebase = Valor $HighOsEnv 'HIGH_OS_FIREBASE_SERVICE_ACCOUNT_JSON'; if ($firebase) { Ok 'Chave do Firebase reaproveitada do bot do High OS.' } }
+  if (-not $firebase) {
+    # Chave baixada do Console do Firebase (Contas de serviço > Gerar nova chave privada) na pasta Downloads.
+    $arq = Get-ChildItem -Path (Join-Path $env:USERPROFILE 'Downloads') -Filter '*.json' -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -like '*firebase-adminsdk*' -or $_.Name -like 'high-os-*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($arq) {
+      try { $j = Get-Content $arq.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($j.client_email -and $j.private_key) { $firebase = ($j | ConvertTo-Json -Compress -Depth 5); Ok ('Chave do Firebase lida de ' + $arq.Name + ' (Downloads).') } }
+      catch { Aviso ('Não consegui ler ' + $arq.Name) }
+    } else {
+      Aviso 'Sem chave do Firebase neste PC. Gere em: console.firebase.google.com > projeto high-os > Configurações do projeto > Contas de serviço > Gerar nova chave privada.'
+      Aviso 'Deixe o arquivo baixado na pasta Downloads e rode este instalador de novo (ele lê sozinho).'
+    }
+  }
   $modelo = @(
     '# Preencha depois do sinal de = (sem espaços nem aspas). Depois: Ctrl+S e FECHE o Bloco de Notas.',
     '# Token: Discord Developer Portal > seu app > Bot > Reset Token',
@@ -172,7 +185,8 @@ for ($i = 0; $i -lt 30 -and -not $vivo; $i++) {
   try { $h = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 5; $vivo = [bool]$h.ok } catch {}
 }
 if (-not $vivo) { Falha ("O bot não respondeu. Veja o log: " + (Join-Path $Logs 'bot.log')) }
-Ok "Bot rodando (tarefa '$Task'). Discord conectado: $($h.discordReady) · Firebase: $($h.firebase)"
+Ok "Bot rodando (tarefa '$Task') · papel: $($h.papel) · Firebase: $($h.firebase)"
+if ($h.papel -eq 'reserva') { Ok 'Outro PC já está com o bot: este fica de reserva e assume se aquele parar.' }
 
 # ---------------------------------------------------------------------------
 Passo '5/5 Atalhos'
@@ -185,6 +199,7 @@ function Parar { Stop-ScheduledTask -TaskName `$Task -ErrorAction SilentlyContin
   Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { `$_.CommandLine -like '*KarenBot*executar.ps1*' } | ForEach-Object { Stop-Process -Id `$_.ProcessId -Force -ErrorAction SilentlyContinue } }
 function Status { Write-Host ('Tarefa: ' + (Get-ScheduledTask -TaskName `$Task).State)
   try { `$h = Invoke-RestMethod "http://127.0.0.1:`$Port/health" -TimeoutSec 8
+    Write-Host ("Este PC: " + `$h.pc + " · papel: " + `$h.papel + " (reserva = esperando; assume se o outro PC parar)") -ForegroundColor Cyan
     Write-Host ("Bot respondendo · Discord: " + `$h.discordReady + " · Firebase: " + `$h.firebase + " · servidor montado: " + `$h.servidorMontado + " · grupos: " + `$h.grupos) -ForegroundColor Green
     if (`$h.ultimoErro) { Write-Host ("Último erro: " + `$h.ultimoErro) -ForegroundColor Yellow } }
   catch { Write-Host 'SEM RESPOSTA: o bot não está rodando. Use Reiniciar e veja o log.' -ForegroundColor Red } }

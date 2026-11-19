@@ -63,6 +63,13 @@ Depois dê o cargo **👑 Karen** para a Karen.
 Arquivos em `%LOCALAPPDATA%\KarenBot` (variáveis em `.env`, log em `logs\bot.log`).
 O estado do bot (canais, tópicos, vínculos) também fica salvo no Firebase (`ti/base/botKaren`): reinstalar não perde nada.
 
+## Dois PCs (principal e reserva)
+Pode instalar em mais de um PC (ex.: trabalho e casa) com o **mesmo token**. Só um fica ligado ao Discord por vez:
+o primeiro que liga vira o **principal**; o outro fica de **reserva** e assume sozinho se o principal ficar
+3 minutos sem sinal (desligou, dormiu, caiu a internet). Quando o principal volta, ele vê que o outro está
+com o bot e fica de reserva. O atalho **Status** mostra o papel de cada PC, e o painel mostra em qual PC o bot está.
+O controle fica em `ti/base/botKaren/lider` no Firebase.
+
 ## Com o PC desligado
 O site e o painel funcionam normal. Quando o PC liga, o bot posta o que chegou enquanto esteve desligado
 (cada registro é marcado como postado, então nada sai em dobro). O painel mostra em **Loja da Karen › Consórcio**
