@@ -655,6 +655,7 @@ async function postarVendasNovas() {
 
 /** Mensagem fixa num canal, editada quando o conteúdo muda (painéis de entregas e estoque). */
 async function painelFixo(chave, conteudo, vaga = "") {
+  delete conteudo.semCabecalho;
   V.decorar(conteudo);
   const c = await canal(chave);
   const chaveCanal = chave; chave = chave + vaga;
@@ -984,38 +985,45 @@ function conteudoComoFunciona() {
     botLink("Loja do site", SITE + "/", "🛒"), botLink("Reservar vaga no consórcio", SITE + "/consorcio/", "🤝"),
     botLink("Sacola misteriosa", SITE + "/sacola-misteriosa/", "🎁"), botLink("Meus pedidos", SITE + "/pedidos/", "📦"))] };
 }
-/** Vitrine: produtos com estoque, 10 por mensagem, com foto, preço e menu "Quero este". */
-function paginasVitrine() {
-  const itens = painelRV.produtos.filter((p) => p.unidades > 0).sort((a, b) => a.marca.localeCompare(b.marca) || a.nome.localeCompare(b.nome)).slice(0, 50);
-  const paginas = [];
-  for (let n = 0; n < itens.length; n += 10) {
-    const lote = itens.slice(n, n + 10);
-    const embeds = lote.map((p) => {
-      const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(curto(p.nome, 200))
-        .setDescription(`${V.emojiMarca(p.marca)} ${p.marca || ""}${p.codigo ? ` · cód. ${p.codigo}` : ""}\n**${C.brl(p.preco)}**` + (p.unidades <= 2 ? " · 🔥 últimas unidades" : ""));
-      if (/^https:/.test(p.foto || "")) e.setThumbnail(p.foto);
-      return e;
-    });
-    const op = lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}`, 100) }));
-    paginas.push({ embeds, components: menuZap("vit:quero", "🛒 Quero este…", op) });
+/** Vitrine numa mensagem só: um bloco por marca (lista com preço e código, foto de um produto da marca)
+ *  e menus "Quero este" (25 produtos por menu). */
+const ORDEM_MARCAS = ["boticário", "eudora", "quem disse", "o.u.i", "oui"];
+const posMarca = (m) => { const k = String(m || "").toLowerCase(); const n = ORDEM_MARCAS.findIndex((x) => k.includes(x)); return n < 0 ? 99 : n; };
+function conteudoVitrine() {
+  const itens = painelRV.produtos.filter((p) => p.unidades > 0)
+    .sort((a, b) => posMarca(a.marca) - posMarca(b.marca) || a.marca.localeCompare(b.marca) || a.nome.localeCompare(b.nome)).slice(0, 75);
+  const capa = new EmbedBuilder().setColor(COR).setTitle(`🛍️ Pronta entrega · ${itens.length} produto(s)`)
+    .setDescription(itens.length ? "Tudo aqui está no estoque da Karen para entrega rápida.\nEscolha no menu **🛒 Quero este** lá embaixo e a gente abre seu pedido. 💝" : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
+    .setFooter({ text: "Atualiza sozinho com o estoque · 🔥 = última unidade · preços podem mudar" });
+  const marcas = new Map();
+  for (const p of itens) { const k = p.marca || "Outras marcas"; if (!marcas.has(k)) marcas.set(k, []); marcas.get(k).push(p); }
+  const embeds = [capa];
+  for (const [marca, ps] of marcas) {
+    if (embeds.length >= 10) break;
+    const linhas = ps.map((p) => `• **${curto(p.nome, 55)}** · ${C.brl(p.preco)}${p.unidades === 1 ? " 🔥" : ""}${p.codigo ? ` · *cód. ${p.codigo}*` : ""}`);
+    const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`${V.emojiMarca(marca) || "🛍️"} ${marca} · ${ps.length}`).setDescription(curto(linhas.join("\n"), 4000));
+    const foto = ps.find((p) => /^https:/.test(p.foto || ""))?.foto;
+    if (foto) e.setThumbnail(foto);
+    embeds.push(e);
   }
-  return paginas;
+  const rows = [];
+  for (let n = 0; n < itens.length && rows.length < 3; n += 25) {
+    const lote = itens.slice(n, n + 25);
+    rows.push(...menuZap(`vit:quero:${n}`, `🛒 Quero este… (${n + 1} a ${n + lote.length})`, lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}`, 100) }))));
+  }
+  // limite de 6000 caracteres por mensagem: corta blocos do fim se passar
+  while (embeds.length > 1 && embeds.reduce((t, e) => t + JSON.stringify(e.toJSON()).length, 0) > 5600) embeds.pop();
+  return { embeds, components: rows, semCabecalho: false };
 }
 async function atualizarVitrine() {
   if (!estado.canais?.vitrine || !temPainel()) return;
-  const paginas = paginasVitrine();
-  const capa = new EmbedBuilder().setColor(COR).setTitle(`🛍️ Pronta entrega · ${paginas.length ? painelRV.produtos.filter((p) => p.unidades > 0).length + " produtos" : "esgotado"}`)
-    .setDescription(paginas.length ? "Tudo aqui está no estoque da Karen. Escolha no menu **🛒 Quero este** e a gente abre seu pedido. 💝" : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
-    .setFooter({ text: "Atualiza sozinho com o estoque · preços podem mudar" });
-  await painelFixo("vitrine", { embeds: [capa] }, ":capa");
-  for (let n = 0; n < 5; n++) {
-    const vaga = ":p" + n;
-    if (paginas[n]) await painelFixo("vitrine", paginas[n], vaga);
-    else if (estado.rvFixos?.["vitrine" + vaga]) {
-      const c = await canal("vitrine"); const id = estado.rvFixos["vitrine" + vaga].msg;
-      await c?.messages.fetch(id).then((m) => m.delete()).catch(() => {});
-      delete estado.rvFixos["vitrine" + vaga]; salvar();
-    }
+  await painelFixo("vitrine", conteudoVitrine(), ":v2");
+  // apaga as mensagens da vitrine antiga (capa + páginas)
+  for (const vaga of [":capa", ":p0", ":p1", ":p2", ":p3", ":p4"]) {
+    if (!estado.rvFixos?.["vitrine" + vaga]) continue;
+    const c = await canal("vitrine"); const id = estado.rvFixos["vitrine" + vaga].msg;
+    await c?.messages.fetch(id).then((m) => m.delete()).catch(() => {});
+    delete estado.rvFixos["vitrine" + vaga]; salvar();
   }
 }
 /** ✨ novidades: avisa quando um produto chega ou volta ao estoque (compara com a leitura anterior). */
@@ -1029,7 +1037,7 @@ async function postarChegadas() {
   const embeds = chegaram.slice(0, 10).map((p) => {
     const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`✨ Chegou: ${curto(p.nome, 200)}`)
       .setDescription(`${V.emojiMarca(p.marca)} ${p.marca || ""}${p.codigo ? ` · cód. ${p.codigo}` : ""}\n**${C.brl(p.preco)}**` + (p.descricao ? `\n\n${curto(p.descricao, 250)}` : ""));
-    if (/^https:/.test(p.foto || "")) e.setImage(p.foto);
+    if (/^https:/.test(p.foto || "")) chegaram.length <= 3 ? e.setImage(p.foto) : e.setThumbnail(p.foto);
     return e;
   });
   const op = chegaram.slice(0, 25).map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(C.brl(p.preco), 100) }));
