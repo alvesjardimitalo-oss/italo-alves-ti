@@ -20,6 +20,7 @@ import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, b
 import * as PR from "./painel-revendi.js";
 import * as G from "./graficos.js";
 import * as V from "./visual.js";
+import * as S from "./sets.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -899,10 +900,10 @@ async function gravarMapa() {
 function conteudoBoasVindas() {
   const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
     .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
-      "👉 Toque em **🌸 Entrar** e diga seu nome. Se informar o WhatsApp, a gente já liga você ao seu consórcio.")
+      "👉 Toque em **🌸 Entrar** e peça seu **set** com nome e WhatsApp. Se você já é cliente da Karen, é liberado na hora; se estiver no consórcio, ganha a tag do seu grupo.")
     .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n💬 **fale-com-a-karen**: dúvidas, pedidos e encomendas\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
     .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
-  return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar · pedir set").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
 }
 
 // ---------------------------------------------------------------- fila de atendimento por voz
@@ -997,6 +998,8 @@ async function rotinas() {
   const h = C.agoraSP();
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
+  const meiaHora = h.data + h.hora + (C.agoraSP().minuto >= 30 ? "b" : "a");
+  if (estado.setsRevisados !== meiaHora) { estado.setsRevisados = meiaHora; await revisarSets().catch((e) => log("sets: " + e.message)); }
   if (estado.mapaHora !== h.data + h.hora) { estado.mapaHora = h.data + h.hora; await gravarMapa().catch((e) => log("mapa: " + e.message)); }
   if (!estado.central?.msg || estado.central.lido !== painelRV.atualizadoEm) { await centralFixa(); if (estado.central) { estado.central.lido = painelRV.atualizadoEm; } }
   await rotinasRevendi(h);
@@ -1198,8 +1201,10 @@ async function comando(i) {
       const u = i.options.getUser("pessoa");
       const tel = C.soNumeros(i.options.getString("whatsapp"));
       if (tel.length < 10) return i.reply({ ...EFEMERA, content: "WhatsApp inválido." });
-      estado.vinculos[u.id] = tel; salvar();
-      return i.reply({ ...EFEMERA, content: `Ligado: ${u} ↔ ${C.fone(tel)}. Agora essa pessoa pode usar /minhas-parcelas.` });
+      const rv = S.acharNoRevendi(painelRV.clientes, tel, "");
+      await i.deferReply(EFEMERA);
+      const r = await aprovarSet(u.id, rv?.nome || estado.sets?.[u.id]?.nome || u.username, tel, i.user.username);
+      return i.editReply(`Ligado: ${u} ↔ ${C.fone(tel)} → **${r?.nick || "-"}**` + (rv ? ` (Revendi: ${rv.nome})` : " (não está no Revendi)") + (r?.cods?.length ? ` · grupos ${r.cods.join(", ")}` : "") + ". Pode usar /minhas-parcelas.");
     }
   }
 
@@ -1369,28 +1374,109 @@ function respostaBaixa(r, desfazer) {
     : `✅ Baixa: **${r.nome}** · ${r.g.codigo} · ${C.rotuloMes(r.ym, true)}. Agora ${x.pagas}/${x.total} pagas.` + (recibo ? `\n${linhaLink("📲 Mandar recibo no WhatsApp", recibo)}` : "") };
 }
 
+// ---------------------------------------------------------------- set das clientes: cargos por grupo e apelido
+const ymAgora = () => C.agoraSP().ym;
+/** Cargo de cada grupo em vigência (cria se faltar; apaga o dos grupos que terminaram). */
+async function cargosDosGrupos() {
+  estado.cargosGrupo = estado.cargosGrupo || {};
+  const vigentes = new Set(C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) !== "encerrado").map((g) => String(g.codigo).toUpperCase()));
+  for (const cod of vigentes) {
+    if (estado.cargosGrupo[cod] && guild.roles.cache.get(estado.cargosGrupo[cod])) continue;
+    const r = guild.roles.cache.find((x) => x.name === `💳 ${cod}`) ||
+      await guild.roles.create({ name: `💳 ${cod}`, color: V.CORES.atencao, hoist: true, mentionable: false, reason: "Grupo do consórcio" }).catch((e) => { log(`cargo ${cod}: ${e.message}`); return null; });
+    if (r) { estado.cargosGrupo[cod] = r.id; log(`cargo do grupo criado: ${r.name}`); }
+  }
+  for (const [cod, id] of Object.entries(estado.cargosGrupo)) {
+    if (vigentes.has(cod)) continue;
+    await guild.roles.cache.get(id)?.delete("Grupo do consórcio terminou").catch(() => {});
+    delete estado.cargosGrupo[cod]; log(`cargo do grupo removido (terminou): ${cod}`);
+  }
+  salvar();
+}
+/** Grupos em vigência da pessoa: painel do consórcio + etiquetas do Revendi. */
+function gruposDaPessoa(tel) {
+  const rv = S.acharNoRevendi(painelRV.clientes, tel, "");
+  const cods = new Set([...S.gruposDoTelefone([...grupos.values()], tel), ...S.gruposDasEtiquetas(rv?.etiquetas, ymAgora())]);
+  return [...cods].filter((c) => estado.cargosGrupo?.[c]).sort((a, b) => (Number(a.replace(/\D/g, "")) || 0) - (Number(b.replace(/\D/g, "")) || 0));
+}
+/** Acerta cargos (Cliente, Consorciada, G1, G3…) e apelido "[G3] - Nome" / "[CLIENTE] - Nome" de quem tem set. */
+async function aplicarSet(userId) {
+  const set = estado.sets?.[userId];
+  if (!set) return null;
+  const membro = await guild.members.fetch(userId).catch(() => null);
+  if (!membro) return null;
+  const cods = gruposDaPessoa(set.tel);
+  const querer = new Set([estado.cargos?.cliente, ...(cods.length ? [estado.cargos?.consorciada] : []), ...cods.map((c) => estado.cargosGrupo[c])].filter(Boolean));
+  const gerenciados = new Set([estado.cargos?.consorciada, ...Object.values(estado.cargosGrupo || {})].filter(Boolean));
+  const add = [...querer].filter((id) => !membro.roles.cache.has(id));
+  const tirar = [...gerenciados].filter((id) => !querer.has(id) && membro.roles.cache.has(id));
+  if (add.length) await membro.roles.add(add, "Set da cliente").catch((e) => log(`cargos de ${membro.user.tag}: ${e.message}`));
+  if (tirar.length) await membro.roles.remove(tirar, "Grupo terminou / saiu do grupo").catch(() => {});
+  const nick = S.apelido(cods, set.nome);
+  if (membro.manageable && membro.nickname !== nick) await membro.setNickname(nick, "Set da cliente").catch(() => {});
+  if (cods.join() !== (set.grupos || []).join()) { set.grupos = cods; salvar(); }
+  return { membro, cods, nick };
+}
+async function revisarSets() {
+  await cargosDosGrupos().catch((e) => log("cargos dos grupos: " + e.message));
+  for (const [id, tel] of Object.entries(estado.vinculos || {})) {
+    if (estado.sets?.[id]) continue;
+    const rv = S.acharNoRevendi(painelRV.clientes, tel, "");
+    if (rv || S.gruposDoTelefone([...grupos.values()], tel).length) {
+      const m = await guild.members.fetch(id).catch(() => null);
+      if (m) estado.sets = { ...(estado.sets || {}), [id]: { nome: rv?.nome || m.displayName.replace(/^\[[^\]]*\]\s*-\s*/, ""), tel, em: new Date().toISOString(), por: "migração" } };
+    }
+  }
+  for (const id of Object.keys(estado.sets || {})) await aplicarSet(id).catch((e) => log("set: " + e.message));
+}
+/** Aprova o set (automático quando bate com o Revendi/consórcio, ou pela equipe). */
+async function aprovarSet(userId, nome, tel, por) {
+  estado.sets = { ...(estado.sets || {}), [userId]: { nome, tel, em: new Date().toISOString(), por } };
+  estado.vinculos[userId] = tel; delete estado.pedidosSet?.[userId]; salvar();
+  await cargosDosGrupos().catch(() => {});
+  return aplicarSet(userId);
+}
+
 async function entradaCliente(i) {
-  const nome = String(i.fields.getTextInputValue("nome") || "").trim().slice(0, 60);
+  const nomeDigitado = String(i.fields.getTextInputValue("nome") || "").replace(/\s+/g, " ").trim().slice(0, 60);
   const tel = C.soNumeros(i.fields.getTextInputValue("whats") || "");
-  const membro = await guild.members.fetch(i.user.id);
-  const cargoCli = guild.roles.cache.get(estado.cargos?.cliente), cargoCons = guild.roles.cache.get(estado.cargos?.consorciada);
-  if (!cargoCli) return i.reply({ ...EFEMERA, content: "O servidor ainda está sendo arrumado. Tente de novo mais tarde 💝" });
-  const chave = tel.length >= 10 ? C.chaveTel(tel) : "";
-  const nos = chave ? [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => C.chaveTel(m.whatsapp) === chave).map(() => g.codigo)) : [];
-  await membro.roles.add(cargoCli).catch(() => {});
-  if (nos.length && cargoCons) await membro.roles.add(cargoCons).catch(() => {});
-  if (chave) { estado.vinculos[i.user.id] = tel; salvar(); }
-  if (nome && membro.manageable && !membro.nickname) await membro.setNickname(nome).catch(() => {});
-  const cliRV = chave ? painelRV.clientes.find((c) => C.chaveTel(c.whatsapp) === chave) : null;
-  await enviar("alertas", { embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🌸 Nova cliente no Discord")
-    .setDescription(`${membro} · **${nome || membro.user.username}**` + (tel ? ` · ${C.fone(tel)}` : " · sem WhatsApp") +
-      (nos.length ? `\n💳 Consorciada: ${[...new Set(nos)].join(", ")}` : "") + (cliRV ? `\n🛍️ Já é cliente no Revendi (${cliRV.nome})` : tel ? "\n🆕 WhatsApp não está no Revendi" : ""))] });
-  return i.reply({ ...EFEMERA, content: `Prontinho, ${C.primeiroNome(nome || membro.user.username)}! 💝 Agora você vê a 🌸 Área das Clientes: novidades, 💬 fale-com-a-karen e a call ⏳ Aguardando atendimento (entre nela e a Karen te chama).` +
-    (nos.length ? `\nVi que você está no consórcio (${[...new Set(nos)].join(", ")}). Use **/minhas-parcelas** para ver sua situação (só você vê).` : "") });
+  if (tel.length < 10) return i.reply({ ...EFEMERA, content: "Confira o WhatsApp com DDD (ex.: 33 99999-9999) e toque em 🌸 Entrar de novo." });
+  await i.deferReply(EFEMERA);
+  const rv = S.acharNoRevendi(painelRV.clientes, tel, nomeDigitado);
+  const cods = S.gruposDoTelefone([...grupos.values()], tel);
+  if (rv || cods.length) {
+    const nome = rv?.nome || nomeDigitado;
+    const r = await aprovarSet(i.user.id, nome, tel, "automático");
+    await enviar("alertas", { embeds: [new EmbedBuilder().setColor(VERDE).setTitle("🌸 Set aprovado automaticamente")
+      .setDescription(`<@${i.user.id}> → **${r?.nick || nome}**\n📱 ${C.fone(tel)}` + (rv ? `\n🛍️ Revendi: ${rv.nome}` : "\n🛍️ Não está no Revendi (achei pelo consórcio)") + (r?.cods?.length ? `\n💳 Grupos: ${r.cods.join(", ")}` : ""))] });
+    return i.editReply(`Prontinho, ${C.primeiroNome(nome)}! 💝 Seu set foi aprovado: **${r?.nick || nome}**.\nAgora você vê a 🌸 Área das Clientes. Para falar com a Karen por voz, entre na call **Aguardando** e espere: alguém da equipe te chama.` +
+      (r?.cods?.length ? `\nVocê está no consórcio (${r.cods.join(", ")}). Use **/minhas-parcelas** para ver sua situação (só você vê).` : ""));
+  }
+  estado.pedidosSet = { ...(estado.pedidosSet || {}), [i.user.id]: { nome: nomeDigitado, tel, em: new Date().toISOString() } }; salvar();
+  const botoes = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`set:ok:${i.user.id}`).setLabel("Aprovar como cliente").setEmoji("✅").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`set:tel:${i.user.id}`).setLabel("Corrigir WhatsApp e aprovar").setEmoji("📱").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`set:nao:${i.user.id}`).setLabel("Recusar").setStyle(ButtonStyle.Danger));
+  const mencoes = [estado.cargos?.dona, estado.cargos?.admin].filter(Boolean);
+  await enviar("alertas", { content: mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { roles: mencoes },
+    embeds: [new EmbedBuilder().setColor(AMARELO).setTitle("🌸 Pedido de set para conferir")
+      .setDescription(`<@${i.user.id}> diz ser **${nomeDigitado}** · 📱 ${C.fone(tel)}\n❓ Não achei esse WhatsApp no Revendi nem no consórcio.`)
+      .setFooter({ text: "Se for cliente com outro número, use Corrigir WhatsApp" })], components: [botoes] });
+  return i.editReply(`Recebemos seu pedido, ${C.primeiroNome(nomeDigitado)}! 💝 Não achei esse WhatsApp no cadastro da Karen, então a equipe vai conferir e liberar seu acesso em breve.`);
 }
 
 async function modalEnviado(i) {
   if (i.customId === "cli:entrar") return entradaCliente(i);
+  if (i.customId.startsWith("set:tel:")) {
+    if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe pode aprovar." });
+    const userId = i.customId.split(":")[2], tel = C.soNumeros(i.fields.getTextInputValue("whats"));
+    if (tel.length < 10) return i.reply({ ...EFEMERA, content: "WhatsApp inválido." });
+    const rv = S.acharNoRevendi(painelRV.clientes, tel, "");
+    const nome = String(i.fields.getTextInputValue("nome") || "").trim() || rv?.nome || estado.pedidosSet?.[userId]?.nome || "Cliente";
+    const r = await aprovarSet(userId, rv?.nome && !String(i.fields.getTextInputValue("nome") || "").trim() ? rv.nome : nome, tel, i.user.username);
+    if (i.message) await i.message.edit({ content: "", embeds: [EmbedBuilder.from(i.message.embeds[0]).setColor(VERDE).setFooter({ text: `✅ Aprovado por ${i.user.username}: ${r?.nick || nome}` })], components: [] }).catch(() => {});
+    return i.reply({ ...EFEMERA, content: `✅ Set aprovado: **${r?.nick || nome}**` + (rv ? ` (Revendi: ${rv.nome})` : " (não está no Revendi)") + (r?.cods?.length ? ` · grupos ${r.cods.join(", ")}` : "") });
+  }
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode criar grupos." });
   if (i.customId !== "ng") return;
   const v = (id) => String(i.fields.getTextInputValue(id) || "").trim();
@@ -1428,9 +1514,9 @@ async function componente(i) {
     return;
   }
   if (tipo === "cli" && acao === "entrar") {
-    const modal = new ModalBuilder().setCustomId("cli:entrar").setTitle("Bem-vinda à Karen Cosméticos 🌸").addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("nome").setLabel("Seu nome").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(60)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("whats").setLabel("Seu WhatsApp com DDD (para ver suas parcelas)").setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(20).setPlaceholder("(33) 99999-9999")));
+    const modal = new ModalBuilder().setCustomId("cli:entrar").setTitle("Pedir set · Karen Cosméticos 🌸").addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("nome").setLabel("Seu nome completo").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(60)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("whats").setLabel("Seu WhatsApp com DDD (o mesmo da Karen)").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(20).setPlaceholder("(33) 99999-9999")));
     return i.showModal(modal);
   }
   if (tipo === "atd" && !ehEquipe(i)) {
@@ -1461,6 +1547,21 @@ async function componente(i) {
     const eu = eu0;
     const euJa = eu?.voice?.channelId === destino.id;
     return i.reply({ ...EFEMERA, content: `🎧 ${membro.displayName} foi para **${destino.name}**.` + (euJa ? "" : eu?.voice?.channelId ? " Entre lá também." : ` Entre em <#${destino.id}> para atender.`) });
+  }
+  if (tipo === "set") {
+    const p = estado.pedidosSet?.[a];
+    if (acao === "tel") {
+      return i.showModal(new ModalBuilder().setCustomId(`set:tel:${a}`).setTitle("Aprovar set com outro WhatsApp").addComponents(
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("whats").setLabel("WhatsApp cadastrado no Revendi/consórcio").setStyle(TextInputStyle.Short).setRequired(true).setValue(p?.tel || "")),
+        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("nome").setLabel("Nome (vazio = nome do Revendi)").setStyle(TextInputStyle.Short).setRequired(false).setValue(p?.nome || ""))));
+    }
+    if (!p) return i.update({ components: [] });
+    if (acao === "nao") {
+      delete estado.pedidosSet[a]; salvar();
+      return i.update({ embeds: [EmbedBuilder.from(i.message.embeds[0]).setColor(V.CORES.neutro).setFooter({ text: `Recusado por ${i.user.username}` })], components: [] });
+    }
+    const r = await aprovarSet(a, p.nome, p.tel, i.user.username);
+    return i.update({ content: "", embeds: [EmbedBuilder.from(i.message.embeds[0]).setColor(VERDE).setFooter({ text: `✅ Aprovado por ${i.user.username}: ${r?.nick || p.nome}` })], components: [] });
   }
   if (tipo === "cen") {
     const precisaRV = ["hoje", "semana", "mes", "estoque", "entregas", "aniv", "sumidas"].includes(acao);

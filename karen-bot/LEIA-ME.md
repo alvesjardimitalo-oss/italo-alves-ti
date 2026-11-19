@@ -111,6 +111,13 @@ e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `s
 WhatsApp (opcional): ganha o cargo **🌸 Cliente** (e **💳 Consorciada** se o WhatsApp está num grupo), fica ligada ao
 `/minhas-parcelas`, e a equipe recebe aviso em #alertas (diz se ela já é cliente no Revendi). Clientes veem: ✨ novidades (lê),
 💬 fale-com-a-karen (escreve), 🎧 Atendimento (call) e, se consorciada, 💳 meu-consorcio. Todo o resto é só da equipe.
+**Set das clientes:** em #boas-vindas a pessoa toca **🌸 Entrar · pedir set** e informa nome e WhatsApp. Se o WhatsApp está
+no Revendi ou num grupo do consórcio, o set sai na hora: cargo **🌸 Cliente** e apelido **[CLIENTE] - Nome do Revendi**; se está
+num grupo em vigência, ganha o cargo do grupo (**💳 G3**, criado sozinho) e o apelido vira **[G3] - Nome** (dois grupos: [G1/G3]).
+Se não achar, vai para #alertas com **Aprovar**, **Corrigir WhatsApp e aprovar** ou **Recusar**. A cada 30 min o bot revisa:
+grupo terminou → tira o cargo do grupo, apaga o cargo e o apelido volta a [CLIENTE]. Grupos vêm do painel do consórcio e das
+etiquetas "Consorcio G… a <mês> <ano>" do Revendi. `/servidor vincular` também faz o set.
+
 **Atendimento por voz:** a cliente só vê a call **Aguardando**: entra, mas não fala nem escreve. Ao entrar, #alertas avisa
 toda a equipe (@here + cargos) com WhatsApp, consórcio e crediário dela e os botões **Puxar para a minha call** (quem já está
 numa call de atendimento) ou **Atendimento 01/02/03** (mostra se está ocupada). O bot libera aquela call só para essa cliente,
