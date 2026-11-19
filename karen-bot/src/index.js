@@ -14,6 +14,8 @@ import {
 import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
 import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
+import * as CR from "./crediario.js";
+import { sincronizarRevendi, estadoRevendi } from "./revendi.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -108,6 +110,8 @@ const comandos = [
       .addStringOption((o) => o.setName("interessado").setDescription("Quem respondeu a renovação ou o banco de reserva").setAutocomplete(true))
       .addStringOption((o) => o.setName("nome").setDescription("Nome (se não for da lista)"))
       .addStringOption((o) => o.setName("whatsapp").setDescription("WhatsApp com DDD (se não for da lista)"))),
+  new SlashCommandBuilder().setName("cliente").setDescription("Ficha da cliente: consórcios e crediário do Revendi")
+    .addStringOption((o) => o.setName("quem").setDescription("Nome ou WhatsApp").setAutocomplete(true).setRequired(true)),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -161,6 +165,15 @@ function interessados() {
   reservas.forEach((l) => add(l.nome, l.whatsapp, "reserva R$ " + ((String(l.detalhe).match(/\[valor:([^\]]+)\]/) || [])[1] || "?")));
   return out;
 }
+// Crediário do Revendi (ti/base/crediario), lido a cada 5 min. Vazio enquanto a integração não liga.
+let crediario = [], crediarioLido = 0;
+async function carregarCrediario(forcar = false) {
+  if (!forcar && Date.now() - crediarioLido < 5 * 60000) return;
+  crediario = await db.listar("crediario");
+  crediarioLido = Date.now();
+}
+const clientesCrediario = () => CR.porCliente(crediario);
+
 async function publicarGrupos() {
   await db.definir("rastreio", "consorcio-grupos", { grupos: C.gruposPublicos([...grupos.values()]), atualizadoEm: new Date().toISOString() }).catch((e) => log("publicar grupos: " + e.message));
 }
@@ -383,6 +396,10 @@ async function resumoDoDia() {
   }
   if (!ativos.length) e.setDescription("Nenhum grupo em andamento. Cadastre os grupos no painel.");
   else e.setDescription(`💰 Recebido em ${C.rotuloMes(hoje.ym, true)}: **${C.brl(recebido)}** de ${C.brl(previsto)}`);
+  if (crediario.length) {
+    const r = CR.resumo(crediario);
+    e.addFields({ name: "💳 Crediário (Revendi)", value: `Vence hoje: **${C.brl(r.hoje)}** (${r.qtdHoje}) · Em atraso: **${C.brl(r.atraso)}** (${r.clientesAtraso} cliente(s)) · Próximos 7 dias: ${C.brl(r.semana)} · A receber: ${C.brl(r.aReceber)}` });
+  }
   const pendentes = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => !m.resgatadoEm && C.resumoMembro(g, m).quitado).map((m) => `${m.nome} (${g.codigo})`));
   if (pendentes.length) e.addFields({ name: `🎁 Quitaram e ainda não resgataram (${pendentes.length})`, value: curto(pendentes.join(" · "), 1000) });
   if (formando.length) e.addFields({ name: "🟦 Próximo grupo", value: formando.map((g) => `${g.codigo}: ${(g.membros || []).length}${g.vagas ? "/" + g.vagas : ""} membros · começa ${C.rotuloMes(g.inicio, true)}`).join("\n") });
@@ -495,6 +512,21 @@ async function backupSemanal() {
   await enviar("logs", { content: `💾 Backup semanal dos grupos do consórcio (${dados.grupos.length} grupos). Guarde se quiser; o painel continua sendo a fonte oficial.`, files: [arquivo] });
 }
 
+async function cobrancasCrediario() {
+  const clientes = clientesCrediario().filter((c) => c.abertas.some((p) => CR.venceHoje(p) || CR.atrasada(p)))
+    .sort((a, b) => b.emAtraso - a.emAtraso);
+  if (!clientes.length) return;
+  const linhas = clientes.map((c) => {
+    const hoje = c.abertas.filter(CR.venceHoje), atr = c.atrasadas;
+    return `• **${c.cliente}** · ` + [atr.length ? `⚠️ ${atr.length} atrasada(s) ${C.brl(c.emAtraso)}` : "", hoje.length ? `📅 vence hoje ${C.brl(hoje.reduce((t, p) => t + p.valor, 0))}` : ""].filter(Boolean).join(" · ");
+  });
+  const opcoes = clientes.filter((c) => c.whatsapp).slice(0, 25).map((c) => ({ label: curto(c.cliente, 100), value: curto(C.chaveTel(c.whatsapp), 100), description: curto(`Em aberto ${C.brl(c.devendo)}`, 100) }));
+  const e = new EmbedBuilder().setColor(0x8e44ad).setTitle(`💳 Crediário de hoje · ${C.dataBR(CR.hojeISO())}`).setDescription(curto(linhas.join("\n"), 4000))
+    .setFooter({ text: "Dados do Revendi (só leitura). Dê baixa no Revendi; aqui atualiza na próxima sincronização." });
+  const comp = opcoes.length ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("crd").setPlaceholder("📲 Cobrar no WhatsApp…").addOptions(opcoes))] : [];
+  await enviar("cobrancas", { embeds: [e], components: comp });
+}
+
 async function rotinas() {
   const h = C.agoraSP();
   if (h.hora >= 8 && h.hora < 21 && estado.resumoDia !== h.data) {
@@ -505,6 +537,10 @@ async function rotinas() {
     if (h.dia === 1 && estado.relatorioMes !== h.ym) {
       estado.relatorioMes = h.ym; salvar();
       await relatorioMensal(C.somarMes(h.ym, -1)).catch((e) => log("relatório: " + e.message));
+    }
+    if (crediario.length && estado.crediarioDia !== h.data) {
+      estado.crediarioDia = h.data; salvar();
+      await cobrancasCrediario().catch((e) => log("crediário: " + e.message));
     }
     if (h.diaSemana === 0 && estado.backupData !== h.data) {
       estado.backupData = h.data; salvar();
@@ -539,6 +575,8 @@ async function ciclo() {
   if (!guild || !db.firestoreConfigurado()) return;
   try {
     await carregarRespostas().catch((e) => log("respostas: " + e.message));
+    if (await sincronizarRevendi(log)) crediarioLido = 0;
+    await carregarCrediario().catch((e) => log("crediário: " + e.message));
     await verificarGrupos();
     await verificarLeads();
     await rotinas();
@@ -580,7 +618,13 @@ async function autocompletar(i) {
   const foco = i.options.getFocused(true);
   const texto = String(foco.value || "").toLowerCase();
   let opcoes = [];
-  if (foco.name === "grupo") {
+  if (foco.name === "quem") {
+    const vistos = new Set();
+    const lista = [];
+    for (const g of grupos.values()) for (const m of g.membros || []) { const k = C.chaveTel(m.whatsapp) || m.nome; if (!vistos.has(k)) { vistos.add(k); lista.push({ name: curto(`${m.nome} · consórcio`, 100), value: curto(k, 100) }); } }
+    for (const c of clientesCrediario()) { const k = C.chaveTel(c.whatsapp) || c.cliente; if (!vistos.has(k)) { vistos.add(k); lista.push({ name: curto(`${c.cliente} · crediário`, 100), value: curto(k, 100) }); } }
+    opcoes = lista.filter((o) => o.name.toLowerCase().includes(texto) || o.value.includes(texto.replace(/\D/g, "") || "§"));
+  } else if (foco.name === "grupo") {
     opcoes = C.ordenarGrupos([...grupos.values()]).map((g) => ({ name: curto(`${g.codigo} · ${C.brl(g.valorParcela)} · ${C.ROTULO[C.situacao(g)]}`, 100), value: g.id }));
   } else {
     const g = grupoPorCodigo(i.options.getString("grupo"));
@@ -652,6 +696,21 @@ async function comando(i) {
     }
   }
 
+  if (nome === "cliente") {
+    const q = String(i.options.getString("quem") || "").trim();
+    const tel = C.chaveTel(q);
+    const bate = (nomeX, w) => (tel.length >= 8 && C.chaveTel(w) === tel) || String(nomeX || "").toLowerCase() === q.toLowerCase();
+    const consorcios = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => bate(m.nome, m.whatsapp)).map((m) => ({ g, m })));
+    const cred = clientesCrediario().find((c) => bate(c.cliente, c.whatsapp));
+    if (!consorcios.length && !cred) return i.reply({ ...EFEMERA, content: "Não encontrei essa cliente no consórcio nem no crediário." });
+    const embeds = consorcios.slice(0, 8).map(({ g, m }) => embedMembro(g, m));
+    if (cred) embeds.push(new EmbedBuilder().setColor(cred.atrasadas.length ? VERMELHO : 0x8e44ad).setTitle(`💳 ${cred.cliente} · crediário (Revendi)`)
+      .setDescription(cred.abertas.length ? curto(cred.abertas.map((p) => `${CR.atrasada(p) ? "⚠️" : CR.venceHoje(p) ? "📅" : "▫️"} ${C.dataBR(p.vencimento)} · ${p.numero}/${p.total} · ${C.brl(p.valor)}${p.venda ? " · venda " + p.venda : ""}`).join("\n"), 4000) + `\n\n**Em aberto:** ${C.brl(cred.devendo)}` + (cred.emAtraso ? ` · **em atraso:** ${C.brl(cred.emAtraso)}` : "")
+        : "Nada em aberto no crediário. 🎉"));
+    const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp);
+    const comp = cred?.abertas.length && zap ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`crdc:${curto(C.chaveTel(zap), 60)}`).setLabel("Cobrar crediário").setEmoji("📲").setStyle(ButtonStyle.Primary))] : [];
+    return i.reply({ ...EFEMERA, embeds: embeds.slice(0, 10), components: comp });
+  }
   if (nome === "loja") {
     await i.deferReply(EFEMERA);
     const leads = (await db.leadsDesde(new Date(Date.now() - 7 * 864e5).toISOString(), 300)).filter((l) => l.origem === "black-friday-pedido");
@@ -774,6 +833,13 @@ async function componente(i) {
   }
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode usar isso." });
 
+  if (tipo === "crd" || tipo === "crdc") {
+    const k = tipo === "crd" ? i.values?.[0] : acao;
+    const c = clientesCrediario().find((x) => C.chaveTel(x.whatsapp) === k);
+    if (!c?.whatsapp) return i.reply({ ...EFEMERA, content: "Cliente sem WhatsApp no Revendi." });
+    const lista = c.atrasadas.length ? c.atrasadas : c.abertas.slice(0, 1);
+    return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + c.cliente, C.linkWhats(c.whatsapp, CR.mensagemCrediario(c, lista))) });
+  }
   if (tipo === "rev") {
     const e = EmbedBuilder.from(i.message.embeds[0]).setFooter({ text: `✅ Lançado no Revendi por ${i.user.username} · ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` });
     return i.update({ embeds: [e], components: [] });
@@ -897,7 +963,7 @@ client.once(Events.ClientReady, async () => {
 // Status para o atalho "Status" do PC.
 http.createServer((req, res) => {
   res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify({ ok: true, papel, pc: PC, discordReady: client.isReady(), firebase: db.firestoreConfigurado(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, ultimoCiclo, ultimoErro }));
+  res.end(JSON.stringify({ ok: true, papel, pc: PC, revendi: estadoRevendi(), crediario: crediario.length, discordReady: client.isReady(), firebase: db.firestoreConfigurado(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, ultimoCiclo, ultimoErro }));
 }).listen(PORTA, "127.0.0.1", () => log(`status em http://127.0.0.1:${PORTA}/health`));
 
 /** Tenta ser o PC principal. Ganha se ninguém renovou o revezamento nos últimos 3 minutos. */

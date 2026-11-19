@@ -83,6 +83,15 @@ O site e o painel funcionam normal. Quando o PC liga, o bot posta o que chegou e
 (cada registro é marcado como postado, então nada sai em dobro). O painel mostra em **Loja da Karen › Consórcio**
 se o bot está ligado.
 
-## Revendi
-O Revendi não tem integração aberta (API) nem exportação automática, então as vendas ficam só lá. O bot lembra de
-lançar cada resgate do consórcio no Revendi. Se o Revendi liberar API, webhook ou exportação em CSV, dá para o bot ler.
+## Revendi (crediário) — em preparação
+O suporte do Revendi confirmou que dá para usar a API do sistema com o **login da conta** (e-mail e senha → token e
+refresh token) e vai mandar um repositório de exemplo. O bot já está pronto do lado dele, **só lendo** o Revendi:
+
+- `src/revendi.js` faz o login, renova o token e grava as parcelas do crediário em `ti/base/crediario` a cada 30 min
+  (as rotas finais entram quando chegar o exemplo do suporte);
+- `src/crediario.js` calcula o que vence hoje, o que está atrasado e quanto cada cliente deve;
+- **#resumo-do-dia** ganha a linha 💳 Crediário; **#cobrancas** ganha, às 9h, o *Crediário de hoje* com cobrança
+  pronta no WhatsApp; **`/cliente`** mostra a ficha da cliente (consórcios + crediário).
+
+Para ligar: no `.env`, `REVENDI_ATIVO=sim`, `REVENDI_API_URL`, `REVENDI_EMAIL`, `REVENDI_SENHA` (de preferência um
+usuário só para a integração). E-mail, senha e token ficam só no PC. Enquanto `REVENDI_ATIVO` estiver vazio, nada disso roda.
