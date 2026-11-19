@@ -50,9 +50,14 @@ export const ESTRUTURA = [
   { categoria: "🌸 ÁREA DAS CLIENTES", area: "clientes", canais: [
     { chave: "boasvindas", nome: "👋・boas-vindas", acesso: "publico", topico: "Bem-vinda à Karen Martins Cosméticos! Toque em 🌸 Entrar para ver o restante." },
     { chave: "novidades", nome: "✨・novidades", acesso: "clientes", topico: "Lançamentos, promoções e campanhas." },
+    { chave: "abrirticket", nome: "🎫・abrir-ticket", acesso: "clientes", topico: "Fale com a Karen em particular: pedidos, consórcio, pagamento, troca. Só você e a equipe veem o ticket." },
     { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
     { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "espera", topico: "", adotar: ["aguard", "espera"] },
+  ] },
+  // Tickets: cada ticket vira um canal privado aqui (cliente + equipe). Fechados vão para o histórico.
+  { categoria: "🎫 TICKETS", area: "equipe", canais: [
+    { chave: "ticketsFechados", nome: "🗂️・tickets-fechados", topico: "Histórico: a conversa de cada ticket fechado (arquivo .txt)." },
   ] },
   // Calls de atendimento: só a equipe vê. A cliente entra em ⏳ Aguardando e a equipe puxa ela para cá (botão no aviso).
   { categoria: "🎧 ATENDIMENTO", area: "equipe", canais: [

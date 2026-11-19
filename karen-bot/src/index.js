@@ -901,7 +901,7 @@ function conteudoBoasVindas() {
   const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
     .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
       "👉 Toque em **🌸 Entrar** e peça seu **set** com nome e WhatsApp. Se você já é cliente da Karen, é liberado na hora; se estiver no consórcio, ganha a tag do seu grupo.")
-    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n💬 **fale-com-a-karen**: dúvidas, pedidos e encomendas\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
+    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n🎫 **abrir-ticket**: fale com a Karen em particular\n💬 **fale-com-a-karen**: conversa aberta com as clientes\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
     .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
   return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar · pedir set").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
 }
@@ -965,6 +965,93 @@ client.on(Events.VoiceStateUpdate, async (antes, depois) => {
   } catch (e) { log("call de espera: " + e.message); }
 });
 
+// ---------------------------------------------------------------- tickets
+const TIPOS_TICKET = {
+  pedido: { emoji: "🛍️", nome: "Pedido / encomenda" },
+  consorcio: { emoji: "💳", nome: "Consórcio" },
+  pagamento: { emoji: "💰", nome: "Pagamento / crediário" },
+  troca: { emoji: "🔁", nome: "Troca / defeito" },
+  outro: { emoji: "❓", nome: "Outro assunto" },
+};
+const slug = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 20);
+function conteudoAbrirTicket() {
+  const e = new EmbedBuilder().setColor(COR).setTitle("🎫 Fale com a Karen em particular")
+    .setDescription("Escolha o assunto: abre um canal **só seu com a equipe**, ninguém mais vê.\n" +
+      "Respondemos assim que possível (seg. a sáb.). Se preferir falar por voz, entre na call **Aguardando**.")
+    .setFooter({ text: "Um ticket sem mensagens por 3 dias é fechado sozinho" });
+  const b = (k) => new ButtonBuilder().setCustomId(`tk:abrir:${k}`).setLabel(TIPOS_TICKET[k].nome).setEmoji(TIPOS_TICKET[k].emoji).setStyle(k === "pedido" ? ButtonStyle.Primary : ButtonStyle.Secondary);
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(...Object.keys(TIPOS_TICKET).map(b))] };
+}
+const ticketsAbertosDe = (userId) => Object.entries(estado.tickets || {}).filter(([id, t]) => t.user === userId && guild.channels.cache.get(id));
+async function abrirTicket(i, tipo, texto) {
+  const tp = TIPOS_TICKET[tipo] || TIPOS_TICKET.outro;
+  const abertos = ticketsAbertosDe(i.user.id);
+  if (abertos.length >= 2) return i.editReply(`Você já tem ticket aberto: <#${abertos[0][0]}>. Continue por lá 💝`);
+  const cat = (await canal("ticketsFechados"))?.parent;
+  if (!cat) return i.editReply("Os tickets ainda estão sendo preparados. Tente de novo em instantes.");
+  const membro = await guild.members.fetch(i.user.id);
+  estado.ticketSeq = (estado.ticketSeq || 0) + 1;
+  const num = String(estado.ticketSeq).padStart(4, "0");
+  const nome = estado.sets?.[i.user.id]?.nome || membro.displayName.replace(/^\[[^\]]*\]\s*-\s*/, "");
+  const perms = permissoes(guild, "equipe", Object.fromEntries(Object.entries(estado.cargos || {}).map(([k, id]) => [k, guild.roles.cache.get(id)])), false);
+  perms.push({ id: i.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AddReactions] });
+  const ch = await guild.channels.create({ name: `${tp.emoji}・${num}-${slug(nome) || "cliente"}`, parent: cat.id, topic: `Ticket ${num} · ${tp.nome} · ${nome}`, permissionOverwrites: perms });
+  estado.tickets = { ...(estado.tickets || {}), [ch.id]: { user: i.user.id, tipo, num, nome, abertoEm: new Date().toISOString(), ultimo: Date.now(), assumido: "" } }; salvar();
+  const acoes = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`tk:assumir:${ch.id}`).setLabel("Assumir").setEmoji("✋").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`tk:fechar:${ch.id}`).setLabel("Fechar ticket").setEmoji("🔒").setStyle(ButtonStyle.Danger));
+  await ch.send(V.decorar({ content: `${membro} 💝`, embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle(`${tp.emoji} Ticket ${num} · ${tp.nome}`)
+    .setDescription((texto ? `**${nome}** escreveu:\n> ${curto(texto, 1500).replace(/\n/g, "\n> ")}\n\n` : "") + "Obrigada por chamar! Alguém da equipe já vai te responder por aqui. Pode mandar fotos e prints. 🌸")
+    .setFooter({ text: "Só você e a equipe da Karen veem este canal" })], components: [acoes] }));
+  // ficha para a equipe (no #alertas, a cliente não vê)
+  const set = estado.sets?.[i.user.id], tel = set?.tel || estado.vinculos?.[i.user.id];
+  const linhas = [`${membro} abriu <#${ch.id}> · **${tp.nome}**`];
+  if (tel) {
+    linhas.push(`📱 ${C.fone(tel)}`);
+    const h = PR.historicoClientes(painelRV.vendas).find((x) => C.chaveTel(x.whatsapp) === C.chaveTel(tel));
+    if (h) linhas.push(`🛍️ ${h.compras} compra(s) no ano · ${C.brl(h.total)} · última ${C.dataBR(h.ultima)}`);
+    if (set?.grupos?.length) linhas.push(`💳 Consórcio: ${set.grupos.join(", ")}`);
+    const cr = clientesCrediario().find((x) => C.chaveTel(x.whatsapp) === C.chaveTel(tel));
+    if (cr?.atrasadas?.length) linhas.push(`⚠️ Crediário: ${cr.atrasadas.length} parcela(s) em atraso (${C.brl(cr.emAtraso)})`);
+  } else linhas.push("❔ Sem set (WhatsApp não ligado)");
+  const mencoes = [estado.cargos?.dona, estado.cargos?.admin, ...cargosEquipeExtras(guild, estado.cargos).map((r) => r.id)].filter(Boolean);
+  await enviar("alertas", { content: mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { roles: mencoes },
+    embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle(`🎫 Ticket ${num} aberto`).setDescription(linhas.join("\n"))] });
+  return i.editReply(`Seu ticket foi aberto: <#${ch.id}> 💝`);
+}
+async function fecharTicket(chId, quem, motivo = "") {
+  const t = estado.tickets?.[chId], ch = guild.channels.cache.get(chId);
+  if (!t || !ch) { if (t) { delete estado.tickets[chId]; salvar(); } return; }
+  const msgs = [];
+  let antes;
+  for (let n = 0; n < 10; n++) {
+    const lote = await ch.messages.fetch({ limit: 100, ...(antes ? { before: antes } : {}) }).catch(() => null);
+    if (!lote?.size) break;
+    msgs.push(...lote.values()); antes = lote.last().id;
+    if (lote.size < 100) break;
+  }
+  const quando = (d) => new Date(d).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const txt = [`Ticket ${t.num} · ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · ${t.nome}`, `Aberto: ${quando(t.abertoEm)} · Fechado: ${quando(Date.now())} por ${quem}${motivo ? " (" + motivo + ")" : ""}`, ""]
+    .concat(msgs.reverse().filter((m) => m.content || m.attachments.size).map((m) => `[${quando(m.createdTimestamp)}] ${m.member?.displayName || m.author.username}: ${m.content}` +
+      [...m.attachments.values()].map((a) => ` [anexo: ${a.url}]`).join(""))).join("\n");
+  await enviar("ticketsFechados", { embeds: [new EmbedBuilder().setColor(V.CORES.neutro).setTitle(`🗂️ Ticket ${t.num} · ${t.nome}`)
+    .setDescription(`${TIPOS_TICKET[t.tipo]?.emoji || ""} ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · <@${t.user}>\nFechado por ${quem}${motivo ? ` (${motivo})` : ""}` + (t.assumido ? ` · atendido por ${t.assumido}` : ""))],
+    files: [new AttachmentBuilder(Buffer.from(txt, "utf8"), { name: `ticket-${t.num}.txt` })] });
+  delete estado.tickets[chId]; salvar();
+  await ch.delete(`Ticket fechado por ${quem}`).catch((e) => log("fechar ticket: " + e.message));
+}
+async function revisarTickets() {
+  for (const [id, t] of Object.entries(estado.tickets || {})) {
+    if (!guild.channels.cache.get(id)) { delete estado.tickets[id]; salvar(); continue; }
+    const parado = Date.now() - (t.ultimo || Date.parse(t.abertoEm));
+    if (parado > 72 * 3600e3) await fecharTicket(id, "bot", "3 dias sem mensagens");
+    else if (parado > 48 * 3600e3 && !t.avisado) {
+      t.avisado = true; salvar();
+      await guild.channels.cache.get(id).send(`<@${t.user}> Ainda precisa de ajuda? 💝 Se ninguém escrever aqui, este ticket fecha sozinho amanhã.`).catch(() => {});
+    }
+  }
+}
+
 // ---------------------------------------------------------------- central de botões (#comandos)
 function conteudoCentral() {
   const e = new EmbedBuilder().setColor(COR).setTitle("💝 Central da Karen")
@@ -998,6 +1085,8 @@ async function rotinas() {
   const h = C.agoraSP();
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
+  if (estado.canais?.abrirticket) await painelFixo("abrirticket", conteudoAbrirTicket()).catch(() => {});
+  await revisarTickets().catch((e) => log("tickets: " + e.message));
   const meiaHora = h.data + h.hora + (C.agoraSP().minuto >= 30 ? "b" : "a");
   if (estado.setsRevisados !== meiaHora) { estado.setsRevisados = meiaHora; await revisarSets().catch((e) => log("sets: " + e.message)); }
   if (estado.mapaHora !== h.data + h.hora) { estado.mapaHora = h.data + h.hora; await gravarMapa().catch((e) => log("mapa: " + e.message)); }
@@ -1467,6 +1556,7 @@ async function entradaCliente(i) {
 
 async function modalEnviado(i) {
   if (i.customId === "cli:entrar") return entradaCliente(i);
+  if (i.customId.startsWith("tk:abrir:")) { await i.deferReply(EFEMERA); return abrirTicket(i, i.customId.split(":")[2], String(i.fields.getTextInputValue("texto") || "").trim()); }
   if (i.customId.startsWith("set:tel:")) {
     if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe pode aprovar." });
     const userId = i.customId.split(":")[2], tel = C.soNumeros(i.fields.getTextInputValue("whats"));
@@ -1511,6 +1601,31 @@ async function componente(i) {
       "• Dê o cargo **👑 Karen** para a Karen (Configurações do servidor › Membros).\n• Os grupos aparecem em **#grupos** em até 2 minutos.\n• Respostas do site, pedidos da loja e cobranças chegam sozinhos.\n• `/ajuda` mostra os comandos." +
       (r.preservados.length ? `\n\nMantive em 🔒 SISTEMA: ${r.preservados.join(", ")}` : ""))] });
     estado.versoes = {}; await ciclo();
+    return;
+  }
+  if (tipo === "tk" && acao === "abrir") {
+    return i.showModal(new ModalBuilder().setCustomId(`tk:abrir:${a}`).setTitle(`${TIPOS_TICKET[a]?.emoji || "🎫"} ${TIPOS_TICKET[a]?.nome || "Ticket"}`).addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("texto").setLabel("Conte rapidinho o que você precisa").setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(1000))));
+  }
+  if (tipo === "tk" && acao === "fechar") {
+    const t = estado.tickets?.[a];
+    if (!t) return i.reply({ ...EFEMERA, content: "Esse ticket já foi fechado." });
+    const m = await guild.members.fetch(i.user.id).catch(() => null);
+    if (t.user !== i.user.id && !ehDaEquipe(m) && !ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só quem abriu ou a equipe pode fechar." });
+    if (b !== "sim") return i.reply({ ...EFEMERA, content: "Fechar o ticket? A conversa fica guardada no histórico da equipe.",
+      components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`tk:fechar:${a}:sim`).setLabel("Sim, fechar").setStyle(ButtonStyle.Danger))] });
+    await i.update({ content: "🔒 Fechando o ticket em 5 segundos…", components: [] });
+    await guild.channels.cache.get(a)?.send("🔒 Ticket fechado. Obrigada pelo contato! 💝").catch(() => {});
+    setTimeout(() => fecharTicket(a, m?.displayName || i.user.username).catch((e) => log("fechar ticket: " + e.message)), 5000);
+    return;
+  }
+  if (tipo === "tk" && acao === "assumir") {
+    const m = await guild.members.fetch(i.user.id).catch(() => null);
+    if (!ehDaEquipe(m) && !ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe pode assumir." });
+    const t = estado.tickets?.[a];
+    if (!t) return i.reply({ ...EFEMERA, content: "Esse ticket já foi fechado." });
+    t.assumido = m?.displayName || i.user.username; salvar();
+    await i.reply({ content: `✋ **${t.assumido}** assumiu este ticket e vai te atender, <@${t.user}>! 💝` });
     return;
   }
   if (tipo === "cli" && acao === "entrar") {
@@ -1707,6 +1822,8 @@ client.on(Events.InteractionCreate, async (i) => {
 
 // #comprovantes: a cada print colado, o bot pergunta de quem é e dá baixa.
 client.on(Events.MessageCreate, async (msg) => {
+  const tk = estado.tickets?.[msg.channelId];
+  if (tk && !msg.author?.bot) { tk.ultimo = Date.now(); tk.avisado = false; }
   if (LIMPEZA_LIGADA && !msg.author?.bot && estado.canais?.comandos && msg.channelId === estado.canais.comandos && !msg.pinned) {
     setTimeout(() => msg.delete().catch(() => {}), 60000);
     return;

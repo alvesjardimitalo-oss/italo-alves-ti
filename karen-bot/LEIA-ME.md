@@ -118,6 +118,12 @@ Se não achar, vai para #alertas com **Aprovar**, **Corrigir WhatsApp e aprovar*
 grupo terminou → tira o cargo do grupo, apaga o cargo e o apelido volta a [CLIENTE]. Grupos vêm do painel do consórcio e das
 etiquetas "Consorcio G… a <mês> <ano>" do Revendi. `/servidor vincular` também faz o set.
 
+**Tickets:** em **🎫 abrir-ticket** a cliente escolhe o assunto (Pedido/encomenda, Consórcio, Pagamento/crediário,
+Troca/defeito, Outro) e escreve o que precisa. O bot cria um canal privado (só ela + equipe) na categoria 🎫 TICKETS, avisa a
+equipe em #alertas com a ficha dela (WhatsApp, compras no Revendi, grupos, crediário em atraso) e põe os botões **✋ Assumir** e
+**🔒 Fechar**. Ao fechar, a conversa vai como .txt para **🗂️ tickets-fechados** e o canal é apagado. Sem mensagens: aviso em 48 h
+e fecha sozinho em 72 h. Máximo de 2 tickets abertos por cliente.
+
 **Atendimento por voz:** a cliente só vê a call **Aguardando**: entra, mas não fala nem escreve. Ao entrar, #alertas avisa
 toda a equipe (@here + cargos) com WhatsApp, consórcio e crediário dela e os botões **Puxar para a minha call** (quem já está
 numa call de atendimento) ou **Atendimento 01/02/03** (mostra se está ocupada). O bot libera aquela call só para essa cliente,
