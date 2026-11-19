@@ -15,7 +15,7 @@ import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
 import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
 import * as CR from "./crediario.js";
-import { sincronizarRevendi, estadoRevendi } from "./revendi.js";
+import { sincronizarRevendi, estadoRevendi, revendiAtivo } from "./revendi.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -597,7 +597,7 @@ async function ciclo() {
     // Sinal de vida para o painel (a cada ~10 min).
     if (!ciclo.sinal || Date.now() - ciclo.sinal > 9 * 60000) {
       ciclo.sinal = Date.now();
-      await db.definir("botKaren", "status", { vistoEm: ultimoCiclo, discord: client.isReady(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, pc: PC }).catch(() => {});
+      await db.definir("botKaren", "status", { vistoEm: ultimoCiclo, discord: client.isReady(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, pc: PC, revendi: revendiAtivo() }).catch(() => {});
     }
   } catch (e) {
     if (ultimoErro !== e.message) await avisarLog("⚠️ Erro ao ler o painel: " + e.message);
@@ -1000,6 +1000,14 @@ async function iniciar() {
     try { r = await assumirLideranca(); } catch (e) { r = { ok: false, dono: "?", erro: e.message }; }
     if (r.ok) break;
     papel = "reserva";
+    // Se o PC principal não tem o login do Revendi e este tem, a leitura do Revendi roda daqui
+    // (só grava no Firebase; o principal posta no Discord).
+    if (revendiAtivo()) {
+      try {
+        const st = await db.obter("botKaren", "status");
+        if (!st?.revendi) await sincronizarRevendi((t) => log("reserva · " + t));
+      } catch (e) { log("reserva · Revendi: " + e.message); }
+    }
     const msg = r.erro ? `reserva: sem acesso ao Firebase (${r.erro}); tentando de novo` : `reserva: o PC "${r.dono}" está com o bot; assumo se ele ficar 3 min sem sinal`;
     if (msg !== aviso) { log(msg); aviso = msg; }
     await new Promise((ok) => setTimeout(ok, 60000));
