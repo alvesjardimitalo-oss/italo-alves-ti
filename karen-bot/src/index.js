@@ -98,7 +98,8 @@ const comandos = [
     .addSubcommand((s) => s.setName("membro").setDescription("Situação de um membro")
       .addStringOption((o) => o.setName("grupo").setDescription("Grupo").setAutocomplete(true).setRequired(true))
       .addStringOption((o) => o.setName("membro").setDescription("Membro").setAutocomplete(true).setRequired(true)))
-    .addSubcommand((s) => s.setName("links").setDescription("Links de renovação e do banco de reserva")),
+    .addSubcommand((s) => s.setName("links").setDescription("Links de renovação e do banco de reserva"))
+    .addSubcommand((s) => s.setName("atualizar").setDescription("Atualiza agora os tópicos dos grupos e as cobranças com o painel")),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -287,6 +288,7 @@ async function verificarGrupos() {
     }
     estado.vistos[g.id] = agora;
     try { await atualizarTopico(g); estado.versoes[g.id] = g._atualizado; } catch (e) { log(`tópico do ${g.codigo}: ${e.message}`); }
+    await atualizarCobranca(g);
   }
   for (const id of Object.keys(estado.threads)) {
     if (!grupos.has(id)) {
@@ -329,18 +331,38 @@ async function resumoDoDia() {
   await enviar("resumo", { embeds: [e] });
 }
 
-async function cobrancasDoMes(g) {
+function conteudoCobranca(g) {
   const r = C.resumoGrupo(g);
+  const hora = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
   if (!r.comAtraso.length) {
-    await enviar("cobrancas", { content: `🎉 **${g.codigo}**: todo mundo pagou ${C.rotuloMes(C.mesAtual(), true)}!` });
-    return;
+    return { content: "", embeds: [new EmbedBuilder().setColor(VERDE).setTitle(`🎉 ${g.codigo}: ninguém em atraso`).setDescription(`Todo mundo pagou até ${C.rotuloMes(C.mesAtual(), true)}.`).setFooter({ text: "Atualizado " + hora })], components: [] };
   }
-  const lista = r.comAtraso.sort((a, b) => b.r.atrasadas.length - a.r.atrasadas.length).map(({ m, r: x }) => ({ m, descricao: `${x.atrasadas.length} atrasada(s) · ${C.brl(x.atrasadas.length * g.valorParcela)}` }));
-  const e = new EmbedBuilder().setColor(VERMELHO).setTitle(`📲 Cobranças do ${g.codigo} · venceu dia ${g.vencimento || 10}`)
+  const lista = r.comAtraso.sort((a, b) => b.r.atrasadas.length - a.r.atrasadas.length).map(({ m, r: x }) => ({ m, descricao: `${x.atrasadas.length} atrasada(s) · ${x.atrasadas.map((ym) => C.rotuloMes(ym)).join(", ")} · ${C.brl(x.atrasadas.length * g.valorParcela)}` }));
+  const e = new EmbedBuilder().setColor(VERMELHO).setTitle(`📲 Cobranças do ${g.codigo} · vence dia ${g.vencimento || 10}`)
     .setDescription(curto(lista.map(({ m, descricao }) => `• **${m.nome}** · ${descricao}`).join("\n"), 4000))
-    .setFooter({ text: "Escolha no primeiro menu para abrir o WhatsApp com a cobrança pronta; no segundo, para dar baixa." });
+    .setFooter({ text: `Atualiza sozinho quando alguém paga · ${hora}` });
   const comp = [menuMembros("cob", g, lista, "📲 Cobrar no WhatsApp…"), menuMembros("baixa", g, lista, "✅ Já pagou: dar baixa…")].filter(Boolean);
-  await enviar("cobrancas", { embeds: [e], components: comp });
+  return { content: "", embeds: [e], components: comp };
+}
+async function cobrancasDoMes(g) {
+  const msg = await enviar("cobrancas", conteudoCobranca(g));
+  if (msg) { estado.cobrancaMsg = estado.cobrancaMsg || {}; estado.cobrancaMsg[g.id] = msg.id; salvar(); }
+}
+/** Mantém a mensagem de cobrança do mês igual ao painel (some quem pagou). */
+async function atualizarCobranca(g) {
+  let id = estado.cobrancaMsg?.[g.id];
+  const c = await canal("cobrancas");
+  if (!id && c && estado.cobrancaMes?.[g.id] === C.mesAtual()) {
+    // Mensagem postada pela versão anterior do bot: encontra e passa a atualizar.
+    const ultimas = await c.messages.fetch({ limit: 50 }).catch(() => null);
+    const antiga = ultimas && [...ultimas.values()].find((m) => m.author?.id === client.user.id &&
+      (m.embeds?.[0]?.title?.includes(`Cobranças do ${g.codigo} `) || m.content?.includes(`**${g.codigo}**`)));
+    if (antiga) { estado.cobrancaMsg = estado.cobrancaMsg || {}; estado.cobrancaMsg[g.id] = id = antiga.id; salvar(); }
+  }
+  if (!id) return;
+  const msg = c && await c.messages.fetch(id).catch(() => null);
+  if (!msg) { delete estado.cobrancaMsg[g.id]; return; }
+  await msg.edit(conteudoCobranca(g)).catch((e) => log("cobrança do " + g.codigo + ": " + e.message));
 }
 
 async function rotinas() {
@@ -353,7 +375,8 @@ async function rotinas() {
     for (const g of grupos.values()) {
       if (C.situacao(g) !== "andamento") continue;
       const venc = Number(g.vencimento) || 10;
-      if (h.dia > venc && estado.cobrancaMes[g.id] !== h.ym) {
+      const novo = g.criadoEm && Date.now() - Date.parse(g.criadoEm) < 6 * 3600e3;
+      if (h.dia > venc && estado.cobrancaMes[g.id] !== h.ym && !novo) {
         estado.cobrancaMes[g.id] = h.ym; salvar();
         await cobrancasDoMes(g).catch((e) => log("cobranças: " + e.message));
       }
@@ -484,6 +507,12 @@ async function comando(i) {
 
   // /consorcio
   const sub = i.options.getSubcommand();
+  if (sub === "atualizar") {
+    await i.deferReply(EFEMERA);
+    estado.versoes = {};
+    await verificarGrupos();
+    return i.editReply(`🔄 Atualizei ${grupos.size} grupo(s) e as cobranças com o que está no painel agora.`);
+  }
   if (sub === "links") {
     const ativos = C.ordenarGrupos([...grupos.values()]).filter((g) => C.situacao(g) !== "formando");
     return i.reply({ ...EFEMERA, content: "**Renovação** (cada link já abre com o grupo):\n" + ativos.map((g) => `• ${g.codigo}: <${C.URL_RENOVACAO}?g=${g.codigo}>`).join("\n") + `\n\n**Banco de reserva:** <${C.URL_RESERVA}>` });
