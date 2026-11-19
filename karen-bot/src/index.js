@@ -131,6 +131,11 @@ const comandos = [
       .addNumberOption((o) => o.setName("valor").setDescription("Meta em R$ (0 = sem meta)").setRequired(true).setMinValue(0))),
   new SlashCommandBuilder().setName("produto").setDescription("Catálogo das marcas: foto, preço sugerido e se tem no estoque")
     .addStringOption((o) => o.setName("busca").setDescription("Código da revista ou nome").setAutocomplete(true).setRequired(true)),
+  new SlashCommandBuilder().setName("anunciar").setDescription("Posta um anúncio em ✨ novidades (promoção, lançamento, aviso)")
+    .addStringOption((o) => o.setName("titulo").setDescription("Título").setRequired(true).setMaxLength(200))
+    .addStringOption((o) => o.setName("mensagem").setDescription("Texto (use \\n para pular linha)").setRequired(true).setMaxLength(1500))
+    .addAttachmentOption((o) => o.setName("imagem").setDescription("Imagem do anúncio (opcional)"))
+    .addBooleanOption((o) => o.setName("avisar_clientes").setDescription("Marcar as clientes (notificação)?")),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -904,7 +909,7 @@ function conteudoBoasVindas() {
   const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
     .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
       "👉 Toque em **🌸 Entrar** e peça seu **set** com nome e WhatsApp. Se você já é cliente da Karen, é liberado na hora; se estiver no consórcio, ganha a tag do seu grupo.")
-    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n🎫 **abrir-ticket**: fale com a Karen em particular\n💬 **fale-com-a-karen**: conversa aberta com as clientes\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
+    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n🎫 **abrir-ticket**: fale com a Karen em particular\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
     .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
   return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar · pedir set").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
 }
@@ -1053,6 +1058,41 @@ async function postarChegadas() {
   const op = chegaram.slice(0, 25).map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(C.brl(p.preco), 100) }));
   await enviar("novidades", { content: chegaram.length > 1 ? `✨ **${chegaram.length} novidades chegaram no estoque!**` : "", embeds, components: menuZap("vit:quero", "🛒 Quero este…", op) });
 }
+const prontosParaVitrine = () => painelRV.produtos.filter((p) => p.unidades > 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome)).map((p) => ({ ...p, nome: nomeBonito(p.nome) }));
+function cartaoProduto(p, grande) {
+  const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(curto(p.nome, 200))
+    .setDescription(`${V.emojiMarca(p.marca) || "🛍️"} ${p.marca || ""}${p.codigo ? ` · cód. ${p.codigo}` : ""}\n**${C.brl(p.preco)}**` + (p.descricao ? `\n\n${curto(p.descricao, 220)}` : ""));
+  if (/^https:/.test(p.foto || "")) grande ? e.setImage(p.foto) : e.setThumbnail(p.foto);
+  return e;
+}
+async function postarDestaques(titulo, lista) {
+  if (!lista.length) return;
+  const op = lista.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}`, 100) }));
+  await enviar("novidades", { embeds: [new EmbedBuilder().setColor(COR).setTitle(titulo).setDescription("Pronta entrega no estoque da Karen. Gostou? Escolha em **🛒 Quero este** 💝"),
+    ...lista.map((p) => cartaoProduto(p, false))], components: menuZap("vit:quero", "🛒 Quero este…", op) });
+}
+/** Primeiro post do canal (os cadastrados mais recentes) e 💎 Destaques da semana toda segunda (alternando). */
+async function rotinaNovidades(h) {
+  if (!estado.canais?.novidades || !temPainel()) return;
+  const comFoto = prontosParaVitrine().filter((p) => /^https:/.test(p.foto || ""));
+  if (!estado.novidadesIniciadas) {
+    estado.novidadesIniciadas = true; salvar();
+    const recentes = [...comFoto].sort((a, b) => Number(b.id) - Number(a.id)).slice(0, 6);
+    await postarDestaques("✨ Novidades da Karen", recentes);
+    return;
+  }
+  if (h.diaSemana === 1 && h.hora >= 11 && estado.destaquesSemana !== h.data) {
+    estado.destaquesSemana = h.data;
+    const vistos = new Set(estado.destaquesVistos || []);
+    let pool = comFoto.filter((p) => !vistos.has(p.id));
+    if (pool.length < 4) { vistos.clear(); pool = comFoto; }
+    const escolha = pool.sort(() => Math.random() - 0.5).slice(0, 4);
+    escolha.forEach((p) => vistos.add(p.id));
+    estado.destaquesVistos = [...vistos]; salvar();
+    await postarDestaques("💎 Destaques da semana", escolha);
+  }
+}
+
 function conteudoMeuConsorcio() {
   return { embeds: [new EmbedBuilder().setColor(AMARELO).setTitle("💳 Meu consórcio")
     .setDescription("Toque em **Ver minhas parcelas** para ver as pagas, as que faltam e o valor para resgate. **Só você vê a resposta.**\nDúvida ou comprovante? Abra um 🎫 ticket em **Consórcio**.")],
@@ -1183,6 +1223,7 @@ async function rotinas() {
   if (estado.canais?.comofunciona) await painelFixo("comofunciona", conteudoComoFunciona()).catch(() => {});
   if (estado.canais?.meuconsorcio) await painelFixo("meuconsorcio", conteudoMeuConsorcio()).catch(() => {});
   if (estado.vitrineVista !== painelRV.atualizadoEm) { estado.vitrineVista = painelRV.atualizadoEm; await atualizarVitrine().catch((e) => log("vitrine: " + e.message)); await postarChegadas().catch((e) => log("novidades: " + e.message)); }
+  await rotinaNovidades(h).catch((e) => log("destaques: " + e.message));
   await revisarTickets().catch((e) => log("tickets: " + e.message));
   const meiaHora = h.data + h.hora + (C.agoraSP().minuto >= 30 ? "b" : "a");
   if (estado.setsRevisados !== meiaHora) { estado.setsRevisados = meiaHora; await revisarSets().catch((e) => log("sets: " + e.message)); }
@@ -1329,7 +1370,7 @@ async function comando(i) {
       "• **#resumo-do-dia**: todo dia às 8h; no dia 1, o relatório do mês anterior.",
       "• Lembrete 2 dias antes do vencimento, aviso de fim de grupo, lançamento do resgate no Revendi e backup aos domingos.",
       "• **🛍️ REVENDI**: #vendas (cada venda nova), #crediario (9h), #entregas e #estoque (painéis que se atualizam), #aniversarios (8h), #clientes-sumidas (segunda), #desempenho (segunda e dia 1).",
-      "Catálogo: `/produto <código ou nome>` (foto, preço sugerido e estoque). Revendi: `/revendi vendas`, `/revendi entregas`, `/revendi estoque`, `/revendi aniversarios`, `/revendi sumidas`, `/revendi sincronizar`, `/cliente`.",
+      "Novidades: `/anunciar` (promoção/aviso com imagem). Catálogo: `/produto <código ou nome>` (foto, preço sugerido e estoque). Revendi: `/revendi vendas`, `/revendi entregas`, `/revendi estoque`, `/revendi aniversarios`, `/revendi sumidas`, `/revendi sincronizar`, `/cliente`.",
       "Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`, `/consorcio novo-grupo`, `/consorcio adicionar`, `/consorcio links`, `/consorcio atualizar`, `/loja pedidos`.",
     ].join("\n") });
   }
@@ -1425,6 +1466,24 @@ async function comando(i) {
     const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp || rvCli?.whatsapp);
     const comp = cred?.abertas.length && zap ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`crdc:${curto(C.chaveTel(zap), 60)}`).setLabel("Cobrar crediário").setEmoji("📲").setStyle(ButtonStyle.Primary))] : [];
     return i.reply({ ...EFEMERA, embeds: embeds.slice(0, 10), components: comp });
+  }
+  if (nome === "anunciar") {
+    const img = i.options.getAttachment("imagem");
+    const avisar = i.options.getBoolean("avisar_clientes");
+    const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(i.options.getString("titulo"))
+      .setDescription(i.options.getString("mensagem").replace(/\\n/g, "\n") + "\n\nGostou? Abra um 🎫 ticket ou veja a 🛍️ pronta-entrega 💝");
+    await i.deferReply(EFEMERA);
+    const files = [];
+    if (img && /^image\//.test(img.contentType || "")) {
+      try {
+        const buf = Buffer.from(await (await fetch(img.url, { signal: AbortSignal.timeout(20000) })).arrayBuffer());
+        const ext = (img.name.match(/\.(png|jpe?g|gif|webp)$/i)?.[1] || "png").toLowerCase();
+        files.push(new AttachmentBuilder(buf, { name: "anuncio." + ext })); e.setImage("attachment://anuncio." + ext);
+      } catch (err) { log("imagem do anúncio: " + err.message); }
+    }
+    const cargos = [estado.cargos?.cliente, estado.cargos?.consorciada, ...Object.values(estado.cargosGrupo || {})].filter(Boolean);
+    const msg = await enviar("novidades", { content: avisar ? [estado.cargos?.cliente, estado.cargos?.consorciada].filter(Boolean).map((id) => `<@&${id}>`).join(" ") : "", allowedMentions: { roles: avisar ? cargos : [] }, embeds: [e], files });
+    return i.editReply(msg ? `✅ Anúncio postado em <#${estado.canais?.novidades}>.` : "⚠️ Não consegui postar.");
   }
   if (nome === "produto") {
     await i.deferReply(EFEMERA);
@@ -1962,6 +2021,10 @@ client.once(Events.ClientReady, async () => {
     const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
     if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
     await V.aplicarIdentidade(client, guild, estado, salvar, log).catch((e) => log("identidade visual: " + e.message));
+    if (estado.canais?.faleconosco) {
+      await guild.channels.cache.get(estado.canais.faleconosco)?.delete("Substituído pelos tickets").catch(() => {});
+      delete estado.canais.faleconosco; salvar(); log("canal removido: fale-com-a-karen (agora é pelos tickets)");
+    }
     for (const k of CALLS_ATEND) {
       const ch = guild.channels.cache.get(estado.canais?.[k]);
       for (const ow of ch?.permissionOverwrites?.cache?.values() || []) if (ow.type === 1 && !ch.members.has(ow.id)) await ch.permissionOverwrites.delete(ow.id).catch(() => {});

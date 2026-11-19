@@ -53,7 +53,6 @@ export const ESTRUTURA = [
     { chave: "vitrine", nome: "🛍️・pronta-entrega", acesso: "publico", topico: "O que a Karen tem agora para entrega rápida. Escolha em 🛒 Quero este e abrimos seu pedido." },
     { chave: "novidades", nome: "✨・novidades", acesso: "publico", topico: "Chegou no estoque, lançamentos e promoções." },
     { chave: "abrirticket", nome: "🎫・abrir-ticket", acesso: "clientes", topico: "Fale com a Karen em particular: pedidos, consórcio, pagamento, troca. Só você e a equipe veem o ticket." },
-    { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
     { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "espera", topico: "", adotar: ["aguard", "espera"] },
   ] },
