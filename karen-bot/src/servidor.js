@@ -52,14 +52,16 @@ export const ESTRUTURA = [
     { chave: "novidades", nome: "✨・novidades", acesso: "clientes", topico: "Lançamentos, promoções e campanhas." },
     { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
-    { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "voz", topico: "", adotar: ["aguard", "espera"] },
+    { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "espera", topico: "", adotar: ["aguard", "espera"] },
   ] },
   // Calls de atendimento: só a equipe vê. A cliente entra em ⏳ Aguardando e a equipe puxa ela para cá (botão no aviso).
   { categoria: "🎧 ATENDIMENTO", area: "equipe", canais: [
     // adotar: usa a call que já existe com esse pedaço no nome (não cria outra). opcional: só adota, nunca cria.
-    { chave: "callatend1", nome: "🎧 Atendimento", tipo: "voz", topico: "", adotar: ["atendimento"] },
-    { chave: "callatend2", nome: "🎧 Atendimento 2", tipo: "voz", topico: "", adotar: ["atendimento"], opcional: true },
-    { chave: "callequipe", nome: "🗣️ Equipe", tipo: "voz", topico: "", adotar: ["equipe", "reuni"], opcional: true },
+    { chave: "callatend1", nome: "🎧 Atendimento 01", tipo: "voz", topico: "", adotar: ["atendimento", "suporte"] },
+    { chave: "callatend2", nome: "🎧 Atendimento 02", tipo: "voz", topico: "", adotar: ["atendimento", "suporte"], opcional: true },
+    { chave: "callatend3", nome: "🎧 Atendimento 03", tipo: "voz", topico: "", adotar: ["atendimento", "suporte"], opcional: true },
+    { chave: "callequipe", nome: "🗣️ Equipe", tipo: "voz", topico: "", adotar: ["equipe", "vendas", "reuni"], opcional: true },
+    { chave: "callequipe2", nome: "🗣️ Equipe 2", tipo: "voz", topico: "", adotar: ["equipe", "vendas", "reuni"], opcional: true },
   ] },
 ];
 
@@ -70,6 +72,12 @@ const CONVERSA_CLIENTE = [...LEITURA_CLIENTE, P.SendMessages, P.AttachFiles, P.E
 const VOZ_CLIENTE = [P.ViewChannel, P.Connect, P.Speak, P.Stream, P.UseVAD, P.SendMessages, P.ReadMessageHistory];
 const VOZ_EQUIPE = [P.Connect, P.Speak, P.Stream, P.UseVAD, P.MuteMembers, P.MoveMembers, P.DeafenMembers, P.PrioritySpeaker];
 
+/** Cargos criados à mão que também são equipe (Equipe, Vendas, Vendedora, Suporte, Atendente, Staff, Colaboradora…). */
+export const RE_EQUIPE = /equipe|vend|suporte|atend|staff|colab|moder|gerent/i;
+export function cargosEquipeExtras(guild, cargos = {}) {
+  const nossos = new Set(Object.values(cargos).filter(Boolean).map((r) => r.id || r));
+  return [...(guild.roles?.cache?.values() || [])].filter((r) => !r.managed && r.id !== guild.roles.everyone.id && !nossos.has(r.id) && RE_EQUIPE.test(r.name));
+}
 /** Permissões de um canal. `canal` (opcional) traz o `acesso` dos canais da área das clientes. */
 export function permissoes(guild, area, cargos, clientesAbertos, canal = null) {
   const lista = [
@@ -77,6 +85,7 @@ export function permissoes(guild, area, cargos, clientesAbertos, canal = null) {
     { id: guild.members.me.id, allow: [...EQUIPE, ...VOZ_EQUIPE, P.ManageChannels, P.ManageRoles] },
     { id: cargos.dona.id, allow: [...EQUIPE, ...VOZ_EQUIPE] },
     { id: cargos.admin.id, allow: [...EQUIPE, ...VOZ_EQUIPE] },
+    ...cargosEquipeExtras(guild, cargos).map((r) => ({ id: r.id, allow: [...EQUIPE, ...VOZ_EQUIPE] })),
   ];
   if (area !== "clientes" || !clientesAbertos) return lista;
   const acesso = canal?.acesso || "clientes";
@@ -84,6 +93,8 @@ export function permissoes(guild, area, cargos, clientesAbertos, canal = null) {
   if (acesso === "publico") { lista[0] = { id: guild.roles.everyone.id, allow: [P.ViewChannel, P.ReadMessageHistory], deny: [P.SendMessages, P.AddReactions, P.CreatePublicThreads] }; ambos(LEITURA_CLIENTE, [P.SendMessages]); }
   else if (acesso === "conversa") ambos(CONVERSA_CLIENTE);
   else if (acesso === "voz") ambos(VOZ_CLIENTE);
+  // espera: a cliente vê e entra, mas não fala, não escreve e não transmite (só aguarda ser puxada).
+  else if (acesso === "espera") ambos([P.ViewChannel, P.Connect], [P.Speak, P.SendMessages, P.Stream, P.UseVAD, P.AddReactions, P.UseApplicationCommands, P.UseEmbeddedActivities, P.UseSoundboard]);
   else if (acesso === "consorciadas") lista.push({ id: cargos.consorciada.id, allow: LEITURA_CLIENTE, deny: [P.SendMessages] });
   else ambos(LEITURA_CLIENTE, [P.SendMessages]);
   return lista;

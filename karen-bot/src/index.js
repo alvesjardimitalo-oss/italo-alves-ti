@@ -14,7 +14,7 @@ import {
 } from "discord.js";
 import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
-import { montarServidor, alternarAreaClientes, completarCanais, ESTRUTURA, mapaServidor, permissoes } from "./servidor.js";
+import { montarServidor, alternarAreaClientes, completarCanais, ESTRUTURA, mapaServidor, permissoes, RE_EQUIPE, cargosEquipeExtras } from "./servidor.js";
 import * as CR from "./crediario.js";
 import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
@@ -908,7 +908,19 @@ function conteudoBoasVindas() {
 // ---------------------------------------------------------------- fila de atendimento por voz
 // Cliente entra em ⏳ Aguardando → aviso em #alertas marcando Karen/Admin, com botões para puxar para 🎧 Atendimento 1/2.
 const avisosEspera = new Map(); // userId → mensagem do aviso
-const ehDaEquipe = (m) => m?.permissions?.has(PermissionFlagsBits.Administrator) || [estado.cargos?.dona, estado.cargos?.admin].some((id) => id && m?.roles?.cache?.has(id));
+const CALLS_ATEND = ["callatend1", "callatend2", "callatend3"];
+const ehCallAtend = (id) => id && CALLS_ATEND.some((k) => estado.canais?.[k] === id);
+/** Libera só para essa cliente a call de atendimento (as outras clientes continuam sem ver) e move ela. */
+async function puxarCliente(membro, destino, quem) {
+  await destino.permissionOverwrites.edit(membro.id, { ViewChannel: true, Connect: true, Speak: true, UseVAD: true, Stream: true, SendMessages: true, ReadMessageHistory: true }, { reason: "Atendimento" });
+  await membro.voice.setChannel(destino, `Atendimento puxado por ${quem}`);
+}
+/** Tira a liberação quando a cliente sai da call de atendimento. */
+async function tirarLiberacao(canalId, userId) {
+  const ch = guild.channels.cache.get(canalId);
+  if (ch?.permissionOverwrites?.cache?.has(userId)) await ch.permissionOverwrites.delete(userId, "Fim do atendimento").catch(() => {});
+}
+const ehDaEquipe = (m) => m?.permissions?.has(PermissionFlagsBits.Administrator) || [estado.cargos?.dona, estado.cargos?.admin].some((id) => id && m?.roles?.cache?.has(id)) || m?.roles?.cache?.some((r) => RE_EQUIPE.test(r.name) && !r.managed);
 async function entrouNaEspera(membro) {
   const c = await canal("alertas");
   if (!c) return;
@@ -919,10 +931,15 @@ async function entrouNaEspera(membro) {
   if (tel) linhas.push(`📱 ${C.fone(tel)}`);
   if (cons.length) linhas.push(`💳 Consórcio: ${cons.join(", ")}`);
   if (cred?.atrasadas?.length) linhas.push(`⚠️ Crediário: ${cred.atrasadas.length} parcela(s) em atraso (${C.brl(cred.emAtraso)})`);
-  const b = (k, rot) => new ButtonBuilder().setCustomId(`atd:puxar:${membro.id}:${k}`).setLabel(rot).setEmoji("🎧").setStyle(ButtonStyle.Success);
-  const linha = new ActionRowBuilder().addComponents(b("callatend1", "Puxar para Atendimento 1"), b("callatend2", "Puxar para Atendimento 2"));
-  const mencoes = [estado.cargos?.dona, estado.cargos?.admin].filter(Boolean);
-  const msg = await c.send(V.decorar({ content: mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { roles: mencoes },
+  const linha = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`atd:minha:${membro.id}`).setLabel("Puxar para a minha call").setEmoji("🎧").setStyle(ButtonStyle.Success));
+  for (const k of CALLS_ATEND) {
+    const ch = guild.channels.cache.get(estado.canais?.[k]);
+    if (!ch) continue;
+    const ocupada = ch.members?.some((m) => !ehDaEquipe(m));
+    linha.addComponents(new ButtonBuilder().setCustomId(`atd:puxar:${membro.id}:${k}`).setLabel(curto(ch.name.replace(/^[^\p{L}\p{N}]+/u, ""), 30) + (ocupada ? " (ocupada)" : "")).setStyle(ocupada ? ButtonStyle.Secondary : ButtonStyle.Primary));
+  }
+  const mencoes = [estado.cargos?.dona, estado.cargos?.admin, ...cargosEquipeExtras(guild, estado.cargos).map((r) => r.id)].filter(Boolean);
+  const msg = await c.send(V.decorar({ content: "@here " + mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { parse: ["everyone"], roles: mencoes },
     embeds: [new EmbedBuilder().setColor(AMARELO).setTitle(`🔔 ${curto(membro.displayName, 60)} aguardando atendimento`).setDescription(linhas.join("\n")).setFooter({ text: "Toque para puxar para a call de atendimento" }).setTimestamp()],
     components: [linha] })).catch((e) => { log("aviso de espera: " + e.message); return null; });
   if (msg) avisosEspera.set(membro.id, msg);
@@ -939,6 +956,7 @@ client.on(Events.VoiceStateUpdate, async (antes, depois) => {
     const espera = estado.canais?.callespera;
     if (!espera || !depois.member || depois.member.user.bot) return;
     if (depois.channelId === espera && antes.channelId !== espera && !ehDaEquipe(depois.member)) await entrouNaEspera(depois.member);
+    if (ehCallAtend(antes.channelId) && antes.channelId !== depois.channelId && !ehDaEquipe(depois.member)) await tirarLiberacao(antes.channelId, depois.member.id);
     if (antes.channelId === espera && depois.channelId !== espera) {
       const destino = depois.channel;
       await fecharAviso(depois.member.id, destino ? `✅ Em atendimento em ${destino.name}` : "Saiu da espera sem ser atendida");
@@ -1415,7 +1433,10 @@ async function componente(i) {
       new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("whats").setLabel("Seu WhatsApp com DDD (para ver suas parcelas)").setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(20).setPlaceholder("(33) 99999-9999")));
     return i.showModal(modal);
   }
-  if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode usar isso." });
+  if (tipo === "atd" && !ehEquipe(i)) {
+    const m = await guild.members.fetch(i.user.id).catch(() => null);
+    if (!ehDaEquipe(m)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode puxar clientes." });
+  } else if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode usar isso." });
 
   if (tipo === "crd" || tipo === "crdc") {
     const k = tipo === "crd" ? i.values?.[0] : acao;
@@ -1424,13 +1445,20 @@ async function componente(i) {
     const lista = c.atrasadas.length ? c.atrasadas : c.abertas.slice(0, 1);
     return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + c.cliente, C.linkWhats(c.whatsapp, CR.mensagemCrediario(c, lista))) });
   }
-  if (tipo === "atd" && acao === "puxar") {
+  if (tipo === "atd" && (acao === "puxar" || acao === "minha")) {
     const membro = await guild.members.fetch(a).catch(() => null);
-    const destino = guild.channels.cache.get(estado.canais?.[b]);
+    const eu0 = await guild.members.fetch(i.user.id).catch(() => null);
+    let destino = guild.channels.cache.get(estado.canais?.[b]);
+    if (acao === "minha") {
+      if (!ehCallAtend(eu0?.voice?.channelId)) return i.reply({ ...EFEMERA, content: "Entre primeiro numa call de atendimento (01, 02 ou 03) e toque de novo. Ou use os botões com o número da call." });
+      destino = eu0.voice.channel;
+    }
+    if (destino && destino.members?.some((m) => !ehDaEquipe(m) && m.id !== a)) return i.reply({ ...EFEMERA, content: `**${destino.name}** já tem uma cliente em atendimento. Escolha outra call.` });
     if (!membro?.voice?.channelId) { await fecharAviso(a, "Saiu da espera sem ser atendida"); return i.reply({ ...EFEMERA, content: "Ela já saiu da call de espera." }); }
     if (!destino) return i.reply({ ...EFEMERA, content: "Call de atendimento não encontrada." });
-    await membro.voice.setChannel(destino, `Atendimento puxado por ${i.user.tag}`);
-    const eu = await guild.members.fetch(i.user.id).catch(() => null);
+    await puxarCliente(membro, destino, i.user.tag);
+    await fecharAviso(a, `✅ Em atendimento em ${destino.name} com ${eu0?.displayName || i.user.username}`);
+    const eu = eu0;
     const euJa = eu?.voice?.channelId === destino.id;
     return i.reply({ ...EFEMERA, content: `🎧 ${membro.displayName} foi para **${destino.name}**.` + (euJa ? "" : eu?.voice?.channelId ? " Entre lá também." : ` Entre em <#${destino.id}> para atender.`) });
   }
@@ -1602,8 +1630,12 @@ client.once(Events.ClientReady, async () => {
     const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
     if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
     await V.aplicarIdentidade(client, guild, estado, salvar, log).catch((e) => log("identidade visual: " + e.message));
-    if (estado.permClientes !== 2 && estado.cargos?.cliente) {
-      await alternarAreaClientes(guild, estado, Boolean(estado.clientesAbertos)).then(() => { estado.permClientes = 2; salvar(); }).catch((e) => log("permissões da área das clientes: " + e.message));
+    for (const k of CALLS_ATEND) {
+      const ch = guild.channels.cache.get(estado.canais?.[k]);
+      for (const ow of ch?.permissionOverwrites?.cache?.values() || []) if (ow.type === 1 && !ch.members.has(ow.id)) await ch.permissionOverwrites.delete(ow.id).catch(() => {});
+    }
+    if (estado.permClientes !== 3 && estado.cargos?.cliente) {
+      await alternarAreaClientes(guild, estado, Boolean(estado.clientesAbertos)).then(() => { estado.permClientes = 3; salvar(); }).catch((e) => log("permissões da área das clientes: " + e.message));
     }
     if (estado.ordemCategorias !== 4) {
       try {
