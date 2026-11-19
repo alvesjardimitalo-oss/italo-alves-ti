@@ -122,7 +122,7 @@ function interessados() {
 }
 
 // ---------- HTML do cartão ----------
-export const CARD_GRUPOS = '<div class="kpis" id="kpis-grupos"></div>' +
+export const CARD_GRUPOS = '<div id="status-bot" class="sub" style="margin:-6px 0 12px"></div><div class="kpis" id="kpis-grupos"></div>' +
   '<div class="card" style="margin:18px 0"><div class="card-head"><h2>Grupos</h2><span id="resumo-grupos" class="sub"></span>' +
   '<div class="acoes" style="gap:8px"><button type="button" class="btn btn-sm" id="importar-grupos" hidden>' + icon('download', 14) + ' Cadastrar G1 a G5</button>' +
   '<button type="button" class="btn btn-primary btn-sm" id="novo-grupo">' + icon('plus', 14) + ' Novo grupo</button></div></div>' +
@@ -142,6 +142,17 @@ export function montarGrupos(el) {
   let selecionado = null;
 
   $('#novo-grupo').onclick = () => editarGrupo(null);
+  // Sinal de vida do bot do Discord (karen-bot, no PC), gravado em ti/base/botKaren/status.
+  store.buscar('botKaren').then((docs) => {
+    const st = docs.find((d) => d.id === 'status');
+    const alvo = $('#status-bot');
+    if (!alvo) return;
+    if (!st || !st.vistoEm) { alvo.innerHTML = icon('cloud', 14) + ' Bot do Discord ainda não instalado'; return; }
+    const min = Math.round((Date.now() - Date.parse(st.vistoEm)) / 60000);
+    const ok = min <= 20 && st.discord;
+    alvo.innerHTML = '<span class="badge ' + (ok ? 'b-ok' : 'b-warn') + '">' + (ok ? 'Bot do Discord ligado' : 'Bot do Discord desligado') + '</span> ' +
+      '<span class="sub">visto há ' + (min < 60 ? min + ' min' : Math.round(min / 60) + ' h') + (ok ? '' : ' · o PC pode estar desligado; nada se perde, ele põe tudo em dia quando ligar') + '</span>';
+  }).catch(() => {});
   $('#importar-grupos').onclick = importarIniciais;
 
   function desenhar() {
