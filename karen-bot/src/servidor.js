@@ -1,6 +1,5 @@
 // Estrutura do servidor da Karen: cargos, categorias e canais.
-// /servidor montar apaga os canais e cargos antigos e cria tudo do zero.
-// Canais com "storage" no nome são preservados (o bot de métricas do High OS guarda dados lá).
+// /servidor montar apaga TODOS os canais e cargos antigos (do High OS) e cria tudo do zero.
 import { ChannelType, PermissionFlagsBits as P } from "discord.js";
 
 export const CARGOS = [
@@ -60,15 +59,15 @@ function permissoes(guild, area, cargos, clientesAbertos) {
   return lista;
 }
 
-/** Apaga canais e cargos antigos e cria a estrutura. Devolve { canais: {chave: id}, cargos: {chave: id}, preservados: [nomes] }. */
+/** Apaga canais e cargos antigos e cria a estrutura. Devolve { canais: {chave: id}, cargos: {chave: id}, preservados: [] }. */
 export async function montarServidor(guild, log = () => {}) {
   await guild.channels.fetch();
   await guild.roles.fetch();
   const eu = guild.members.me;
   const preservados = [];
 
-  // 1) Canais antigos (menos os de storage).
-  const guardar = (c) => /storage/i.test(c.name);
+  // 1) Canais antigos: todos.
+  const guardar = () => false;
   const canais = [...guild.channels.cache.values()];
   for (const c of canais.filter((c) => c.type !== ChannelType.GuildCategory)) {
     if (guardar(c)) { preservados.push(c.name); continue; }

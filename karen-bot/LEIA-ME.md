@@ -35,7 +35,7 @@ Os grupos (mensalidade, parcelas, prêmio, vagas, membros) são configurados no 
 5. No Discord: **Configurações do usuário › Avançado › Modo desenvolvedor** ligado. Botão direito no ícone do servidor → **Copiar ID do servidor**: é o `DISCORD_GUILD_ID`.
 
 ### 2. Chave do Firebase
-Se o bot do High OS já roda neste PC, o instalador **reaproveita a chave sozinho**.
+Se o bot do High OS ainda estiver neste PC, o instalador **reaproveita a chave sozinho** e depois oferece **remover o bot do High OS** do PC (tarefa, atalhos, arquivos e o Tailscale Funnel).
 Senão: Console do Firebase → projeto **high-os** → ⚙️ Configurações do projeto → **Contas de serviço** → **Gerar nova chave privada**.
 Abra o arquivo baixado, junte tudo numa linha só e cole em `FIREBASE_SERVICE_ACCOUNT_JSON`.
 
@@ -48,7 +48,7 @@ Ele abre o Bloco de Notas: cole o token e o ID do servidor, **Ctrl+S** e feche.
 
 ### 4. Montar o servidor
 No Discord, em qualquer canal do servidor, digite **`/servidor montar`** → **Sim, apagar tudo e montar**.
-Ele apaga os canais e cargos antigos (menos canais com *storage* no nome, que ficam em 🔒 SISTEMA) e cria tudo.
+Ele apaga **todos** os canais e cargos antigos do High OS e cria tudo. Depois remova o bot antigo do High OS do servidor (botão direito nele › Expulsar).
 Depois dê o cargo **👑 Karen** para a Karen.
 
 ## Atalhos (pasta "Karen Bot" na Área de Trabalho)

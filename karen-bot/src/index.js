@@ -448,7 +448,7 @@ async function comando(i) {
       const linha = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("srv:montar").setLabel("Sim, apagar tudo e montar").setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId("srv:cancelar").setLabel("Cancelar").setStyle(ButtonStyle.Secondary));
-      return i.reply({ ...EFEMERA, content: "⚠️ Isso **apaga todos os canais e cargos** deste servidor (menos os canais com *storage* no nome) e cria a estrutura da Karen. Não dá para desfazer. Continuar?", components: [linha] });
+      return i.reply({ ...EFEMERA, content: "⚠️ Isso **apaga todos os canais e cargos** deste servidor e cria a estrutura da Karen. Não dá para desfazer. Continuar?", components: [linha] });
     }
     if (sub === "clientes") {
       const abrir = i.options.getString("acao") === "abrir";

@@ -118,6 +118,28 @@ if (-not (Completo)) {
 Copy-Item $EnvFile (Join-Path $App '.env') -Force
 Ok 'Variáveis salvas (ficam só no seu PC).'
 
+# Bot antigo do High OS (métricas): não é mais usado. Oferece remover do PC.
+$TarefaHighOs = Get-ScheduledTask -TaskName 'HighOS Bot' -ErrorAction SilentlyContinue
+$PastaHighOs  = Join-Path $env:LOCALAPPDATA 'HighOS'
+if ($TarefaHighOs -or (Test-Path $PastaHighOs)) {
+  $r = Read-Host '  Encontrei o bot do High OS (métricas) neste PC. Remover de vez? (tarefa, atalhos e arquivos) [S/N]'
+  if ($r -match '^[sS]') {
+    try { Stop-ScheduledTask -TaskName 'HighOS Bot' -ErrorAction SilentlyContinue } catch {}
+    Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*high-os-discord*' -or $_.CommandLine -match '^\S*node(\.exe)?"?\s+src[\\/]index\.js' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*HighOS*executar.ps1*' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    if ($TarefaHighOs) { Unregister-ScheduledTask -TaskName 'HighOS Bot' -Confirm:$false -ErrorAction SilentlyContinue }
+    $Ts = Join-Path $env:ProgramFiles 'Tailscale\tailscale.exe'
+    if (Test-Path $Ts) { try { & $Ts funnel reset 2>$null | Out-Null } catch {} }
+    Remove-Item (Join-Path ([Environment]::GetFolderPath('Desktop')) 'High OS Bot') -Recurse -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Remove-Item $PastaHighOs -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path $PastaHighOs) { Aviso "Não consegui apagar $PastaHighOs inteira (algum arquivo em uso). Apague depois pelo Explorador." } else { Ok 'Bot do High OS removido do PC.' }
+    Write-Host '  (O Tailscale continua instalado; se não usar mais, desinstale em Configurações > Aplicativos.)'
+  }
+}
+
 # ---------------------------------------------------------------------------
 Passo '4/5 Ligar sozinho com o Windows'
 $runnerTxt = @"
