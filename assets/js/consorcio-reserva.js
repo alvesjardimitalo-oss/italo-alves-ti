@@ -3,6 +3,7 @@
 // ti/base/leads (origem "consorcio-reserva", painel › Loja da Karen › Consórcio)
 // e enviada para o WhatsApp da Karen. Não gera cobrança.
 import { salvarLead } from './leads.js';
+import { carregarGrupos, mesLongo, brl } from './consorcio-publico.js';
 
 const WHATSAPP_KAREN = '5533999628147';
 const form = document.getElementById('form-reserva');
@@ -22,6 +23,17 @@ const val = (id) => document.getElementById(id).value.trim();
 // Indicação pelo link: /karen/consorcio/?ind=Maria
 const indLink = String(new URLSearchParams(location.search).get('ind') || '').trim().slice(0, 60);
 if (indLink && document.getElementById('indicacao')) document.getElementById('indicacao').value = indLink;
+
+// Se o painel já tiver um próximo grupo em formação, mostra os dados dele.
+carregarGrupos().then((lista) => {
+  const prox = lista.filter((g) => g.situacao === 'formando').sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)))[0];
+  const alvo = document.getElementById('proximo-grupo');
+  if (!prox || !alvo) return;
+  const livres = prox.vagas ? Math.max(0, prox.vagas - prox.ocupadas) : 0;
+  alvo.innerHTML = '<b>Próximo grupo: ' + prox.codigo + '</b><p>' + brl(prox.valorParcela) + ' por mês, em ' + prox.parcelas + ' parcelas, começando em ' + mesLongo(prox.inicio) +
+    '. Prêmio de ' + brl(prox.premio) + ' em produtos.' + (prox.vagas ? (livres ? ' Restam ' + livres + ' vaga(s)!' : ' Vagas preenchidas: sua reserva entra na lista de espera.') : '') + '</p>';
+  alvo.hidden = false;
+});
 
 function mostrar(texto, erro = false, waUrl = '') {
   retorno.hidden = false;

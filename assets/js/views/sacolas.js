@@ -8,6 +8,8 @@ import { esc, money, parseMoney, toast, confirmar, dataBR, whatsapp, modal } fro
 import { semRef } from './leads.js';
 import { PERFUMES } from '../perfumes-bf.js';
 import { icon } from '../icons.js';
+import { CARD_GRUPOS, montarGrupos, contarAtrasos as contarAtrasosGrupos } from './consorcios.js';
+export const contarAtrasos = () => contarAtrasosGrupos();
 
 const URL_LOJA = 'https://italoinfotec.com.br/karen/';
 const URL_SACOLA = URL_LOJA + 'sacola-misteriosa/';
@@ -313,7 +315,8 @@ const SECOES = {
   produtos: ['produtos', 'Produtos', 'Cadastre, edite, esconda e defina o estoque. O que está ativo aparece no catálogo da loja.'],
   cupons: ['cupons', 'Cupons e roleta', 'Cupons de 1% a 10% ganhos na roleta da Black Friday, indicações e giros extras.'],
   sacolas: ['sacolas', 'Sacola Misteriosa', 'Ação da loja: sacolas surpresa com conteúdo secreto e as solicitações recebidas.'],
-  consorcio: ['consorcio', 'Consórcio', 'Feedback e renovação de quem já participa, e o banco de reserva de quem quer entrar no próximo grupo.'],
+  grupos: ['grupos', 'Grupos do consórcio', 'Configure cada grupo (mensalidade, parcelas, prêmio, vagas), veja os membros, marque as parcelas pagas e registre os resgates.'],
+  consorcio: ['consorcio', 'Respostas do consórcio', 'Feedback e renovação de quem já participa, e o banco de reserva de quem quer entrar no próximo grupo.'],
   config: ['config', 'Configurações da loja', 'WhatsApp que recebe os pedidos, chave Pix e avisos de compra.'],
 };
 function cabecalho(secao) {
@@ -399,8 +402,9 @@ const CARD_CONSORCIO = '<div class="card" style="margin-bottom:18px"><div class=
 export function tela(el, params = {}) {
   const secao = Object.keys(SECOES).find((k) => SECOES[k][0] === (params.secao || '')) || (params.secao ? null : 'geral');
   if (!secao) { location.replace('#/karen'); return null; }
-  el.innerHTML = cabecalho(secao) + ({ geral: CARD_RESUMO, pedidos: CARD_PEDIDOS, produtos: CARD_PRODUTOS, cupons: CARD_CUPONS, sacolas: CARD_SACOLAS, consorcio: CARD_CONSORCIO, config: CARD_CONFIG() })[secao];
+  el.innerHTML = cabecalho(secao) + ({ geral: CARD_RESUMO, pedidos: CARD_PEDIDOS, produtos: CARD_PRODUTOS, cupons: CARD_CUPONS, sacolas: CARD_SACOLAS, grupos: CARD_GRUPOS, consorcio: CARD_CONSORCIO, config: CARD_CONFIG() })[secao];
   const $ = (s) => el.querySelector(s);
+  const desenharGrupos = secao === 'grupos' ? montarGrupos(el) : null;
   const ligar = (s, ev, fn) => { const e = $(s); if (e) e.addEventListener(ev, fn); };
   const status = (msg) => { const e = $('#status-karen'); if (e) e.textContent = msg; };
   importarPerfumes().catch((e) => { produtosImportados = false; console.warn('Importação dos perfumes:', e); });
@@ -469,6 +473,7 @@ export function tela(el, params = {}) {
     if (secao === 'cupons') desenharCupons();
     if (secao === 'sacolas') desenharSacolas();
     if (secao === 'consorcio') desenharConsorcio();
+    if (desenharGrupos) desenharGrupos();
     // Contagem dos 10 minutos e vencimentos enquanto a tela estiver aberta.
     clearInterval(relogio);
     const marca = el.firstElementChild;

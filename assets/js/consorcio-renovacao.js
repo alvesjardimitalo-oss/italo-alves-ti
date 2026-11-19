@@ -5,6 +5,7 @@
 // Grupos em andamento recebem o texto de renovação antecipada; grupos encerrados (G1, G2),
 // o texto de agradecimento pelo consórcio que terminou.
 import { salvarLead } from './leads.js';
+import { carregarGrupos, mesLongo, brl } from './consorcio-publico.js';
 
 const WHATSAPP_KAREN = '5533999628147';
 const form = document.getElementById('form-renovacao');
@@ -76,6 +77,20 @@ const grupoLink = String(new URLSearchParams(location.search).get('g') || '').to
 if (seletorGrupo && GRUPOS[grupoLink]) seletorGrupo.value = grupoLink;
 aplicarTexto(seletorGrupo ? seletorGrupo.value : '');
 if (seletorGrupo) seletorGrupo.addEventListener('change', () => aplicarTexto(seletorGrupo.value));
+
+// Grupos configurados no painel substituem a lista fixa (novos grupos aparecem sozinhos).
+carregarGrupos().then((lista) => {
+  const visiveis = lista.filter((g) => g.situacao !== 'formando');
+  if (!visiveis.length || !seletorGrupo) return;
+  visiveis.forEach((g) => { GRUPOS[g.codigo] = { nome: g.nome, encerrado: g.situacao === 'encerrado' }; });
+  const escolhido = seletorGrupo.value;
+  const ordem = visiveis.slice().sort((a, b) => (a.situacao === 'encerrado') - (b.situacao === 'encerrado') || String(a.inicio).localeCompare(String(b.inicio)));
+  seletorGrupo.innerHTML = '<option value="">Escolha o seu grupo</option>' + ordem.map((g) =>
+    '<option value="' + g.codigo + '">Consórcio ' + g.codigo + ' · ' + brl(g.valorParcela) + ' · ' + mesLongo(g.inicio) + ' a ' + mesLongo(g.fim) +
+    (g.situacao === 'encerrado' ? ' (encerrado)' : '') + '</option>').join('') + '<option value="outro">Outro / não lembro</option>';
+  seletorGrupo.value = GRUPOS[escolhido] ? escolhido : '';
+  aplicarTexto(seletorGrupo.value);
+});
 
 if (form) form.addEventListener('submit', async (ev) => {
   ev.preventDefault();
