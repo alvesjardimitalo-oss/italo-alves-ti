@@ -45,30 +45,44 @@ export const ESTRUTURA = [
     { chave: "comandos", nome: "🎛️・central", topico: "Central com botões (respostas só para você). Mensagens digitadas aqui somem em 1 minuto." },
     { chave: "logs", nome: "🧾・logs-do-bot", topico: "O que o bot fez e eventuais erros." },
   ] },
+  // acesso (área das clientes): publico = qualquer pessoa que entrar vê (só lê); clientes = Cliente e Consorciada leem;
+  // conversa = Cliente e Consorciada escrevem; consorciadas = só Consorciada; voz = call que Cliente e Consorciada entram e falam.
   { categoria: "🌸 ÁREA DAS CLIENTES", area: "clientes", canais: [
-    { chave: "boasvindas", nome: "👋・boas-vindas", topico: "Bem-vinda à Karen Martins Cosméticos!" },
-    { chave: "novidades", nome: "✨・novidades", topico: "Lançamentos, promoções e campanhas." },
-    { chave: "meuconsorcio", nome: "💳・meu-consorcio", topico: "Use /minhas-parcelas para ver a sua situação (só você vê a resposta)." },
+    { chave: "boasvindas", nome: "👋・boas-vindas", acesso: "publico", topico: "Bem-vinda à Karen Martins Cosméticos! Toque em 🌸 Entrar para ver o restante." },
+    { chave: "novidades", nome: "✨・novidades", acesso: "clientes", topico: "Lançamentos, promoções e campanhas." },
+    { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
+    { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
+    { chave: "callatendimento", nome: "🎧 Atendimento", tipo: "voz", acesso: "voz", topico: "" },
   ] },
 ];
 
 const EQUIPE = [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.AttachFiles, P.EmbedLinks, P.AddReactions, P.UseApplicationCommands,
   P.CreatePublicThreads, P.SendMessagesInThreads, P.ManageMessages, P.ManageThreads];
 const LEITURA_CLIENTE = [P.ViewChannel, P.ReadMessageHistory, P.UseApplicationCommands];
+const CONVERSA_CLIENTE = [...LEITURA_CLIENTE, P.SendMessages, P.AttachFiles, P.EmbedLinks, P.AddReactions];
+const VOZ_CLIENTE = [P.ViewChannel, P.Connect, P.Speak, P.Stream, P.UseVAD, P.SendMessages, P.ReadMessageHistory];
+const VOZ_EQUIPE = [P.Connect, P.Speak, P.Stream, P.UseVAD, P.MuteMembers, P.MoveMembers, P.DeafenMembers, P.PrioritySpeaker];
 
-function permissoes(guild, area, cargos, clientesAbertos) {
+/** Permissões de um canal. `canal` (opcional) traz o `acesso` dos canais da área das clientes. */
+export function permissoes(guild, area, cargos, clientesAbertos, canal = null) {
   const lista = [
     { id: guild.roles.everyone.id, deny: [P.ViewChannel] },
-    { id: guild.members.me.id, allow: [...EQUIPE, P.ManageChannels] },
-    { id: cargos.dona.id, allow: EQUIPE },
-    { id: cargos.admin.id, allow: EQUIPE },
+    { id: guild.members.me.id, allow: [...EQUIPE, ...VOZ_EQUIPE, P.ManageChannels, P.ManageRoles] },
+    { id: cargos.dona.id, allow: [...EQUIPE, ...VOZ_EQUIPE] },
+    { id: cargos.admin.id, allow: [...EQUIPE, ...VOZ_EQUIPE] },
   ];
-  if (area === "clientes" && clientesAbertos) {
-    lista.push({ id: cargos.cliente.id, allow: LEITURA_CLIENTE, deny: [P.SendMessages] });
-    lista.push({ id: cargos.consorciada.id, allow: LEITURA_CLIENTE, deny: [P.SendMessages] });
-  }
+  if (area !== "clientes" || !clientesAbertos) return lista;
+  const acesso = canal?.acesso || "clientes";
+  const ambos = (allow, deny = []) => { lista.push({ id: cargos.cliente.id, allow, deny }, { id: cargos.consorciada.id, allow, deny }); };
+  if (acesso === "publico") { lista[0] = { id: guild.roles.everyone.id, allow: [P.ViewChannel, P.ReadMessageHistory], deny: [P.SendMessages, P.AddReactions, P.CreatePublicThreads] }; ambos(LEITURA_CLIENTE, [P.SendMessages]); }
+  else if (acesso === "conversa") ambos(CONVERSA_CLIENTE);
+  else if (acesso === "voz") ambos(VOZ_CLIENTE);
+  else if (acesso === "consorciadas") lista.push({ id: cargos.consorciada.id, allow: LEITURA_CLIENTE, deny: [P.SendMessages] });
+  else ambos(LEITURA_CLIENTE, [P.SendMessages]);
   return lista;
 }
+const tipoDiscord = (c) => c.tipo === "voz" ? ChannelType.GuildVoice : c.tipo === "forum" ? ChannelType.GuildForum : ChannelType.GuildText;
+const opcoesCanal = (c, cat, perms) => ({ name: c.nome, type: tipoDiscord(c), parent: cat.id, ...(c.tipo === "voz" ? {} : { topic: c.topico }), permissionOverwrites: perms });
 
 /** Apaga canais e cargos antigos e cria a estrutura. Devolve { canais: {chave: id}, cargos: {chave: id}, preservados: [] }. */
 export async function montarServidor(guild, log = () => {}) {
@@ -107,8 +121,8 @@ export async function montarServidor(guild, log = () => {}) {
   for (const bloco of ESTRUTURA) {
     const cat = await guild.channels.create({ name: bloco.categoria, type: ChannelType.GuildCategory, permissionOverwrites: permissoes(guild, bloco.area, cargos, false) });
     for (const c of bloco.canais) {
-      const tipo = c.tipo === "forum" ? ChannelType.GuildForum : ChannelType.GuildText;
-      const opcoes = { name: c.nome, type: tipo, parent: cat.id, topic: c.topico, permissionOverwrites: permissoes(guild, bloco.area, cargos, false) };
+      const tipo = tipoDiscord(c);
+      const opcoes = opcoesCanal(c, cat, permissoes(guild, bloco.area, cargos, false, c));
       let canal;
       try { canal = await guild.channels.create(opcoes); }
       catch (e) {
@@ -133,9 +147,10 @@ export async function alternarAreaClientes(guild, estado, abrir) {
   const cargos = Object.fromEntries(Object.entries(estado.cargos || {}).map(([k, id]) => [k, guild.roles.cache.get(id)]));
   if (!cargos.cliente || !cargos.consorciada || !cargos.dona || !cargos.admin) throw new Error("cargos não encontrados; rode /servidor montar");
   const bloco = ESTRUTURA.find((b) => b.area === "clientes");
-  const alvos = bloco.canais.map((c) => guild.channels.cache.get(estado.canais?.[c.chave])).filter(Boolean);
-  const cat = alvos[0]?.parent;
-  for (const c of [cat, ...alvos].filter(Boolean)) await c.permissionOverwrites.set(permissoes(guild, "clientes", cargos, abrir));
+  const alvos = bloco.canais.map((c) => [c, guild.channels.cache.get(estado.canais?.[c.chave])]).filter(([, ch]) => ch);
+  const cat = alvos[0]?.[1]?.parent;
+  if (cat) await cat.permissionOverwrites.set(permissoes(guild, "clientes", cargos, abrir, { acesso: "clientes" }));
+  for (const [c, ch] of alvos) await ch.permissionOverwrites.set(permissoes(guild, "clientes", cargos, abrir, c));
 }
 
 /** Cria os canais que faltam (versões novas do bot) sem mexer no resto. Devolve os ids novos. */
@@ -150,13 +165,34 @@ export async function completarCanais(guild, estado, log = () => {}) {
       const irmao = bloco.canais.map((x) => guild.channels.cache.get(estado.canais?.[x.chave])).find(Boolean);
       let cat = irmao?.parent || guild.channels.cache.find((x) => x.type === ChannelType.GuildCategory && x.name === bloco.categoria);
       if (!cat) cat = await guild.channels.create({ name: bloco.categoria, type: ChannelType.GuildCategory, permissionOverwrites: permissoes(guild, bloco.area, cargos, estado.clientesAbertos) });
-      const tipo = c.tipo === "forum" ? ChannelType.GuildForum : ChannelType.GuildText;
       try {
-        const canal = await guild.channels.create({ name: c.nome, type: tipo, parent: cat.id, topic: c.topico, permissionOverwrites: permissoes(guild, bloco.area, cargos, bloco.area === "clientes" && estado.clientesAbertos) });
+        const canal = await guild.channels.create(opcoesCanal(c, cat, permissoes(guild, bloco.area, cargos, bloco.area === "clientes" && estado.clientesAbertos, c)));
         novos[c.chave] = canal.id;
         log("canal novo criado: " + c.nome);
       } catch (e) { log("não criei o canal " + c.nome + ": " + e.message); }
     }
   }
   return novos;
+}
+
+/** Mapa do servidor: cada categoria/canal/call e quem consegue ver (todos, clientes, consorciadas, só equipe). */
+export async function mapaServidor(guild, estado) {
+  await guild.channels.fetch();
+  const cargo = (k) => guild.roles.cache.get(estado.cargos?.[k]);
+  const quem = (ch) => {
+    const ve = (r) => r && ch.permissionsFor(r)?.has(P.ViewChannel);
+    const fala = (r) => r && ch.permissionsFor(r)?.has(ch.isVoiceBased?.() ? P.Connect : P.SendMessages);
+    if (ve(guild.roles.everyone)) return fala(guild.roles.everyone) ? "todos (entram/escrevem)" : "todos (só veem)";
+    if (ve(cargo("cliente"))) return fala(cargo("cliente")) ? "clientes (entram/escrevem)" : "clientes (só veem)";
+    if (ve(cargo("consorciada"))) return "só consorciadas";
+    return "só equipe";
+  };
+  const gerenciados = new Set(Object.values(estado.canais || {}));
+  const tipo = (ch) => ch.type === ChannelType.GuildVoice ? "call" : ch.type === ChannelType.GuildStageVoice ? "palco" : ch.type === ChannelType.GuildForum ? "fórum" : "texto";
+  const todos = [...guild.channels.cache.values()].filter((c) => !c.isThread?.());
+  const cats = todos.filter((c) => c.type === ChannelType.GuildCategory).sort((a, b) => a.position - b.position);
+  const linha = (ch) => ({ id: ch.id, nome: ch.name, tipo: tipo(ch), quemVe: quem(ch), doBot: gerenciados.has(ch.id) });
+  const out = [{ categoria: "(sem categoria)", canais: todos.filter((c) => !c.parentId && c.type !== ChannelType.GuildCategory).sort((a, b) => a.position - b.position).map(linha) }];
+  for (const cat of cats) out.push({ categoria: cat.name, quemVe: quem(cat), canais: todos.filter((c) => c.parentId === cat.id).sort((a, b) => a.position - b.position).map(linha) });
+  return out.filter((b) => b.canais.length || b.categoria !== "(sem categoria)");
 }

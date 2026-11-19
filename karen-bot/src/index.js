@@ -14,7 +14,7 @@ import {
 } from "discord.js";
 import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
-import { montarServidor, alternarAreaClientes, completarCanais, ESTRUTURA } from "./servidor.js";
+import { montarServidor, alternarAreaClientes, completarCanais, ESTRUTURA, mapaServidor, permissoes } from "./servidor.js";
 import * as CR from "./crediario.js";
 import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
@@ -137,6 +137,12 @@ const comandos = [
     .addSubcommand((s) => s.setName("montar").setDescription("APAGA os canais e cargos atuais e cria o servidor da Karen"))
     .addSubcommand((s) => s.setName("clientes").setDescription("Mostrar ou esconder a Área das Clientes")
       .addStringOption((o) => o.setName("acao").setDescription("abrir ou fechar").setRequired(true).addChoices({ name: "abrir", value: "abrir" }, { name: "fechar", value: "fechar" })))
+    .addSubcommand((s) => s.setName("acesso").setDescription("Define quem vê/entra num canal ou call criado à mão")
+      .addChannelOption((o) => o.setName("canal").setDescription("Canal ou call").setRequired(true))
+      .addStringOption((o) => o.setName("para").setDescription("Quem acessa").setRequired(true).addChoices(
+        { name: "só a equipe (Karen e Admin)", value: "equipe" }, { name: "clientes e consorciadas", value: "clientes" },
+        { name: "só consorciadas", value: "consorciadas" }, { name: "qualquer pessoa do servidor", value: "publico" })))
+    .addSubcommand((s) => s.setName("mapa").setDescription("Mostra cada canal e call e quem consegue ver (todos, clientes, só equipe)"))
     .addSubcommand((s) => s.setName("vincular").setDescription("Liga uma pessoa do Discord ao WhatsApp dela (para /minhas-parcelas)")
       .addUserOption((o) => o.setName("pessoa").setDescription("Pessoa").setRequired(true))
       .addStringOption((o) => o.setName("whatsapp").setDescription("WhatsApp com DDD").setRequired(true))),
@@ -884,6 +890,21 @@ function atualizarStatus() {
   try { client.user.setPresence({ status: "online", activities: [{ name: texto, state: texto, type: ActivityType.Custom }] }); } catch {}
 }
 
+// ---------------------------------------------------------------- área das clientes: boas-vindas e mapa
+async function gravarMapa() {
+  const mapa = await mapaServidor(guild, estado);
+  try { fs.writeFileSync(path.join(PASTA, "servidor-mapa.json"), JSON.stringify({ geradoEm: new Date().toISOString(), clientesAbertos: Boolean(estado.clientesAbertos), mapa }, null, 2)); } catch {}
+  return mapa;
+}
+function conteudoBoasVindas() {
+  const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
+    .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
+      "👉 Toque em **🌸 Entrar** e diga seu nome. Se informar o WhatsApp, a gente já liga você ao seu consórcio.")
+    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n💬 **fale-com-a-karen**: dúvidas, pedidos e encomendas\n🎧 **Atendimento**: call para falar com a Karen\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
+    .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
+}
+
 // ---------------------------------------------------------------- central de botões (#comandos)
 function conteudoCentral() {
   const e = new EmbedBuilder().setColor(COR).setTitle("💝 Central da Karen")
@@ -916,6 +937,8 @@ async function centralFixa() {
 async function rotinas() {
   const h = C.agoraSP();
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
+  if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
+  if (estado.mapaHora !== h.data + h.hora) { estado.mapaHora = h.data + h.hora; await gravarMapa().catch((e) => log("mapa: " + e.message)); }
   if (!estado.central?.msg || estado.central.lido !== painelRV.atualizadoEm) { await centralFixa(); if (estado.central) { estado.central.lido = painelRV.atualizadoEm; } }
   await rotinasRevendi(h);
   await painelHoje().catch((e) => log("painel hoje: " + e.message));
@@ -1085,6 +1108,32 @@ async function comando(i) {
       await alternarAreaClientes(guild, estado, abrir);
       estado.clientesAbertos = abrir; salvar();
       return i.editReply(abrir ? "🌸 Área das Clientes visível para quem tiver o cargo Cliente ou Consorciada." : "🔒 Área das Clientes escondida.");
+    }
+    if (sub === "acesso") {
+      const ch = guild.channels.cache.get(i.options.getChannel("canal").id);
+      const para = i.options.getString("para");
+      if (!ch || ch.isThread?.()) return i.reply({ ...EFEMERA, content: "Escolha um canal, call ou categoria." });
+      if (Object.values(estado.canais || {}).includes(ch.id)) return i.reply({ ...EFEMERA, content: "Esse canal é do bot e já tem o acesso certo. Use isso para canais e calls criados à mão." });
+      const cargos = Object.fromEntries(Object.entries(estado.cargos || {}).map(([k, id]) => [k, guild.roles.cache.get(id)]));
+      const voz = ch.isVoiceBased?.();
+      const acesso = para === "clientes" ? (voz ? "voz" : "conversa") : para === "consorciadas" ? "consorciadas" : "publico";
+      const perms = permissoes(guild, para === "equipe" ? "equipe" : "clientes", cargos, true, { acesso });
+      if (para === "publico" && voz) perms[0] = { id: guild.roles.everyone.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak] };
+      if (para === "consorciadas" && voz) perms[perms.length - 1] = { id: cargos.consorciada.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.Stream, PermissionFlagsBits.UseVAD] };
+      await ch.permissionOverwrites.set(perms);
+      estado.acessos = { ...(estado.acessos || {}), [ch.id]: para }; salvar();
+      const rot = { equipe: "🔒 só a equipe", clientes: "🌸 clientes e consorciadas", consorciadas: "💳 só consorciadas", publico: "🌍 qualquer pessoa" }[para];
+      await gravarMapa().catch(() => {});
+      return i.reply({ ...EFEMERA, content: `${voz ? "🔊" : "#"} **${ch.name}** agora: ${rot}.` + (para !== "equipe" && !estado.clientesAbertos ? "\n⚠️ A área das clientes está fechada: use `/servidor clientes abrir` quando quiser receber clientes." : "") });
+    }
+    if (sub === "mapa") {
+      await i.deferReply(EFEMERA);
+      const mapa = await gravarMapa();
+      const ic = (q) => q.startsWith("todos") ? "🌍" : q.startsWith("clientes") ? "🌸" : q.startsWith("só consorciadas") ? "💳" : "🔒";
+      const embeds = mapa.slice(0, 10).map((b) => new EmbedBuilder().setColor(COR).setTitle(curto(b.categoria, 250))
+        .setDescription(curto(b.canais.map((c) => `${ic(c.quemVe)} ${c.tipo === "call" ? "🔊" : "#"} ${c.nome} · ${c.quemVe}${c.doBot ? "" : " · *criado à mão*"}`).join("\n") || "(vazia)", 4000)));
+      embeds[0]?.setFooter({ text: "🌍 qualquer pessoa · 🌸 clientes · 💳 consorciadas · 🔒 só equipe (Karen/Admin)" });
+      return i.editReply({ embeds });
     }
     if (sub === "vincular") {
       const u = i.options.getUser("pessoa");
@@ -1261,7 +1310,28 @@ function respostaBaixa(r, desfazer) {
     : `✅ Baixa: **${r.nome}** · ${r.g.codigo} · ${C.rotuloMes(r.ym, true)}. Agora ${x.pagas}/${x.total} pagas.` + (recibo ? `\n${linhaLink("📲 Mandar recibo no WhatsApp", recibo)}` : "") };
 }
 
+async function entradaCliente(i) {
+  const nome = String(i.fields.getTextInputValue("nome") || "").trim().slice(0, 60);
+  const tel = C.soNumeros(i.fields.getTextInputValue("whats") || "");
+  const membro = await guild.members.fetch(i.user.id);
+  const cargoCli = guild.roles.cache.get(estado.cargos?.cliente), cargoCons = guild.roles.cache.get(estado.cargos?.consorciada);
+  if (!cargoCli) return i.reply({ ...EFEMERA, content: "O servidor ainda está sendo arrumado. Tente de novo mais tarde 💝" });
+  const chave = tel.length >= 10 ? C.chaveTel(tel) : "";
+  const nos = chave ? [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => C.chaveTel(m.whatsapp) === chave).map(() => g.codigo)) : [];
+  await membro.roles.add(cargoCli).catch(() => {});
+  if (nos.length && cargoCons) await membro.roles.add(cargoCons).catch(() => {});
+  if (chave) { estado.vinculos[i.user.id] = tel; salvar(); }
+  if (nome && membro.manageable && !membro.nickname) await membro.setNickname(nome).catch(() => {});
+  const cliRV = chave ? painelRV.clientes.find((c) => C.chaveTel(c.whatsapp) === chave) : null;
+  await enviar("alertas", { embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🌸 Nova cliente no Discord")
+    .setDescription(`${membro} · **${nome || membro.user.username}**` + (tel ? ` · ${C.fone(tel)}` : " · sem WhatsApp") +
+      (nos.length ? `\n💳 Consorciada: ${[...new Set(nos)].join(", ")}` : "") + (cliRV ? `\n🛍️ Já é cliente no Revendi (${cliRV.nome})` : tel ? "\n🆕 WhatsApp não está no Revendi" : ""))] });
+  return i.reply({ ...EFEMERA, content: `Prontinho, ${C.primeiroNome(nome || membro.user.username)}! 💝 Agora você vê a 🌸 Área das Clientes: novidades, 💬 fale-com-a-karen e a call 🎧 Atendimento.` +
+    (nos.length ? `\nVi que você está no consórcio (${[...new Set(nos)].join(", ")}). Use **/minhas-parcelas** para ver sua situação (só você vê).` : "") });
+}
+
 async function modalEnviado(i) {
+  if (i.customId === "cli:entrar") return entradaCliente(i);
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode criar grupos." });
   if (i.customId !== "ng") return;
   const v = (id) => String(i.fields.getTextInputValue(id) || "").trim();
@@ -1297,6 +1367,12 @@ async function componente(i) {
       (r.preservados.length ? `\n\nMantive em 🔒 SISTEMA: ${r.preservados.join(", ")}` : ""))] });
     estado.versoes = {}; await ciclo();
     return;
+  }
+  if (tipo === "cli" && acao === "entrar") {
+    const modal = new ModalBuilder().setCustomId("cli:entrar").setTitle("Bem-vinda à Karen Cosméticos 🌸").addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("nome").setLabel("Seu nome").setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(60)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("whats").setLabel("Seu WhatsApp com DDD (para ver suas parcelas)").setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(20).setPlaceholder("(33) 99999-9999")));
+    return i.showModal(modal);
   }
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe da Karen pode usar isso." });
 
@@ -1475,7 +1551,10 @@ client.once(Events.ClientReady, async () => {
     const novos = await completarCanais(guild, estado, log).catch((e) => { log("canais novos: " + e.message); return {}; });
     if (Object.keys(novos).length) { estado.canais = { ...estado.canais, ...novos }; salvar(); }
     await V.aplicarIdentidade(client, guild, estado, salvar, log).catch((e) => log("identidade visual: " + e.message));
-    if (estado.ordemCategorias !== 3) {
+    if (estado.permClientes !== 2 && estado.cargos?.cliente) {
+      await alternarAreaClientes(guild, estado, Boolean(estado.clientesAbertos)).then(() => { estado.permClientes = 2; salvar(); }).catch((e) => log("permissões da área das clientes: " + e.message));
+    }
+    if (estado.ordemCategorias !== 4) {
       try {
         const cats = ESTRUTURA.map((b) => guild.channels.cache.get(estado.canais?.[b.canais[0].chave])?.parent).filter(Boolean);
         await guild.channels.setPositions(cats.map((c, n) => ({ channel: c.id, position: n })));
@@ -1486,7 +1565,7 @@ client.once(Events.ClientReady, async () => {
         const pos = [];
         for (const b of ESTRUTURA) b.canais.forEach((c, n) => { const ch = guild.channels.cache.get(estado.canais?.[c.chave]); if (ch) pos.push({ channel: ch.id, position: n }); });
         await guild.channels.setPositions(pos).catch((e) => log("ordem dos canais: " + e.message));
-        estado.ordemCategorias = 3; salvar();
+        estado.ordemCategorias = 4; salvar();
       } catch (e) { log("ordem das categorias: " + e.message); }
     }
   }

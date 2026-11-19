@@ -107,6 +107,13 @@ se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot s
 
 Também: **🛍️ Revendi hoje** no resumo das 8h, **`/cliente`** com histórico de compras, aniversário, marca favorita e etiquetas,
 e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `sincronizar`).
+**Clientes no Discord:** quem entra vê só **👋 boas-vindas** (com o botão **🌸 Entrar**). Ao tocar, informa nome e
+WhatsApp (opcional): ganha o cargo **🌸 Cliente** (e **💳 Consorciada** se o WhatsApp está num grupo), fica ligada ao
+`/minhas-parcelas`, e a equipe recebe aviso em #alertas (diz se ela já é cliente no Revendi). Clientes veem: ✨ novidades (lê),
+💬 fale-com-a-karen (escreve), 🎧 Atendimento (call) e, se consorciada, 💳 meu-consorcio. Todo o resto é só da equipe.
+Precisa estar aberta: `/servidor clientes abrir`. Calls/canais criados à mão: `/servidor acesso` escolhe quem acessa;
+`/servidor mapa` mostra quem vê cada canal (também gravado em `dados/servidor-mapa.json` a cada hora).
+
 **Visual:** foto, banner e cores da Karen (monograma KC, vinho, rosé e dourado) no bot e no ícone do servidor; logo no topo e
 no rodapé de todo post; cores fixas (rosé = resumo, rosa = venda, verde = pago, amarelo = atenção, vermelho = atraso,
 roxo = crediário, azul = informação); emojis das marcas (oB, Eu, QDB, OUi) nos produtos; barras de progresso no consórcio;
