@@ -987,20 +987,26 @@ function conteudoComoFunciona() {
 }
 /** Vitrine numa mensagem só: um bloco por marca (lista com preço e código, foto de um produto da marca)
  *  e menus "Quero este" (25 produtos por menu). */
-const ORDEM_MARCAS = ["boticário", "eudora", "quem disse", "o.u.i", "oui"];
+const ORDEM_MARCAS = ["boticário", "eudora", "quem disse", "o.u.i", "oui", "natura", "avon"];
+const NAO_VITRINE = /sacola|embalagem|demonstrador|amostra|brinde|caixa presente vazia/i;
+const MINUSC = new Set(["de", "da", "do", "das", "dos", "e", "com", "para", "em", "ml", "g", "kg"]);
+/** "ERVA DOCE SAB BARRA" → "Erva Doce Sab Barra" (só quando o nome inteiro vem em maiúsculas). */
+const nomeBonito = (t) => { const s0 = String(t || "").trim(), letras = s0.replace(/[^A-Za-zÀ-ú]/g, "");
+  if (letras.length < 4 || letras.replace(/[^A-ZÀ-Ú]/g, "").length / letras.length < 0.8) return s0;
+  return s0.toLowerCase().split(/\s+/).map((w, n) => (n && MINUSC.has(w)) || /\d/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(" "); };
 const posMarca = (m) => { const k = String(m || "").toLowerCase(); const n = ORDEM_MARCAS.findIndex((x) => k.includes(x)); return n < 0 ? 99 : n; };
 function conteudoVitrine() {
-  const itens = painelRV.produtos.filter((p) => p.unidades > 0)
+  const itens = painelRV.produtos.filter((p) => p.unidades > 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome)).map((p) => ({ ...p, nome: nomeBonito(p.nome) }))
     .sort((a, b) => posMarca(a.marca) - posMarca(b.marca) || a.marca.localeCompare(b.marca) || a.nome.localeCompare(b.nome)).slice(0, 75);
   const capa = new EmbedBuilder().setColor(COR).setTitle(`🛍️ Pronta entrega · ${itens.length} produto(s)`)
     .setDescription(itens.length ? "Tudo aqui está no estoque da Karen para entrega rápida.\nEscolha no menu **🛒 Quero este** lá embaixo e a gente abre seu pedido. 💝" : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
-    .setFooter({ text: "Atualiza sozinho com o estoque · 🔥 = última unidade · preços podem mudar" });
+    .setFooter({ text: "Atualiza sozinho com o estoque · preços podem mudar" });
   const marcas = new Map();
   for (const p of itens) { const k = p.marca || "Outras marcas"; if (!marcas.has(k)) marcas.set(k, []); marcas.get(k).push(p); }
   const embeds = [capa];
   for (const [marca, ps] of marcas) {
     if (embeds.length >= 10) break;
-    const linhas = ps.map((p) => `• **${curto(p.nome, 55)}** · ${C.brl(p.preco)}${p.unidades === 1 ? " 🔥" : ""}${p.codigo ? ` · *cód. ${p.codigo}*` : ""}`);
+    const linhas = ps.map((p) => `• ${curto(p.nome, 52)} · **${C.brl(p.preco)}**`);
     const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`${V.emojiMarca(marca) || "🛍️"} ${marca} · ${ps.length}`).setDescription(curto(linhas.join("\n"), 4000));
     const foto = ps.find((p) => /^https:/.test(p.foto || ""))?.foto;
     if (foto) e.setThumbnail(foto);
@@ -1009,7 +1015,7 @@ function conteudoVitrine() {
   const rows = [];
   for (let n = 0; n < itens.length && rows.length < 3; n += 25) {
     const lote = itens.slice(n, n + 25);
-    rows.push(...menuZap(`vit:quero:${n}`, `🛒 Quero este… (${n + 1} a ${n + lote.length})`, lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}`, 100) }))));
+    rows.push(...menuZap(`vit:quero:${n}`, `🛒 Quero este… (${n + 1} a ${n + lote.length})`, lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}${p.codigo ? " · cód. " + p.codigo : ""}`, 100) }))));
   }
   // limite de 6000 caracteres por mensagem: corta blocos do fim se passar
   while (embeds.length > 1 && embeds.reduce((t, e) => t + JSON.stringify(e.toJSON()).length, 0) > 5600) embeds.pop();
@@ -1035,7 +1041,7 @@ async function postarChegadas() {
   if (!estado.canais?.novidades || !temPainel()) return;
   const agora = Object.fromEntries(painelRV.produtos.map((p) => [p.id, p.unidades]));
   if (!estado.estoqueVisto) { estado.estoqueVisto = agora; salvar(); return; }
-  const chegaram = painelRV.produtos.filter((p) => p.unidades > 0 && !(estado.estoqueVisto[p.id] > 0));
+  const chegaram = painelRV.produtos.filter((p) => p.unidades > 0 && p.preco > 0 && !NAO_VITRINE.test(p.nome) && !(estado.estoqueVisto[p.id] > 0)).map((p) => ({ ...p, nome: nomeBonito(p.nome) }));
   estado.estoqueVisto = agora; salvar();
   if (!chegaram.length) return;
   const embeds = chegaram.slice(0, 10).map((p) => {

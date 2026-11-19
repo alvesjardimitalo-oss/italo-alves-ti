@@ -51,6 +51,8 @@ const EMOJIS = [
   { nome: "kc_eudora", arq: "e-eudora.png", marcas: ["eudora"] },
   { nome: "kc_qdb", arq: "e-qdb.png", marcas: ["quem disse", "berenice"] },
   { nome: "kc_oui", arq: "e-oui.png", marcas: ["o.u.i", "oui"] },
+  { nome: "kc_natura", arq: "e-natura.png", marcas: ["natura"] },
+  { nome: "kc_avon", arq: "e-avon.png", marcas: ["avon"] },
   { nome: "kc_karen", arq: "e-karen.png", marcas: [] },
 ];
 let ids = {};
