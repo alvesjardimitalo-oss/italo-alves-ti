@@ -25,14 +25,19 @@ const publicos = (xs) => xs.map((s) => ({
 })).filter((s) => s.id && s.titulo && s.valor > 0);
 const sacolasAtuais = () => store.lista('sacolas');
 const URL_CONSORCIO = URL_SACOLA + 'renovacao/';
+const URL_RESERVA = URL_LOJA + 'consorcio/';
 const ehConsorcio = (p) => p.origem === 'consorcio-renovacao';
+const ehReserva = (p) => p.origem === 'consorcio-reserva';
+const valorReserva = (p) => (String(p.detalhe || '').match(/\[valor:([^\]]+)\]/) || [])[1] || '';
+const jaParticipou = (p) => (String(p.detalhe || '').match(/\[ja:(sim|nao)\]/) || [])[1] || '';
+const VALORES_RESERVA = { 25: 'R$ 25', 35: 'R$ 35', 50: 'R$ 50', outro: 'Outro' };
 const notaConsorcio = (p) => Number((String(p.detalhe || '').match(/\[nota:(\d)\]/) || [])[1]) || 0;
-const renovaConsorcio = (p) => (String(p.detalhe || '').match(/\[ref:renova-(sim|nao)\]/) || [])[1] || '';
+const renovaConsorcio = (p) => (String(p.detalhe || '').match(/\[ref:renova-(sim|talvez|nao)\]/) || [])[1] || '';
 const grupoConsorcio = (p) => (String(p.detalhe || '').match(/\[grupo:([^\]]+)\]/) || [])[1] || '';
-const GRUPOS_CONSORCIO = { G3: 'G3 · R$ 50 · abr/26 a jan/27', G4: 'G4 · R$ 35 · mai/26 a fev/27', G5: 'G5 · R$ 50 · jun/26 a abr/27', outro: 'Outro' };
-const textoConsorcio = (p) => String(p.detalhe || '').replace(/\s*\[(ref|nota|grupo):[^\]]*\]/g, '');
+const GRUPOS_CONSORCIO = { G3: 'G3 · R$ 50 · abr/26 a jan/27', G4: 'G4 · R$ 35 · mai/26 a fev/27', G5: 'G5 · R$ 50 · jun/26 a abr/27', G2: 'G2 · R$ 25 · encerrado', G1: 'G1 · R$ 35 · encerrado', outro: 'Outro' };
+const textoConsorcio = (p) => String(p.detalhe || '').replace(/\s*\[(ref|nota|grupo|valor|ja):[^\]]*\]/g, '');
 export function contarRenovacoes() {
-  return store.lista('leads').filter((p) => ehConsorcio(p) && (p.status || 'Novo') === 'Novo').length;
+  return store.lista('leads').filter((p) => (ehConsorcio(p) || ehReserva(p)) && (p.status || 'Novo') === 'Novo').length;
 }
 const ehSacola = (p) => p.origem === 'sacola-misteriosa' || p.servico === 'Sacola Misteriosa';
 
@@ -308,7 +313,7 @@ const SECOES = {
   produtos: ['produtos', 'Produtos', 'Cadastre, edite, esconda e defina o estoque. O que está ativo aparece no catálogo da loja.'],
   cupons: ['cupons', 'Cupons e roleta', 'Cupons de 1% a 10% ganhos na roleta da Black Friday, indicações e giros extras.'],
   sacolas: ['sacolas', 'Sacola Misteriosa', 'Ação da loja: sacolas surpresa com conteúdo secreto e as solicitações recebidas.'],
-  consorcio: ['consorcio', 'Consórcio', 'Feedback e renovação do consórcio. O link do formulário não aparece no site: envie só para as participantes.'],
+  consorcio: ['consorcio', 'Consórcio', 'Feedback e renovação de quem já participa, e o banco de reserva de quem quer entrar no próximo grupo.'],
   config: ['config', 'Configurações da loja', 'WhatsApp que recebe os pedidos, chave Pix e avisos de compra.'],
 };
 function cabecalho(secao) {
@@ -369,17 +374,27 @@ const CARD_SACOLAS = '<div class="card" style="margin-bottom:18px"><div class="c
   '<div class="card flush" style="margin-top:20px"><div class="card-head"><h2>Solicitações recebidas</h2></div>' +
   '<div class="tabela-wrap" id="pedidos-karen"></div></div><div id="editor-karen"></div>';
 
-const CARD_CONSORCIO = '<div class="card" style="margin-bottom:18px"><div class="card-head"><h2>Link do formulário</h2>' +
+const CARD_CONSORCIO = '<div class="card" style="margin-bottom:18px"><div class="card-head"><h2>Renovação: link para quem já participa</h2>' +
   '<a class="btn btn-sm" href="/karen/sacola-misteriosa/renovacao/" target="_blank" rel="noopener">Abrir formulário</a></div>' +
   '<p class="sub">Página escondida: não está no menu, na loja nem no Google. Só quem receber este link consegue responder. Cada resposta chega aqui e no WhatsApp da Karen.</p>' +
   '<div class="acoes" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap"><input class="mono" readonly value="' + URL_CONSORCIO + '" style="flex:1 1 280px" onclick="this.select()">' +
-  '<select id="link-grupo" style="flex:0 0 auto" title="O link já abre com o grupo escolhido"><option value="">Link geral</option><option value="G3">Link do G3</option><option value="G4">Link do G4</option><option value="G5">Link do G5</option></select>' +
+  '<select id="link-grupo" style="flex:0 0 auto" title="O link já abre com o grupo escolhido"><option value="">Link geral</option><option value="G3">Link do G3</option><option value="G4">Link do G4</option><option value="G5">Link do G5</option><option value="G2">Link do G2 (encerrado)</option><option value="G1">Link do G1 (encerrado)</option></select>' +
   '<button type="button" class="btn" id="copiar-consorcio">' + icon('copy', 16) + ' Copiar mensagem com o link</button></div></div>' +
   '<div class="kpis" id="kpis-consorcio"></div>' +
   '<div class="card flush" style="margin-top:18px"><div class="card-head"><h2>Respostas</h2><span id="resumo-consorcio" class="sub"></span></div>' +
-  '<div class="barra-filtros" style="padding:12px 20px"><select id="filtro-consorcio" style="flex:0 0 auto"><option value="">Todas</option><option value="sim">Querem renovar</option><option value="nao">Não vão renovar</option><option value="novas">Ainda não respondidas</option></select>' +
+  '<div class="barra-filtros" style="padding:12px 20px"><select id="filtro-consorcio" style="flex:0 0 auto"><option value="">Todas</option><option value="sim">Querem renovar</option><option value="talvez">Talvez</option><option value="nao">Não vão renovar</option><option value="novas">Ainda não respondidas</option></select>' +
   '<select id="grupo-consorcio" style="flex:0 0 auto"><option value="">Todos os grupos</option>' + Object.entries(GRUPOS_CONSORCIO).map(([k, v]) => '<option value="' + k + '">' + v + '</option>').join('') + '</select></div>' +
-  '<div class="tabela-wrap" id="tabela-consorcio"></div></div>';
+  '<div class="tabela-wrap" id="tabela-consorcio"></div></div>' +
+  '<div class="card" style="margin:24px 0 18px"><div class="card-head"><h2>Banco de reserva: link para quem quer entrar</h2>' +
+  '<a class="btn btn-sm" href="/karen/consorcio/" target="_blank" rel="noopener">Abrir página</a></div>' +
+  '<p class="sub">Página pública (também no rodapé da loja). Qualquer pessoa reserva vaga no próximo grupo, sem compromisso. Para indicação, use o link com o nome de quem indicou.</p>' +
+  '<div class="acoes" style="margin-top:14px;justify-content:flex-start;flex-wrap:wrap"><input id="link-reserva" class="mono" readonly value="' + URL_RESERVA + '" style="flex:1 1 280px" onclick="this.select()">' +
+  '<input id="ind-reserva" maxlength="40" placeholder="Quem indica (opcional)" style="flex:0 1 200px">' +
+  '<button type="button" class="btn" id="copiar-reserva">' + icon('copy', 16) + ' Copiar convite</button></div></div>' +
+  '<div class="card flush"><div class="card-head"><h2>Banco de reserva</h2><span id="resumo-reserva" class="sub"></span></div>' +
+  '<div class="barra-filtros" style="padding:12px 20px"><select id="filtro-reserva" style="flex:0 0 auto"><option value="">Todas</option><option value="novas">Ainda não contatadas</option>' +
+  Object.entries(VALORES_RESERVA).map(([k, v]) => '<option value="v' + k + '">Parcela ' + v + '</option>').join('') + '<option value="primeira">Primeira vez</option></select></div>' +
+  '<div class="tabela-wrap" id="tabela-reserva"></div></div>';
 
 export function tela(el, params = {}) {
   const secao = Object.keys(SECOES).find((k) => SECOES[k][0] === (params.secao || '')) || (params.secao ? null : 'geral');
@@ -425,11 +440,20 @@ export function tela(el, params = {}) {
   ['#busca-produto', '#filtro-produto'].forEach((s) => ligar(s, s.startsWith('#busca') ? 'input' : 'change', () => desenharProdutos()));
   ligar('#filtro-consorcio', 'change', () => desenharConsorcio());
   ligar('#grupo-consorcio', 'change', () => desenharConsorcio());
+  ligar('#filtro-reserva', 'change', () => desenharConsorcio());
+  const linkReserva = () => { const i = String(($('#ind-reserva') || {}).value || '').trim(); return URL_RESERVA + (i ? '?ind=' + encodeURIComponent(i) : ''); };
+  ligar('#ind-reserva', 'input', () => { $('#link-reserva').value = linkReserva(); });
+  ligar('#copiar-reserva', 'click', async () => {
+    const msg = 'Oi! Aqui é a Karen 💝 Vou abrir um novo grupo do consórcio de perfumes e cosméticos: você paga uma parcelinha por mês e resgata em produtos. ' +
+      'Quer entrar? Reserve sua vaga aqui, é sem compromisso: ' + linkReserva();
+    try { await navigator.clipboard.writeText(msg); toast('Convite copiado. É só colar no WhatsApp ou nos status.'); }
+    catch (e) { toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'erro'); }
+  });
   const linkConsorcio = () => { const g = ($('#link-grupo') || {}).value; return URL_CONSORCIO + (g ? '?g=' + g : ''); };
   ligar('#link-grupo', 'change', () => { const i = el.querySelector('#copiar-consorcio').parentElement.querySelector('input'); if (i) i.value = linkConsorcio(); });
   ligar('#copiar-consorcio', 'click', async () => {
-    const msg = 'Oi! Aqui é a Karen 💝 Muito obrigada por participar do nosso consórcio! Vamos iniciar um novo consórcio e queria saber sua opinião ' +
-      'sobre como foi e se você quer continuar com a gente. Responde aqui, leva menos de 2 minutos: ' + linkConsorcio();
+    const msg = 'Oi! Aqui é a Karen 💝 Muito obrigada por fazer parte do nosso consórcio! Já estamos organizando o próximo grupo e queria saber sua opinião ' +
+      'sobre como está sendo e se você quer garantir sua vaga, com prioridade, no próximo grupo. É sem compromisso e leva menos de 2 minutos: ' + linkConsorcio();
     try { await navigator.clipboard.writeText(msg); toast('Mensagem copiada. É só colar no WhatsApp das clientes.'); }
     catch (e) { toast('Não foi possível copiar. Selecione o link e copie manualmente.', 'erro'); }
   });
@@ -658,7 +682,7 @@ export function tela(el, params = {}) {
     const novas = todas.filter((p) => (p.status || 'Novo') === 'Novo');
     const kpi = (titulo, ico, v, sub) => '<div class="kpi"><div class="kpi-top">' + esc(titulo) + ' ' + icon(ico, 16) + '</div><div class="kpi-val">' + v + '</div><div class="kpi-sub">' + sub + '</div></div>';
     $('#kpis-consorcio').innerHTML = kpi('Respostas', 'chat', todas.length, novas.length + ' ainda não respondida(s)') +
-      kpi('Querem renovar', 'check', sim.length, (todas.length - sim.length) + ' não vão renovar') +
+      kpi('Querem renovar', 'check', sim.length, todas.filter((p) => renovaConsorcio(p) === 'talvez').length + ' talvez · ' + todas.filter((p) => renovaConsorcio(p) === 'nao').length + ' não') +
       kpi('Nota média', 'trend', media, notas.length ? 'de 5, em ' + notas.length + ' avaliação(ões)' : 'sem avaliações');
     $('#resumo-consorcio').textContent = todas.length + ' resposta(s)';
     const f = $('#filtro-consorcio').value;
@@ -670,12 +694,14 @@ export function tela(el, params = {}) {
         const r = renovaConsorcio(p);
         const primeiro = (p.nome || '').split(' ')[0];
         const resposta = r === 'sim'
-          ? 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada pelo seu retorno! Sua vaga no novo consórcio está garantida. Vou te passar os detalhes:'
-          : 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada por ter participado do consórcio e pelo seu retorno! Quando quiser voltar, é só me chamar.';
+          ? 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada pelo seu retorno! Sua vaga no próximo grupo está garantida, com prioridade. Vou te passar os detalhes:'
+          : r === 'talvez'
+            ? 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada pelo seu retorno! Vou te explicar com calma como vai ser o próximo grupo, sem compromisso:'
+            : 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Obrigada pelo carinho e pela sinceridade! Você continua sendo cliente querida. Quando quiser voltar, é só me chamar.';
         return '<tr><td class="nowrap">' + esc(dataBR(p.criadoEm, true)) + '</td><td><b>' + esc(p.nome) + '</b><div class="sub">' + esc(p.whatsapp) + '</div></td>' +
           '<td class="nowrap">' + esc(GRUPOS_CONSORCIO[grupoConsorcio(p)] || '—') + '</td>' +
           '<td class="nowrap" style="color:#c98a00">' + estrelas(notaConsorcio(p)) + '</td><td>' +
-          (r === 'sim' ? '<span class="badge b-ok">Sim</span>' : r === 'nao' ? '<span class="badge b-muted">Não</span>' : '—') + '</td>' +
+          (r === 'sim' ? '<span class="badge b-ok">Sim</span>' : r === 'talvez' ? '<span class="badge b-warn">Talvez</span>' : r === 'nao' ? '<span class="badge b-muted">Não</span>' : '—') + '</td>' +
           '<td style="min-width:240px;white-space:pre-line">' + esc(textoConsorcio(p).split(' | ').filter((t) => !/^(Grupo|Avaliação|Renovação):/.test(t)).join('\n') || '—') + '</td>' +
           '<td>' + esc(p.status || 'Novo') + '</td><td class="nowrap">' +
           ((p.status || 'Novo') === 'Novo' ? '<button type="button" class="btn btn-sm btn-primary" data-consorcio-ok="' + esc(p.id) + '">Marcar respondida</button> ' : '') +
@@ -688,6 +714,41 @@ export function tela(el, params = {}) {
       try { await store.atualizar('leads', l.id, { status: renovaConsorcio(l) === 'sim' ? 'Virou cliente' : 'Em contato' }); toast('Resposta marcada como respondida.'); }
       catch (e) { toast('Não foi possível atualizar: ' + e.message, 'erro'); b.disabled = false; }
     });
+    desenharReservas(kpi);
+  }
+
+  function desenharReservas(kpi) {
+    const alvo = $('#tabela-reserva');
+    if (!alvo) return;
+    const todas = store.lista('leads').filter(ehReserva).sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+    const renovam = store.lista('leads').filter((p) => ehConsorcio(p) && renovaConsorcio(p) === 'sim').length;
+    $('#kpis-consorcio').insertAdjacentHTML('beforeend', kpi('Banco de reserva', 'users', todas.length,
+      todas.filter((p) => jaParticipou(p) === 'nao').length + ' novas clientes · ' + (todas.length + renovam) + ' vagas no total com quem renova'));
+    const porValor = Object.keys(VALORES_RESERVA).map((k) => VALORES_RESERVA[k] + ': ' + todas.filter((p) => valorReserva(p) === k).length).join(' · ');
+    $('#resumo-reserva').textContent = todas.length + ' reserva(s)' + (todas.length ? ' · ' + porValor : '');
+    const f = $('#filtro-reserva').value;
+    const lista = todas.filter((p) => !f || (f === 'novas' ? (p.status || 'Novo') === 'Novo' : f === 'primeira' ? jaParticipou(p) === 'nao' : valorReserva(p) === f.slice(1)));
+    alvo.innerHTML = lista.length ? '<table class="tabela"><thead><tr><th>Data</th><th>Cliente</th><th>Parcela</th><th>Já participou?</th><th>Detalhes</th><th>Status</th><th>Ação</th></tr></thead><tbody>' +
+      lista.map((p) => {
+        const primeiro = (p.nome || '').split(' ')[0];
+        const msg = 'Olá, ' + primeiro + '! Aqui é a Karen 💝 Recebi sua reserva para o consórcio, muito obrigada pela confiança! Vou te passar como vai funcionar o próximo grupo:';
+        return '<tr><td class="nowrap">' + esc(dataBR(p.criadoEm, true)) + '</td><td><b>' + esc(p.nome) + '</b><div class="sub">' + esc(p.whatsapp) + (p.cidade ? ' · ' + esc(p.cidade) : '') + '</div></td>' +
+          '<td class="nowrap"><b>' + esc(VALORES_RESERVA[valorReserva(p)] || '—') + '</b></td>' +
+          '<td>' + (jaParticipou(p) === 'sim' ? '<span class="badge b-info">Já participou</span>' : '<span class="badge b-ok">Primeira vez</span>') + '</td>' +
+          '<td style="min-width:220px;white-space:pre-line">' + esc(textoConsorcio(p).split(' | ').filter((t) => !/^(Parcela desejada|Já participou|Cidade):/.test(t)).join('\n') || '—') + '</td>' +
+          '<td>' + esc(p.status || 'Novo') + '</td><td class="nowrap">' +
+          ((p.status || 'Novo') === 'Novo' ? '<button type="button" class="btn btn-sm btn-primary" data-reserva-ok="' + esc(p.id) + '">Marcar contatada</button> ' : '') +
+          ((p.status || 'Novo') !== 'Virou cliente' ? '<button type="button" class="btn btn-sm" data-reserva-entrou="' + esc(p.id) + '">Entrou no grupo</button> ' : '<span class="badge b-ok">No grupo</span> ') +
+          '<a class="btn btn-sm" target="_blank" rel="noopener" href="' + esc(whatsapp(p.whatsapp, msg)) + '">WhatsApp</a></td></tr>';
+      }).join('') + '</tbody></table>'
+      : '<div class="sub" style="padding:28px">' + (f ? 'Nenhuma reserva neste filtro.' : 'Ainda não há reservas. Copie o convite acima e divulgue no WhatsApp e nos status.') + '</div>';
+    const mudar = (b, status, aviso) => async () => {
+      b.disabled = true;
+      try { await store.atualizar('leads', b.dataset.reservaOk || b.dataset.reservaEntrou, { status }); toast(aviso); }
+      catch (e) { toast('Não foi possível atualizar: ' + e.message, 'erro'); b.disabled = false; }
+    };
+    alvo.querySelectorAll('[data-reserva-ok]').forEach((b) => b.onclick = mudar(b, 'Em contato', 'Reserva marcada como contatada.'));
+    alvo.querySelectorAll('[data-reserva-entrou]').forEach((b) => b.onclick = mudar(b, 'Virou cliente', 'Cliente marcada como dentro do grupo.'));
   }
 
   // ---------- Cupons ----------
