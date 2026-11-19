@@ -315,9 +315,9 @@ const SECOES = {
   produtos: ['produtos', 'Produtos', 'Cadastre, edite, esconda e defina o estoque. O que está ativo aparece no catálogo da loja.'],
   cupons: ['cupons', 'Cupons e roleta', 'Cupons de 1% a 10% ganhos na roleta da Black Friday, indicações e giros extras.'],
   sacolas: ['sacolas', 'Sacola Misteriosa', 'Ação da loja: sacolas surpresa com conteúdo secreto e as solicitações recebidas.'],
-  grupos: ['grupos', 'Grupos do consórcio', 'Configure cada grupo (mensalidade, parcelas, prêmio, vagas), veja os membros, marque as parcelas pagas e registre os resgates.'],
-  consorcio: ['consorcio', 'Respostas do consórcio', 'Feedback e renovação de quem já participa, e o banco de reserva de quem quer entrar no próximo grupo.'],
-  config: ['config', 'Configurações da loja', 'WhatsApp que recebe os pedidos, chave Pix e avisos de compra.'],
+  grupos: ['grupos', 'Consórcio', 'Configure cada grupo (mensalidade, parcelas, prêmio, vagas), veja os membros, marque as parcelas pagas e registre os resgates.'],
+  consorcio: ['consorcio', 'Respostas e reservas', 'Feedback e renovação de quem já participa, e o banco de reserva de quem quer entrar no próximo grupo.'],
+  config: ['config', 'Configurações', 'WhatsApp que recebe os pedidos, chave Pix e avisos de compra.'],
 };
 function cabecalho(secao) {
   const [, titulo, texto] = SECOES[secao];
@@ -341,7 +341,7 @@ const CARD_CONFIG = () => '<div class="grid g2" style="margin-bottom:18px"><div 
   '<div class="acoes" style="margin-top:14px;justify-content:flex-start"><button type="button" class="btn" id="avisos-bf">' + icon('alert', 16) + ' Ativar aviso no celular/computador</button></div>' +
   '<div class="card-head" style="margin-top:20px;padding:0"><h2>Páginas da loja</h2></div>' +
   '<ul class="lista-links"><li><a href="/karen/" target="_blank" rel="noopener">Loja (catálogo e carrinho)</a></li><li><a href="/karen/roleta/" target="_blank" rel="noopener">Roleta da Black Friday</a></li>' +
-  '<li><a href="/karen/pedidos/" target="_blank" rel="noopener">Acompanhar pedido</a></li><li><a href="/karen/sacola-misteriosa/" target="_blank" rel="noopener">Sacola Misteriosa</a></li></ul>' +
+  '<li><a href="/karen/pedidos/" target="_blank" rel="noopener">Acompanhar pedido</a></li><li><a href="/karen/sacola-misteriosa/" target="_blank" rel="noopener">Sacola Misteriosa</a></li><li><a href="/karen/consorcio/" target="_blank" rel="noopener">Consórcio · banco de reserva</a></li><li><a href="/karen/sacola-misteriosa/renovacao/" target="_blank" rel="noopener">Consórcio · renovação (link escondido)</a></li></ul>' +
   '<div class="acoes" style="margin-top:10px;justify-content:flex-start"><button class="btn" id="publicar-karen">' + icon('upload', 16) + ' Republicar tudo na loja</button></div>' +
   '<div id="status-karen" class="sub" style="margin-top:10px"></div></div></div>';
 const CARD_RESUMO = '<div class="kpis" id="kpis-loja"></div><div class="grid g2"><div class="card"><div class="card-head"><h2>Precisa de atenção</h2></div><div id="atencao-loja"></div></div>' +

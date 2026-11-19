@@ -394,7 +394,7 @@ dl.info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 }
 
 /* ---------- Loja da Karen (área própria no painel) ---------- */
-.abas-loja { display: flex; gap: 6px; overflow-x: auto; margin: -6px 0 18px; padding-bottom: 4px; scrollbar-width: thin; }
+.abas-loja { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 18px; padding-bottom: 4px; }
 .abas-loja a { flex: 0 0 auto; padding: 7px 14px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-2); font-size: .86rem; white-space: nowrap; }
 .abas-loja a:hover { text-decoration: none; border-color: var(--border-strong); color: var(--text); }
 .abas-loja a[aria-current="page"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
