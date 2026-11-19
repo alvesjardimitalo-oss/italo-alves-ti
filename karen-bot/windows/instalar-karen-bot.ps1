@@ -201,7 +201,9 @@ function Status { Write-Host ('Tarefa: ' + (Get-ScheduledTask -TaskName `$Task).
   try { `$h = Invoke-RestMethod "http://127.0.0.1:`$Port/health" -TimeoutSec 8
     Write-Host ("Este PC: " + `$h.pc + " · papel: " + `$h.papel + " (reserva = esperando; assume se o outro PC parar)") -ForegroundColor Cyan
     Write-Host ("Bot respondendo · Discord: " + `$h.discordReady + " · Firebase: " + `$h.firebase + " · servidor montado: " + `$h.servidorMontado + " · grupos: " + `$h.grupos) -ForegroundColor Green
-    if (`$h.ultimoErro) { Write-Host ("Último erro: " + `$h.ultimoErro) -ForegroundColor Yellow } }
+    if (`$h.ultimoErro) { Write-Host ("Último erro: " + `$h.ultimoErro) -ForegroundColor Yellow }
+    if (`$h.revendi.ativo) { if (`$h.revendi.ultimoErro) { Write-Host ("Revendi: " + `$h.revendi.ultimoErro) -ForegroundColor Yellow } else { Write-Host ("Revendi: ok · última leitura " + `$h.revendi.ultimoOk + " · " + `$h.crediario + " parcelas") -ForegroundColor Green } }
+    else { Write-Host 'Revendi: desligado (REVENDI_ATIVO no .env)' } }
   catch { Write-Host 'SEM RESPOSTA: o bot não está rodando. Use Reiniciar e veja o log.' -ForegroundColor Red } }
 switch (`$Acao) {
   'log'       { Get-Content `$Log -Tail 80 -Wait -Encoding UTF8 }

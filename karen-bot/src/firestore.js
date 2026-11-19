@@ -153,3 +153,9 @@ export async function criar(colecao, campos) {
   const d = await chamar(`${API}/${BASE}/${colecao}`, { method: "POST", body: JSON.stringify({ fields: gravarCampos(campos) }) });
   return doc(d);
 }
+
+/** Apaga um documento (usado só para parcelas do crediário que sumiram do Revendi). */
+export async function remover(colecao, id) {
+  const r = await fetch(`${API}/${BASE}/${colecao}/${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: "Bearer " + (await token()) } });
+  if (!r.ok && r.status !== 404) throw new Error("Firestore DELETE " + r.status);
+}

@@ -166,12 +166,14 @@ function interessados() {
   return out;
 }
 // Crediário do Revendi (ti/base/crediario), lido a cada 5 min. Vazio enquanto a integração não liga.
-let crediario = [], crediarioLido = 0;
+let crediario = [], crediarioLido = 0, vendasPorDia = {};
 async function carregarCrediario(forcar = false) {
   if (!forcar && Date.now() - crediarioLido < 5 * 60000) return;
   crediario = await db.listar("crediario");
+  try { const v = await db.obter("botKaren", "revendiVendas"); vendasPorDia = v?.dias ? JSON.parse(v.dias) : {}; } catch { vendasPorDia = {}; }
   crediarioLido = Date.now();
 }
+const somarVendas = (filtro) => Object.entries(vendasPorDia).filter(([d]) => filtro(d)).reduce((t, [, v]) => ({ qtd: t.qtd + (v.qtd || 0), total: t.total + (v.total || 0) }), { qtd: 0, total: 0 });
 const clientesCrediario = () => CR.porCliente(crediario);
 
 async function publicarGrupos() {
@@ -396,6 +398,9 @@ async function resumoDoDia() {
   }
   if (!ativos.length) e.setDescription("Nenhum grupo em andamento. Cadastre os grupos no painel.");
   else e.setDescription(`💰 Recebido em ${C.rotuloMes(hoje.ym, true)}: **${C.brl(recebido)}** de ${C.brl(previsto)}`);
+  const ontem = new Date(Date.parse(hoje.data + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
+  const vOntem = somarVendas((d) => d === ontem), vMes = somarVendas((d) => d.startsWith(hoje.ym));
+  if (Object.keys(vendasPorDia).length) e.addFields({ name: "🛍️ Vendas (Revendi)", value: `Ontem: **${vOntem.qtd}** · ${C.brl(vOntem.total)} · No mês: ${vMes.qtd} · ${C.brl(vMes.total)}` });
   if (crediario.length) {
     const r = CR.resumo(crediario);
     e.addFields({ name: "💳 Crediário (Revendi)", value: `Vence hoje: **${C.brl(r.hoje)}** (${r.qtdHoje}) · Em atraso: **${C.brl(r.atraso)}** (${r.clientesAtraso} cliente(s)) · Próximos 7 dias: ${C.brl(r.semana)} · A receber: ${C.brl(r.aReceber)}` });
@@ -501,6 +506,14 @@ async function relatorioMensal(ym) {
     if (sugestoes.length) e.addFields({ name: "💡 Sugestões", value: curto(sugestoes.join("\n"), 1000) });
     if (rs.length) e.addFields({ name: "📝 Banco de reserva", value: `${rs.length} nova(s) reserva(s) no mês` });
   } catch (err) { log("relatório (respostas): " + err.message); }
+  const vm = somarVendas((d) => d.startsWith(ym));
+  if (vm.qtd) e.addFields({ name: "🛍️ Vendas no Revendi", value: `${vm.qtd} venda(s) · ${C.brl(vm.total)} · ticket médio ${C.brl(vm.total / vm.qtd)}` });
+  if (crediario.length) {
+    const doMes = crediario.filter((p) => String(p.vencimento).startsWith(ym));
+    const pagas = doMes.filter((p) => p.pagoEm);
+    const soma = (xs) => xs.reduce((t, p) => t + (Number(p.valor) || 0), 0);
+    if (doMes.length) e.addFields({ name: "💳 Crediário do mês", value: `${pagas.length}/${doMes.length} parcelas pagas · ${C.brl(soma(pagas))} de ${C.brl(soma(doMes))}` });
+  }
   const resgates = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => String(m.resgatadoEm || "").startsWith(ym)).map((m) => `${m.nome} (${g.codigo})`));
   if (resgates.length) e.addFields({ name: `🎁 Resgates no mês (${resgates.length})`, value: curto(resgates.join(" · "), 1000) });
   await enviar("resumo", { embeds: [e] });
@@ -575,7 +588,7 @@ async function ciclo() {
   if (!guild || !db.firestoreConfigurado()) return;
   try {
     await carregarRespostas().catch((e) => log("respostas: " + e.message));
-    if (await sincronizarRevendi(log)) crediarioLido = 0;
+    if (await sincronizarRevendi((t) => (t.startsWith("⚠️") || t.includes("voltou") ? avisarLog(t) : log(t)))) crediarioLido = 0;
     await carregarCrediario().catch((e) => log("crediário: " + e.message));
     await verificarGrupos();
     await verificarLeads();

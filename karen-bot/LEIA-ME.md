@@ -83,15 +83,22 @@ O site e o painel funcionam normal. Quando o PC liga, o bot posta o que chegou e
 (cada registro é marcado como postado, então nada sai em dobro). O painel mostra em **Loja da Karen › Consórcio**
 se o bot está ligado.
 
-## Revendi (crediário) — em preparação
-O suporte do Revendi confirmou que dá para usar a API do sistema com o **login da conta** (e-mail e senha → token e
-refresh token) e vai mandar um repositório de exemplo. O bot já está pronto do lado dele, **só lendo** o Revendi:
+## Revendi (crediário e vendas)
+Feito com o exemplo oficial do suporte do Revendi (19/11/2026). Usa a **API interna** do Revendi (não é API pública):
+se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot segue normal. O bot **só lê**.
 
-- `src/revendi.js` faz o login, renova o token e grava as parcelas do crediário em `ti/base/crediario` a cada 30 min
-  (as rotas finais entram quando chegar o exemplo do suporte);
-- `src/crediario.js` calcula o que vence hoje, o que está atrasado e quanto cada cliente deve;
-- **#resumo-do-dia** ganha a linha 💳 Crediário; **#cobrancas** ganha, às 9h, o *Crediário de hoje* com cobrança
-  pronta no WhatsApp; **`/cliente`** mostra a ficha da cliente (consórcios + crediário).
+- A cada 30 min: login com o usuário de integração (token de 1 dia renovado sozinho; após 30 dias, login de novo),
+  leitura das parcelas de **crediário/fiado** com vencimento de 180 dias atrás a 150 dias à frente, e dos totais de vendas.
+- Grava as parcelas em `ti/base/crediario` (cliente, WhatsApp, valor, vencimento, pago) e só os totais de vendas por dia
+  em `ti/base/botKaren/revendiVendas`. Telefones sem DDD recebem o DDD 33.
+- No Discord: 💳 Crediário e 🛍️ Vendas no **resumo do dia**, *Crediário de hoje* em **#cobrancas** às 9h com cobrança
+  pronta no WhatsApp, **`/cliente`** com consórcios + crediário, e crediário e vendas no **relatório do mês**.
 
-Para ligar: no `.env`, `REVENDI_ATIVO=sim`, `REVENDI_API_URL`, `REVENDI_EMAIL`, `REVENDI_SENHA` (de preferência um
-usuário só para a integração). E-mail, senha e token ficam só no PC. Enquanto `REVENDI_ATIVO` estiver vazio, nada disso roda.
+**Para ligar:** atalho **Editar variaveis** → preencha e salve:
+```
+REVENDI_ATIVO=sim
+REVENDI_EMAIL=e-mail do usuário de integração
+REVENDI_SENHA=senha desse usuário
+```
+Depois **Reiniciar**. O atalho **Status** mostra se a sincronização está funcionando.
+Crie no Revendi um usuário da equipe só para isso, com **leitura** em Vendas (marcando "ver vendas de todos"), Clientes e Financeiro.
