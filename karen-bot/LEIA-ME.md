@@ -118,6 +118,12 @@ Se não achar, vai para #alertas com **Aprovar**, **Corrigir WhatsApp e aprovar*
 grupo terminou → tira o cargo do grupo, apaga o cargo e o apelido volta a [CLIENTE]. Grupos vêm do painel do consórcio e das
 etiquetas "Consorcio G… a <mês> <ano>" do Revendi. `/servidor vincular` também faz o set.
 
+**Para as clientes (atualiza sozinho):** **ℹ️ como-funciona** (comprar, pagar, receber, consórcio, voz + botões para a loja,
+reservar vaga, sacola misteriosa e meus pedidos) · **🛍️ pronta-entrega** (vitrine com tudo que tem no estoque do Revendi, foto
+do catálogo, preço e menu **🛒 Quero este** que abre o ticket de pedido já preenchido) · **✨ novidades** (posta sozinho quando um
+produto chega ou volta ao estoque) · **💳 meu-consorcio** (botão Ver minhas parcelas, só ela vê). Boas-vindas, como-funciona,
+pronta-entrega e novidades ficam visíveis até para quem ainda não pediu set (vitrine aberta atrai).
+
 **Tickets:** em **🎫 abrir-ticket** a cliente escolhe o assunto (Pedido/encomenda, Consórcio, Pagamento/crediário,
 Troca/defeito, Outro) e escreve o que precisa. O bot cria um canal privado (só ela + equipe) na categoria 🎫 TICKETS, avisa a
 equipe em #alertas com a ficha dela (WhatsApp, compras no Revendi, grupos, crediário em atraso) e põe os botões **✋ Assumir** e

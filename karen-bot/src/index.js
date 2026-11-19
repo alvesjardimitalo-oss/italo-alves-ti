@@ -654,13 +654,15 @@ async function postarVendasNovas() {
 }
 
 /** Mensagem fixa num canal, editada quando o conteúdo muda (painéis de entregas e estoque). */
-async function painelFixo(chave, conteudo) {
+async function painelFixo(chave, conteudo, vaga = "") {
   V.decorar(conteudo);
   const c = await canal(chave);
+  const chaveCanal = chave; chave = chave + vaga;
   if (!c) return;
   estado.rvFixos = estado.rvFixos || {};
   const marca = createHash("sha1").update(JSON.stringify(conteudo).replace(/Atualizado [^"·]+/g, "")).digest("hex");
   const atual = estado.rvFixos[chave];
+  void chaveCanal;
   if (atual?.marca === marca) return;
   let msg = null;
   if (atual?.msg) { try { msg = await c.messages.fetch(atual.msg); } catch {} }
@@ -965,6 +967,80 @@ client.on(Events.VoiceStateUpdate, async (antes, depois) => {
   } catch (e) { log("call de espera: " + e.message); }
 });
 
+// ---------------------------------------------------------------- área das clientes: vitrine, novidades, como funciona
+const SITE = "https://italoinfotec.com.br/karen";
+const botLink = (rot, url, emoji) => new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(rot).setEmoji(emoji);
+function conteudoComoFunciona() {
+  const e = new EmbedBuilder().setColor(COR).setTitle("💝 Como funciona").setThumbnail(V.LOGO_URL)
+    .setDescription("Perfumes e cosméticos de **O Boticário, Eudora, Quem Disse, Berenice? e O.U.i**, com entrega combinada pelo WhatsApp.")
+    .addFields(
+      { name: "🛍️ Comprar", value: "Veja o que tem em **🛍️ pronta-entrega** e toque em **🛒 Quero este**, ou abra um **🎫 ticket** para encomendar qualquer produto das revistas." },
+      { name: "💰 Pagar", value: "Pix ou crediário combinado com a Karen. Mandou o Pix? É só enviar o comprovante no seu ticket." },
+      { name: "🚚 Receber", value: "A entrega é combinada direto com você pelo WhatsApp ou pelo ticket." },
+      { name: "🤝 Consórcio", value: "Uma parcelinha por mês e, no fim, você **resgata o valor em produtos** das marcas que ama. Passou do valor? Paga só a diferença. Vagas em **Reservar vaga** 👇" },
+      { name: "🎧 Falar por voz", value: "Entre na call **Aguardando** e espere: alguém da equipe te chama para o atendimento." })
+    .setFooter({ text: "Karen Martins Cosméticos" });
+  return { embeds: [e], components: [new ActionRowBuilder().addComponents(
+    botLink("Loja do site", SITE + "/", "🛒"), botLink("Reservar vaga no consórcio", SITE + "/consorcio/", "🤝"),
+    botLink("Sacola misteriosa", SITE + "/sacola-misteriosa/", "🎁"), botLink("Meus pedidos", SITE + "/pedidos/", "📦"))] };
+}
+/** Vitrine: produtos com estoque, 10 por mensagem, com foto, preço e menu "Quero este". */
+function paginasVitrine() {
+  const itens = painelRV.produtos.filter((p) => p.unidades > 0).sort((a, b) => a.marca.localeCompare(b.marca) || a.nome.localeCompare(b.nome)).slice(0, 50);
+  const paginas = [];
+  for (let n = 0; n < itens.length; n += 10) {
+    const lote = itens.slice(n, n + 10);
+    const embeds = lote.map((p) => {
+      const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(curto(p.nome, 200))
+        .setDescription(`${V.emojiMarca(p.marca)} ${p.marca || ""}${p.codigo ? ` · cód. ${p.codigo}` : ""}\n**${C.brl(p.preco)}**` + (p.unidades <= 2 ? " · 🔥 últimas unidades" : ""));
+      if (/^https:/.test(p.foto || "")) e.setThumbnail(p.foto);
+      return e;
+    });
+    const op = lote.map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(`${C.brl(p.preco)} · ${p.marca}`, 100) }));
+    paginas.push({ embeds, components: menuZap("vit:quero", "🛒 Quero este…", op) });
+  }
+  return paginas;
+}
+async function atualizarVitrine() {
+  if (!estado.canais?.vitrine || !temPainel()) return;
+  const paginas = paginasVitrine();
+  const capa = new EmbedBuilder().setColor(COR).setTitle(`🛍️ Pronta entrega · ${paginas.length ? painelRV.produtos.filter((p) => p.unidades > 0).length + " produtos" : "esgotado"}`)
+    .setDescription(paginas.length ? "Tudo aqui está no estoque da Karen. Escolha no menu **🛒 Quero este** e a gente abre seu pedido. 💝" : "Tudo esgotado no momento! Abra um 🎫 ticket para encomendar das revistas.")
+    .setFooter({ text: "Atualiza sozinho com o estoque · preços podem mudar" });
+  await painelFixo("vitrine", { embeds: [capa] }, ":capa");
+  for (let n = 0; n < 5; n++) {
+    const vaga = ":p" + n;
+    if (paginas[n]) await painelFixo("vitrine", paginas[n], vaga);
+    else if (estado.rvFixos?.["vitrine" + vaga]) {
+      const c = await canal("vitrine"); const id = estado.rvFixos["vitrine" + vaga].msg;
+      await c?.messages.fetch(id).then((m) => m.delete()).catch(() => {});
+      delete estado.rvFixos["vitrine" + vaga]; salvar();
+    }
+  }
+}
+/** ✨ novidades: avisa quando um produto chega ou volta ao estoque (compara com a leitura anterior). */
+async function postarChegadas() {
+  if (!estado.canais?.novidades || !temPainel()) return;
+  const agora = Object.fromEntries(painelRV.produtos.map((p) => [p.id, p.unidades]));
+  if (!estado.estoqueVisto) { estado.estoqueVisto = agora; salvar(); return; }
+  const chegaram = painelRV.produtos.filter((p) => p.unidades > 0 && !(estado.estoqueVisto[p.id] > 0));
+  estado.estoqueVisto = agora; salvar();
+  if (!chegaram.length) return;
+  const embeds = chegaram.slice(0, 10).map((p) => {
+    const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`✨ Chegou: ${curto(p.nome, 200)}`)
+      .setDescription(`${V.emojiMarca(p.marca)} ${p.marca || ""}${p.codigo ? ` · cód. ${p.codigo}` : ""}\n**${C.brl(p.preco)}**` + (p.descricao ? `\n\n${curto(p.descricao, 250)}` : ""));
+    if (/^https:/.test(p.foto || "")) e.setImage(p.foto);
+    return e;
+  });
+  const op = chegaram.slice(0, 25).map((p) => ({ label: curto(p.nome, 100), value: p.id, description: curto(C.brl(p.preco), 100) }));
+  await enviar("novidades", { content: chegaram.length > 1 ? `✨ **${chegaram.length} novidades chegaram no estoque!**` : "", embeds, components: menuZap("vit:quero", "🛒 Quero este…", op) });
+}
+function conteudoMeuConsorcio() {
+  return { embeds: [new EmbedBuilder().setColor(AMARELO).setTitle("💳 Meu consórcio")
+    .setDescription("Toque em **Ver minhas parcelas** para ver as pagas, as que faltam e o valor para resgate. **Só você vê a resposta.**\nDúvida ou comprovante? Abra um 🎫 ticket em **Consórcio**.")],
+    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:parcelas").setLabel("Ver minhas parcelas").setEmoji("💳").setStyle(ButtonStyle.Success))] };
+}
+
 // ---------------------------------------------------------------- tickets
 const TIPOS_TICKET = {
   pedido: { emoji: "🛍️", nome: "Pedido / encomenda" },
@@ -1086,6 +1162,9 @@ async function rotinas() {
   await limpezaDiaria(h).catch((e) => log("limpeza: " + e.message));
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
   if (estado.canais?.abrirticket) await painelFixo("abrirticket", conteudoAbrirTicket()).catch(() => {});
+  if (estado.canais?.comofunciona) await painelFixo("comofunciona", conteudoComoFunciona()).catch(() => {});
+  if (estado.canais?.meuconsorcio) await painelFixo("meuconsorcio", conteudoMeuConsorcio()).catch(() => {});
+  if (estado.vitrineVista !== painelRV.atualizadoEm) { estado.vitrineVista = painelRV.atualizadoEm; await atualizarVitrine().catch((e) => log("vitrine: " + e.message)); await postarChegadas().catch((e) => log("novidades: " + e.message)); }
   await revisarTickets().catch((e) => log("tickets: " + e.message));
   const meiaHora = h.data + h.hora + (C.agoraSP().minuto >= 30 ? "b" : "a");
   if (estado.setsRevisados !== meiaHora) { estado.setsRevisados = meiaHora; await revisarSets().catch((e) => log("sets: " + e.message)); }
@@ -1472,7 +1551,7 @@ async function cargosDosGrupos() {
   for (const cod of vigentes) {
     if (estado.cargosGrupo[cod] && guild.roles.cache.get(estado.cargosGrupo[cod])) continue;
     const r = guild.roles.cache.find((x) => x.name === `💳 ${cod}`) ||
-      await guild.roles.create({ name: `💳 ${cod}`, color: V.CORES.atencao, hoist: true, mentionable: false, reason: "Grupo do consórcio" }).catch((e) => { log(`cargo ${cod}: ${e.message}`); return null; });
+      await guild.roles.create({ name: `💳 ${cod}`, colors: { primaryColor: V.CORES.atencao }, hoist: true, mentionable: false, reason: "Grupo do consórcio" }).catch((e) => { log(`cargo ${cod}: ${e.message}`); return null; });
     if (r) { estado.cargosGrupo[cod] = r.id; log(`cargo do grupo criado: ${r.name}`); }
   }
   for (const [cod, id] of Object.entries(estado.cargosGrupo)) {
@@ -1602,6 +1681,23 @@ async function componente(i) {
       (r.preservados.length ? `\n\nMantive em 🔒 SISTEMA: ${r.preservados.join(", ")}` : ""))] });
     estado.versoes = {}; await ciclo();
     return;
+  }
+  if (tipo === "vit" && acao === "quero") {
+    const p = painelRV.produtos.find((x) => x.id === i.values?.[0]);
+    await i.deferReply(EFEMERA);
+    if (!p) return i.editReply("Esse produto saiu do estoque. Abra um 🎫 ticket que a Karen te ajuda!");
+    return abrirTicket(i, "pedido", `Quero: ${p.nome}${p.marca ? " (" + p.marca + ")" : ""}${p.codigo ? " · cód. " + p.codigo : ""} · ${C.brl(p.preco)}`);
+  }
+  if (tipo === "cli" && acao === "parcelas") {
+    const tel = C.soNumeros(estado.vinculos?.[i.user.id]);
+    if (!tel) return i.reply({ ...EFEMERA, content: "Ainda não liguei seu WhatsApp. Peça seu set em 👋 boas-vindas ou abra um 🎫 ticket. 💝" });
+    const k = C.chaveTel(tel);
+    const meus = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => C.chaveTel(m.whatsapp) === k).map((m) => ({ g, m })));
+    if (!meus.length) return i.reply({ ...EFEMERA, content: "Não encontrei você em nenhum grupo do consórcio. Se acha que é engano, abra um 🎫 ticket em Consórcio." });
+    return i.reply({ ...EFEMERA, embeds: meus.slice(0, 5).map(({ g, m }) => { const x = C.resumoMembro(g, m);
+      return new EmbedBuilder().setColor(x.atrasadas.length ? VERMELHO : x.quitado ? VERDE : AMARELO).setTitle(`💳 ${g.codigo} · ${C.brl(g.valorParcela)}/mês`)
+        .setDescription(`\`${V.barra(x.pagas, x.total, 12)}\` **${x.pagas}/${x.total}** pagas\n` + (x.atrasadas.length ? `⚠️ Em aberto: ${x.atrasadas.map((ym) => C.rotuloMes(ym)).join(", ")}\n` : "") +
+          (x.quitado ? `🎁 **Quitado!** Pode resgatar ${C.brl(g.premio)} em produtos.` : `Resgate de **${C.brl(g.premio)}** em produtos ao final (${C.rotuloMes(C.fimDo(g), true)}).`)); }) });
   }
   if (tipo === "tk" && acao === "abrir") {
     return i.showModal(new ModalBuilder().setCustomId(`tk:abrir:${a}`).setTitle(`${TIPOS_TICKET[a]?.emoji || "🎫"} ${TIPOS_TICKET[a]?.nome || "Ticket"}`).addComponents(

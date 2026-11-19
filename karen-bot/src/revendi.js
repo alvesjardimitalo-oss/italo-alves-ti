@@ -203,8 +203,28 @@ async function montarPainel(agora, log) {
     vendas.push(v);
   }
   vendas.sort((a, b) => b.data.localeCompare(a.data) || b.criadaEm.localeCompare(a.criadaEm));
+  const fotosAntes = new Map();
+  try { for (const p of JSON.parse(anterior?.json || "{}").produtos || []) if (p.foto !== undefined) fotosAntes.set(p.id, p); } catch {}
+  const prods = produtos.map(converterProduto);
+  let buscas = 0;
+  for (const p of prods) {
+    const a = fotosAntes.get(p.id);
+    if (a) { p.foto = a.foto; p.descricao = a.descricao || ""; continue; }
+    const raw = produtos.find((x) => String(x.id) === p.id);
+    p.foto = /^https:/.test(raw?.product_image || "") ? raw.product_image : "";
+    p.descricao = "";
+    if (p.unidades > 0 && p.codigo && buscas < 60) {
+      try {
+        buscas++;
+        const d = await get("/catalog", { s: p.codigo, brands: MARCAS, limit: 10 });
+        const c = Array.isArray(d) ? d.map(converterCatalogo).find((x) => x.codigo === p.codigo) : null;
+        if (c) { p.foto = p.foto || c.foto; p.descricao = c.descricao.slice(0, 300); }
+        await espera(150);
+      } catch {}
+    }
+  }
   const painel = { atualizadoEm: agora.toISOString(), clientes: clientes.filter((c) => !c.deleted).map(converterCliente),
-    produtos: produtos.map(converterProduto), vendas };
+    produtos: prods, vendas };
   await db.definir("botKaren", "revendiPainel", { json: JSON.stringify(painel), atualizadoEm: painel.atualizadoEm });
   if (lidas) log(`Revendi: painel atualizado (${vendas.length} vendas, ${painel.clientes.length} clientes, ${painel.produtos.length} produtos; ${lidas} venda(s) detalhada(s))`);
 }

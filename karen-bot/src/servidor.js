@@ -49,7 +49,9 @@ export const ESTRUTURA = [
   // conversa = Cliente e Consorciada escrevem; consorciadas = só Consorciada; voz = call que Cliente e Consorciada entram e falam.
   { categoria: "🌸 ÁREA DAS CLIENTES", area: "clientes", canais: [
     { chave: "boasvindas", nome: "👋・boas-vindas", acesso: "publico", topico: "Bem-vinda à Karen Martins Cosméticos! Toque em 🌸 Entrar para ver o restante." },
-    { chave: "novidades", nome: "✨・novidades", acesso: "clientes", topico: "Lançamentos, promoções e campanhas." },
+    { chave: "comofunciona", nome: "ℹ️・como-funciona", acesso: "publico", topico: "Como comprar, pagar e receber · consórcio · loja do site." },
+    { chave: "vitrine", nome: "🛍️・pronta-entrega", acesso: "publico", topico: "O que a Karen tem agora para entrega rápida. Escolha em 🛒 Quero este e abrimos seu pedido." },
+    { chave: "novidades", nome: "✨・novidades", acesso: "publico", topico: "Chegou no estoque, lançamentos e promoções." },
     { chave: "abrirticket", nome: "🎫・abrir-ticket", acesso: "clientes", topico: "Fale com a Karen em particular: pedidos, consórcio, pagamento, troca. Só você e a equipe veem o ticket." },
     { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
@@ -136,7 +138,7 @@ export async function montarServidor(guild, log = () => {}) {
   // 3) Cargos novos.
   const cargos = {};
   for (const c of CARGOS) {
-    cargos[c.chave] = await guild.roles.create({ name: c.nome, color: c.cor, hoist: c.hoist, mentionable: false, reason: "Servidor da Karen" });
+    cargos[c.chave] = await guild.roles.create({ name: c.nome, colors: { primaryColor: c.cor }, hoist: c.hoist, mentionable: false, reason: "Servidor da Karen" });
   }
 
   // 4) Categorias e canais.
