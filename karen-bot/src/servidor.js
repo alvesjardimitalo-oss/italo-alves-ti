@@ -52,7 +52,14 @@ export const ESTRUTURA = [
     { chave: "novidades", nome: "✨・novidades", acesso: "clientes", topico: "Lançamentos, promoções e campanhas." },
     { chave: "faleconosco", nome: "💬・fale-com-a-karen", acesso: "conversa", topico: "Dúvidas, pedidos e encomendas. A Karen responde por aqui." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
-    { chave: "callatendimento", nome: "🎧 Atendimento", tipo: "voz", acesso: "voz", topico: "" },
+    { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "voz", topico: "", adotar: ["aguard", "espera"] },
+  ] },
+  // Calls de atendimento: só a equipe vê. A cliente entra em ⏳ Aguardando e a equipe puxa ela para cá (botão no aviso).
+  { categoria: "🎧 ATENDIMENTO", area: "equipe", canais: [
+    // adotar: usa a call que já existe com esse pedaço no nome (não cria outra). opcional: só adota, nunca cria.
+    { chave: "callatend1", nome: "🎧 Atendimento", tipo: "voz", topico: "", adotar: ["atendimento"] },
+    { chave: "callatend2", nome: "🎧 Atendimento 2", tipo: "voz", topico: "", adotar: ["atendimento"], opcional: true },
+    { chave: "callequipe", nome: "🗣️ Equipe", tipo: "voz", topico: "", adotar: ["equipe", "reuni"], opcional: true },
   ] },
 ];
 
@@ -159,9 +166,23 @@ export async function completarCanais(guild, estado, log = () => {}) {
   const cargos = Object.fromEntries(Object.entries(estado.cargos || {}).map(([k, id]) => [k, guild.roles.cache.get(id)]));
   if (!cargos.dona || !cargos.admin || !cargos.cliente || !cargos.consorciada) return {};
   const novos = {};
+  const usados = new Set(Object.values(estado.canais || {}));
+  const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   for (const bloco of ESTRUTURA) {
     for (const c of bloco.canais) {
       if (estado.canais?.[c.chave] && guild.channels.cache.get(estado.canais[c.chave])) continue;
+      if (c.adotar) {
+        const achado = [...guild.channels.cache.values()].filter((x) => x.type === tipoDiscord(c) && !usados.has(x.id) && !novos[c.chave])
+          .filter((x) => c.adotar.some((k) => norm(x.name).includes(k)) && !(c.chave !== "callespera" && /aguard|espera/.test(norm(x.name))))
+          .sort((a, b) => a.position - b.position)[0];
+        if (achado) {
+          try { await achado.permissionOverwrites.set(permissoes(guild, bloco.area, cargos, bloco.area === "clientes" && estado.clientesAbertos, c)); } catch (e) { log("permissões de " + achado.name + ": " + e.message); }
+          novos[c.chave] = achado.id; usados.add(achado.id);
+          log(`call adotada: ${achado.name} (${bloco.area === "clientes" ? "clientes entram" : "só a equipe"})`);
+          continue;
+        }
+        if (c.opcional) continue;
+      }
       const irmao = bloco.canais.map((x) => guild.channels.cache.get(estado.canais?.[x.chave])).find(Boolean);
       let cat = irmao?.parent || guild.channels.cache.find((x) => x.type === ChannelType.GuildCategory && x.name === bloco.categoria);
       if (!cat) cat = await guild.channels.create({ name: bloco.categoria, type: ChannelType.GuildCategory, permissionOverwrites: permissoes(guild, bloco.area, cargos, estado.clientesAbertos) });

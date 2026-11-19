@@ -111,7 +111,10 @@ e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `s
 WhatsApp (opcional): ganha o cargo **🌸 Cliente** (e **💳 Consorciada** se o WhatsApp está num grupo), fica ligada ao
 `/minhas-parcelas`, e a equipe recebe aviso em #alertas (diz se ela já é cliente no Revendi). Clientes veem: ✨ novidades (lê),
 💬 fale-com-a-karen (escreve), 🎧 Atendimento (call) e, se consorciada, 💳 meu-consorcio. Todo o resto é só da equipe.
-Precisa estar aberta: `/servidor clientes abrir`. Calls/canais criados à mão: `/servidor acesso` escolhe quem acessa;
+**Atendimento por voz:** a cliente só vê a call **Aguardando**; ao entrar, #alertas avisa Karen/Admin (com WhatsApp,
+consórcio e crediário dela) e tem botões **Puxar para Atendimento**; o bot move a cliente. As calls que já existem são adotadas
+pelo nome ("aguard"/"espera" = espera; "atendimento" = atendimento; "equipe"/"reuni" = equipe) e o bot só acerta as permissões,
+sem renomear nem criar outras. Precisa estar aberta: `/servidor clientes abrir`. Calls/canais criados à mão: `/servidor acesso` escolhe quem acessa;
 `/servidor mapa` mostra quem vê cada canal (também gravado em `dados/servidor-mapa.json` a cada hora).
 
 **Visual:** foto, banner e cores da Karen (monograma KC, vinho, rosé e dourado) no bot e no ícone do servidor; logo no topo e

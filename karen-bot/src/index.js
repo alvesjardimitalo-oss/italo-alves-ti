@@ -63,7 +63,7 @@ async function carregarEstado() {
 
 // ---------------------------------------------------------------- utilidades
 // GuildMessages (não privilegiado) só para saber que chegou um print em #comprovantes.
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates] });
 let guild = null;
 let grupos = new Map();
 let ultimoCiclo = null, ultimoErro = "";
@@ -900,10 +900,51 @@ function conteudoBoasVindas() {
   const e = new EmbedBuilder().setColor(COR).setTitle("Bem-vinda à Karen Martins Cosméticos! 💝")
     .setDescription("Aqui você acompanha as **novidades**, fala direto com a Karen e, se estiver no **consórcio**, vê as suas parcelas.\n\n" +
       "👉 Toque em **🌸 Entrar** e diga seu nome. Se informar o WhatsApp, a gente já liga você ao seu consórcio.")
-    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n💬 **fale-com-a-karen**: dúvidas, pedidos e encomendas\n🎧 **Atendimento**: call para falar com a Karen\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
+    .addFields({ name: "O que você vai encontrar", value: "✨ **novidades**: lançamentos e promoções\n💬 **fale-com-a-karen**: dúvidas, pedidos e encomendas\n⏳ **Aguardando atendimento**: entre na call e espere, a Karen te chama\n💳 **meu-consorcio**: suas parcelas (para consorciadas)" })
     .setThumbnail(V.LOGO_URL).setFooter({ text: "O Boticário · Eudora · Quem Disse, Berenice? · O.U.i · Consórcio" });
   return { embeds: [e], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("cli:entrar").setLabel("Entrar").setEmoji("🌸").setStyle(ButtonStyle.Success))] };
 }
+
+// ---------------------------------------------------------------- fila de atendimento por voz
+// Cliente entra em ⏳ Aguardando → aviso em #alertas marcando Karen/Admin, com botões para puxar para 🎧 Atendimento 1/2.
+const avisosEspera = new Map(); // userId → mensagem do aviso
+const ehDaEquipe = (m) => m?.permissions?.has(PermissionFlagsBits.Administrator) || [estado.cargos?.dona, estado.cargos?.admin].some((id) => id && m?.roles?.cache?.has(id));
+async function entrouNaEspera(membro) {
+  const c = await canal("alertas");
+  if (!c) return;
+  const tel = estado.vinculos?.[membro.id], chave = tel ? C.chaveTel(tel) : "";
+  const cons = chave ? [...new Set([...grupos.values()].filter((g) => (g.membros || []).some((m) => C.chaveTel(m.whatsapp) === chave)).map((g) => g.codigo))] : [];
+  const cred = chave ? clientesCrediario().find((x) => C.chaveTel(x.whatsapp) === chave) : null;
+  const linhas = [`${membro} está na call **⏳ Aguardando atendimento**.`];
+  if (tel) linhas.push(`📱 ${C.fone(tel)}`);
+  if (cons.length) linhas.push(`💳 Consórcio: ${cons.join(", ")}`);
+  if (cred?.atrasadas?.length) linhas.push(`⚠️ Crediário: ${cred.atrasadas.length} parcela(s) em atraso (${C.brl(cred.emAtraso)})`);
+  const b = (k, rot) => new ButtonBuilder().setCustomId(`atd:puxar:${membro.id}:${k}`).setLabel(rot).setEmoji("🎧").setStyle(ButtonStyle.Success);
+  const linha = new ActionRowBuilder().addComponents(b("callatend1", "Puxar para Atendimento 1"), b("callatend2", "Puxar para Atendimento 2"));
+  const mencoes = [estado.cargos?.dona, estado.cargos?.admin].filter(Boolean);
+  const msg = await c.send(V.decorar({ content: mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { roles: mencoes },
+    embeds: [new EmbedBuilder().setColor(AMARELO).setTitle(`🔔 ${curto(membro.displayName, 60)} aguardando atendimento`).setDescription(linhas.join("\n")).setFooter({ text: "Toque para puxar para a call de atendimento" }).setTimestamp()],
+    components: [linha] })).catch((e) => { log("aviso de espera: " + e.message); return null; });
+  if (msg) avisosEspera.set(membro.id, msg);
+}
+async function fecharAviso(userId, texto) {
+  const msg = avisosEspera.get(userId);
+  if (!msg) return;
+  avisosEspera.delete(userId);
+  const e = EmbedBuilder.from(msg.embeds[0]).setColor(texto.startsWith("✅") ? VERDE : V.CORES.neutro).setFooter({ text: texto });
+  await msg.edit({ content: "", embeds: [e], components: [] }).catch(() => {});
+}
+client.on(Events.VoiceStateUpdate, async (antes, depois) => {
+  try {
+    const espera = estado.canais?.callespera;
+    if (!espera || !depois.member || depois.member.user.bot) return;
+    if (depois.channelId === espera && antes.channelId !== espera && !ehDaEquipe(depois.member)) await entrouNaEspera(depois.member);
+    if (antes.channelId === espera && depois.channelId !== espera) {
+      const destino = depois.channel;
+      await fecharAviso(depois.member.id, destino ? `✅ Em atendimento em ${destino.name}` : "Saiu da espera sem ser atendida");
+    }
+  } catch (e) { log("call de espera: " + e.message); }
+});
 
 // ---------------------------------------------------------------- central de botões (#comandos)
 function conteudoCentral() {
@@ -1326,7 +1367,7 @@ async function entradaCliente(i) {
   await enviar("alertas", { embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🌸 Nova cliente no Discord")
     .setDescription(`${membro} · **${nome || membro.user.username}**` + (tel ? ` · ${C.fone(tel)}` : " · sem WhatsApp") +
       (nos.length ? `\n💳 Consorciada: ${[...new Set(nos)].join(", ")}` : "") + (cliRV ? `\n🛍️ Já é cliente no Revendi (${cliRV.nome})` : tel ? "\n🆕 WhatsApp não está no Revendi" : ""))] });
-  return i.reply({ ...EFEMERA, content: `Prontinho, ${C.primeiroNome(nome || membro.user.username)}! 💝 Agora você vê a 🌸 Área das Clientes: novidades, 💬 fale-com-a-karen e a call 🎧 Atendimento.` +
+  return i.reply({ ...EFEMERA, content: `Prontinho, ${C.primeiroNome(nome || membro.user.username)}! 💝 Agora você vê a 🌸 Área das Clientes: novidades, 💬 fale-com-a-karen e a call ⏳ Aguardando atendimento (entre nela e a Karen te chama).` +
     (nos.length ? `\nVi que você está no consórcio (${[...new Set(nos)].join(", ")}). Use **/minhas-parcelas** para ver sua situação (só você vê).` : "") });
 }
 
@@ -1382,6 +1423,16 @@ async function componente(i) {
     if (!c?.whatsapp) return i.reply({ ...EFEMERA, content: "Cliente sem WhatsApp no Revendi." });
     const lista = c.atrasadas.length ? c.atrasadas : c.abertas.slice(0, 1);
     return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + c.cliente, C.linkWhats(c.whatsapp, CR.mensagemCrediario(c, lista))) });
+  }
+  if (tipo === "atd" && acao === "puxar") {
+    const membro = await guild.members.fetch(a).catch(() => null);
+    const destino = guild.channels.cache.get(estado.canais?.[b]);
+    if (!membro?.voice?.channelId) { await fecharAviso(a, "Saiu da espera sem ser atendida"); return i.reply({ ...EFEMERA, content: "Ela já saiu da call de espera." }); }
+    if (!destino) return i.reply({ ...EFEMERA, content: "Call de atendimento não encontrada." });
+    await membro.voice.setChannel(destino, `Atendimento puxado por ${i.user.tag}`);
+    const eu = await guild.members.fetch(i.user.id).catch(() => null);
+    const euJa = eu?.voice?.channelId === destino.id;
+    return i.reply({ ...EFEMERA, content: `🎧 ${membro.displayName} foi para **${destino.name}**.` + (euJa ? "" : eu?.voice?.channelId ? " Entre lá também." : ` Entre em <#${destino.id}> para atender.`) });
   }
   if (tipo === "cen") {
     const precisaRV = ["hoje", "semana", "mes", "estoque", "entregas", "aniv", "sumidas"].includes(acao);
@@ -1556,14 +1607,14 @@ client.once(Events.ClientReady, async () => {
     }
     if (estado.ordemCategorias !== 4) {
       try {
-        const cats = ESTRUTURA.map((b) => guild.channels.cache.get(estado.canais?.[b.canais[0].chave])?.parent).filter(Boolean);
+        const cats = ESTRUTURA.map((b) => guild.channels.cache.get(estado.canais?.[(b.canais.find((c) => !c.adotar) || b.canais[0]).chave])?.parent).filter(Boolean);
         await guild.channels.setPositions(cats.map((c, n) => ({ channel: c.id, position: n })));
         for (const b of ESTRUTURA) for (const c of b.canais) {
           const ch = guild.channels.cache.get(estado.canais?.[c.chave]);
-          if (ch && (ch.name !== c.nome || (ch.topic !== undefined && ch.topic !== c.topico))) await ch.edit({ name: c.nome, topic: c.topico }).catch((e) => log(`renomear ${c.nome}: ${e.message}`));
+          if (ch && !c.adotar && (ch.name !== c.nome || (ch.topic !== undefined && ch.topic !== c.topico))) await ch.edit({ name: c.nome, topic: c.topico }).catch((e) => log(`renomear ${c.nome}: ${e.message}`));
         }
         const pos = [];
-        for (const b of ESTRUTURA) b.canais.forEach((c, n) => { const ch = guild.channels.cache.get(estado.canais?.[c.chave]); if (ch) pos.push({ channel: ch.id, position: n }); });
+        for (const b of ESTRUTURA) b.canais.forEach((c, n) => { const ch = !c.adotar && guild.channels.cache.get(estado.canais?.[c.chave]); if (ch) pos.push({ channel: ch.id, position: n }); });
         await guild.channels.setPositions(pos).catch((e) => log("ordem dos canais: " + e.message));
         estado.ordemCategorias = 4; salvar();
       } catch (e) { log("ordem das categorias: " + e.message); }
