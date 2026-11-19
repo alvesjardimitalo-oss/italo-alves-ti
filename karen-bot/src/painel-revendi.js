@@ -130,3 +130,14 @@ export const msgAniversario = (c) => `Feliz aniversário, ${C.primeiroNome(c.nom
 export const msgReativar = (h) => `Oi, ${C.primeiroNome(h.cliente)}! Aqui é a Karen 💝 Estava com saudade! ` +
   (h.marcaFavorita ? `Chegaram novidades de ${h.marcaFavorita} e lembrei de você. ` : "Chegaram novidades lindas e lembrei de você. ") +
   `Quer que eu te mostre? 🌸`;
+
+// ---------------------------------------------------------------- séries para gráficos
+/** Total vendido por dia entre inicio e fim (inclusive), na ordem dos dias. */
+export function serieDiaria(vendas, inicio, fim) {
+  const n = diasEntre(inicio, fim) + 1, out = Array(Math.max(0, n)).fill(0);
+  for (const v of vendas) { const i = diasEntre(inicio, v.data); if (i >= 0 && i < n) out[i] = r2(out[i] + v.valor); }
+  return out;
+}
+const SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+export const rotuloDia = (iso, comSemana = true) => (comSemana ? SEMANA[new Date(iso + "T12:00:00Z").getUTCDay()] + " " : "") + iso.slice(8, 10) + "/" + iso.slice(5, 7);
+export const diasDoPeriodo = (inicio, fim) => Array.from({ length: diasEntre(inicio, fim) + 1 }, (_, i) => somarDias(inicio, i));

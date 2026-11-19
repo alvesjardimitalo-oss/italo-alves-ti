@@ -18,6 +18,7 @@ import { montarServidor, alternarAreaClientes, completarCanais } from "./servido
 import * as CR from "./crediario.js";
 import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
+import * as G from "./graficos.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -446,7 +447,16 @@ async function resumoDoDia() {
       .map(([o, t]) => conta(o) ? `${conta(o)} ${t}` : "").filter(Boolean);
     if (linhas.length) e.addFields({ name: "Últimas 24 horas", value: linhas.join(" · ") });
   } catch {}
-  await enviar("resumo", { embeds: [e] });
+  const files = [];
+  if (temPainel()) {
+    const ini = PR.somarDias(hoje.data, -14), fim = PR.somarDias(hoje.data, -1);
+    const serie = PR.serieDiaria(painelRV.vendas, ini, fim);
+    if (serie.some((v) => v > 0)) {
+      const png = await G.desenhar(G.configDiario("Vendas dos últimos 14 dias", PR.diasDoPeriodo(ini, fim).map((x) => PR.rotuloDia(x)), serie, null, ["Vendas"]), { altura: 360, log });
+      if (png) { files.push(new AttachmentBuilder(png, { name: "vendas-14d.png" })); e.setImage("attachment://vendas-14d.png"); }
+    }
+  }
+  await enviar("resumo", { embeds: [e], files });
 }
 
 function conteudoCobranca(g) {
@@ -545,9 +555,17 @@ async function relatorioMensal(ym) {
     const soma = (xs) => xs.reduce((t, p) => t + (Number(p.valor) || 0), 0);
     if (doMes.length) e.addFields({ name: "💳 Crediário do mês", value: `${pagas.length}/${doMes.length} parcelas pagas · ${C.brl(soma(pagas))} de ${C.brl(soma(doMes))}` });
   }
+  const files = [];
+  const gs = C.ordenarGrupos([...grupos.values()]).filter((g) => C.mesesDo(g).includes(ym) && (g.membros || []).length);
+  if (gs.length) {
+    const { cfg, extra } = G.configRanking(`Consórcio · % que pagou ${C.rotuloMes(ym)}`, gs.map((g) => g.codigo),
+      gs.map((g) => Math.round(((g.membros || []).filter((m) => m.pagos?.[ym]).length / g.membros.length) * 100)), "pct");
+    const png = await G.desenhar(cfg, { altura: 120 + gs.length * 46, extra, log });
+    if (png) { files.push(new AttachmentBuilder(png, { name: "consorcio.png" })); e.setImage("attachment://consorcio.png"); }
+  }
   const resgates = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => String(m.resgatadoEm || "").startsWith(ym)).map((m) => `${m.nome} (${g.codigo})`));
   if (resgates.length) e.addFields({ name: `🎁 Resgates no mês (${resgates.length})`, value: curto(resgates.join(" · "), 1000) });
-  await enviar("resumo", { embeds: [e] });
+  await enviar("resumo", { embeds: [e], files });
 }
 
 async function backupSemanal() {
@@ -568,7 +586,16 @@ async function cobrancasCrediario() {
   const e = new EmbedBuilder().setColor(0x8e44ad).setTitle(`💳 Crediário de hoje · ${C.dataBR(CR.hojeISO())}`).setDescription(curto(linhas.join("\n"), 4000))
     .setFooter({ text: "Dados do Revendi (só leitura). Dê baixa no Revendi; aqui atualiza na próxima sincronização." });
   const comp = opcoes.length ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("crd").setPlaceholder("📲 Cobrar no WhatsApp…").addOptions(opcoes))] : [];
-  await enviar(estado.canais?.crediario ? "crediario" : "cobrancas", { embeds: [e], components: comp });
+  const files = [];
+  const hoje = CR.hojeISO(), semanas = Array.from({ length: 8 }, (_, n) => PR.somarDias(hoje, n * 7));
+  const porSemana = semanas.map((ini) => { const fim = PR.somarDias(ini, 6); return Math.round(crediario.filter((p) => CR.aberta(p) && p.vencimento >= ini && p.vencimento <= fim).reduce((t, p) => t + (Number(p.valor) || 0), 0) * 100) / 100; });
+  const atraso = CR.resumo(crediario).atraso;
+  if (porSemana.some((v) => v > 0) || atraso > 0) {
+    const png = await G.desenhar(G.configDiario("Crediário a receber", ["Em atraso", ...semanas.map((x, n) => n === 0 ? "esta semana" : "sem. " + PR.rotuloDia(x, false))],
+      [atraso, ...porSemana], null, ["A receber"]), { altura: 380, log });
+    if (png) { files.push(new AttachmentBuilder(png, { name: "crediario.png" })); e.setImage("attachment://crediario.png"); }
+  }
+  await enviar(estado.canais?.crediario ? "crediario" : "cobrancas", { embeds: [e], components: comp, files });
 }
 
 // ---------------------------------------------------------------- Revendi no Discord
@@ -702,16 +729,31 @@ function embedDesempenho(titulo, d, ant) {
   if (d.topMarcas.length) e.addFields({ name: "🏷️ Marcas", value: curto(d.topMarcas.slice(0, 5).map((m) => `• ${m.marca} · ${C.brl(m.total)}`).join("\n"), 1024), inline: true });
   return e.setFooter({ text: `Comparação com o período anterior de mesmo tamanho · dados do Revendi` });
 }
+/** Desempenho com gráficos: barras por dia (período × anterior) e ranking dos mais vendidos. */
+async function relatorioDesempenho(titulo, ini, fim, iniAnt, fimAnt) {
+  const d = PR.desempenho(painelRV.vendas, ini, fim), ant = PR.desempenho(painelRV.vendas, iniAnt, fimAnt);
+  const e = embedDesempenho(titulo, d, ant);
+  const dias = PR.diasDoPeriodo(ini, fim), longo = dias.length > 10;
+  const files = [], embeds = [e];
+  const png = await G.desenhar(G.configDiario("Vendas por dia", dias.map((x) => longo ? x.slice(8, 10) : PR.rotuloDia(x)),
+    PR.serieDiaria(painelRV.vendas, ini, fim), PR.serieDiaria(painelRV.vendas, iniAnt, fimAnt).slice(0, dias.length),
+    [longo ? "Este período" : "Esta semana", longo ? "Período anterior" : "Semana anterior"]), { log });
+  if (png) { files.push(new AttachmentBuilder(png, { name: "vendas.png" })); e.setImage("attachment://vendas.png"); }
+  const top = d.topProdutos.slice(0, 8);
+  if (top.length >= 2) {
+    const { cfg, extra } = G.configRanking("Mais vendidos (unidades)", top.map((p) => G.rotulo(p.nome)), top.map((p) => p.qtd), "un");
+    const png2 = await G.desenhar(cfg, { altura: 120 + top.length * 42, extra, log });
+    if (png2) { files.push(new AttachmentBuilder(png2, { name: "produtos.png" })); embeds.push(new EmbedBuilder().setColor(COR).setImage("attachment://produtos.png")); }
+  }
+  return { embeds, files };
+}
 async function desempenhoSemanal() {
   const hoje = CR.hojeISO(), fim = PR.somarDias(hoje, -1), ini = PR.somarDias(hoje, -7);
-  const d = PR.desempenho(painelRV.vendas, ini, fim), ant = PR.desempenho(painelRV.vendas, PR.somarDias(ini, -7), PR.somarDias(ini, -1));
-  await enviar("rvDesempenho", { embeds: [embedDesempenho(`📈 Semana ${C.dataBR(ini).slice(0, 5)} a ${C.dataBR(fim).slice(0, 5)}`, d, ant)] });
+  await enviar("rvDesempenho", await relatorioDesempenho(`📈 Semana ${C.dataBR(ini).slice(0, 5)} a ${C.dataBR(fim).slice(0, 5)}`, ini, fim, PR.somarDias(ini, -7), PR.somarDias(ini, -1)));
 }
 async function desempenhoMensal(ym) {
-  const ini = ym + "-01", fim = PR.somarDias(C.somarMes(ym, 1) + "-01", -1);
-  const ymA = C.somarMes(ym, -1), d = PR.desempenho(painelRV.vendas, ini, fim);
-  const ant = PR.desempenho(painelRV.vendas, ymA + "-01", PR.somarDias(ym + "-01", -1));
-  await enviar("rvDesempenho", { embeds: [embedDesempenho(`📊 ${C.rotuloMes(ym, true)} no Revendi`, d, ant)] });
+  const ini = ym + "-01", fim = PR.somarDias(C.somarMes(ym, 1) + "-01", -1), ymA = C.somarMes(ym, -1);
+  await enviar("rvDesempenho", await relatorioDesempenho(`📊 ${C.rotuloMes(ym, true)} no Revendi`, ini, fim, ymA + "-01", PR.somarDias(ini, -1)));
 }
 
 async function rotinasRevendi(h) {
@@ -971,12 +1013,13 @@ async function comando(i) {
     if (sub === "vendas") {
       const p = i.options.getString("periodo");
       const ini = p === "mes" ? hoje.slice(0, 8) + "01" : PR.somarDias(hoje, -Math.max(0, Number(p) - 1));
-      const d = PR.desempenho(painelRV.vendas, ini, hoje);
-      const dias = PR.diasEntre(ini, hoje) + 1, ant = PR.desempenho(painelRV.vendas, PR.somarDias(ini, -dias), PR.somarDias(ini, -1));
-      const e = embedDesempenho(`🛍️ Vendas ${p === "0" ? "de hoje" : p === "mes" ? "do mês" : `dos últimos ${p} dias`}`, d, ant);
+      await i.deferReply(EFEMERA);
+      const dias = PR.diasEntre(ini, hoje) + 1;
+      const rel = await relatorioDesempenho(`🛍️ Vendas ${p === "0" ? "de hoje" : p === "mes" ? "do mês" : `dos últimos ${p} dias`}`, ini, hoje, PR.somarDias(ini, -dias), PR.somarDias(ini, -1));
+      const e = rel.embeds[0];
       const lista = painelRV.vendas.filter((v) => v.data >= ini && v.data <= hoje).slice(0, 15);
       if (lista.length) e.addFields({ name: "Vendas", value: curto(lista.map((v) => `• ${C.dataBR(v.data).slice(0, 5)} · ${curto(v.cliente, 30)} · ${C.brl(v.valor)} · ${PR.ROTULO_PAG[PR.situacaoPagamento(v)]}`).join("\n"), 1024) });
-      return i.reply({ ...EFEMERA, embeds: [e] });
+      return i.editReply(rel);
     }
     if (sub === "entregas") { await painelEntregas(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEntregas}>.` }); }
     if (sub === "estoque") { estado.rvFixos = { ...(estado.rvFixos || {}), rvEstoque: { ...(estado.rvFixos?.rvEstoque || {}), marca: "" } }; await painelEstoque(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEstoque}>.` }); }

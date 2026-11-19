@@ -107,6 +107,11 @@ se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot s
 
 Também: **🛍️ Revendi hoje** no resumo das 8h, **`/cliente`** com histórico de compras, aniversário, marca favorita e etiquetas,
 e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `sincronizar`).
+**Gráficos** (imagem anexada na mensagem): vendas dos últimos 14 dias no resumo das 8h, vendas por dia (este período × anterior)
+e mais vendidos em #desempenho e no `/revendi vendas`, crediário a receber por semana em #crediario e % que pagou por grupo no
+relatório do consórcio. Desenhados pelo QuickChart: só vão números e nomes de produtos/grupos, nunca nome ou telefone de cliente.
+Para desligar: `GRAFICOS=nao` no .env.
+
 **`/produto`** busca no catálogo das marcas (O Boticário, Eudora, Quem Disse Berenice, O.U.i) pelo código da revista ou pelo nome,
 com foto, descrição, preço sugerido e se tem no estoque da Karen. As vendas em #vendas mostram a foto do produto.
 Para outras marcas, ponha os IDs em `REVENDI_MARCAS` no .env (padrão `7,5,57,222`). Só funciona no PC que tem o login do Revendi.
