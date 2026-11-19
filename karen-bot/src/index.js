@@ -6,6 +6,7 @@ import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import {
   Client, GatewayIntentBits, Events, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
   ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags, PermissionFlagsBits, ChannelType,
@@ -15,7 +16,8 @@ import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
 import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
 import * as CR from "./crediario.js";
-import { sincronizarRevendi, estadoRevendi, revendiAtivo } from "./revendi.js";
+import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao } from "./revendi.js";
+import * as PR from "./painel-revendi.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -112,6 +114,15 @@ const comandos = [
       .addStringOption((o) => o.setName("whatsapp").setDescription("WhatsApp com DDD (se não for da lista)"))),
   new SlashCommandBuilder().setName("cliente").setDescription("Ficha da cliente: consórcios e crediário do Revendi")
     .addStringOption((o) => o.setName("quem").setDescription("Nome ou WhatsApp").setAutocomplete(true).setRequired(true)),
+  new SlashCommandBuilder().setName("revendi").setDescription("Dados do Revendi")
+    .addSubcommand((s) => s.setName("vendas").setDescription("Vendas de um período")
+      .addStringOption((o) => o.setName("periodo").setDescription("Período").setRequired(true).addChoices(
+        { name: "hoje", value: "0" }, { name: "últimos 7 dias", value: "7" }, { name: "últimos 30 dias", value: "30" }, { name: "este mês", value: "mes" })))
+    .addSubcommand((s) => s.setName("entregas").setDescription("Vendas ainda não entregues"))
+    .addSubcommand((s) => s.setName("estoque").setDescription("Vencendo, esgotados e parados"))
+    .addSubcommand((s) => s.setName("aniversarios").setDescription("Aniversariantes dos próximos 30 dias"))
+    .addSubcommand((s) => s.setName("sumidas").setDescription("Clientes sem comprar há 60+ dias"))
+    .addSubcommand((s) => s.setName("sincronizar").setDescription("Lê o Revendi agora (em vez de esperar 30 min)")),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -171,8 +182,15 @@ async function carregarCrediario(forcar = false) {
   if (!forcar && Date.now() - crediarioLido < 5 * 60000) return;
   crediario = await db.listar("crediario");
   try { const v = await db.obter("botKaren", "revendiVendas"); vendasPorDia = v?.dias ? JSON.parse(v.dias) : {}; } catch { vendasPorDia = {}; }
+  try {
+    const p = await db.obter("botKaren", "revendiPainel");
+    if (p?.json) { const d = JSON.parse(p.json); painelRV = { vendas: d.vendas || [], clientes: d.clientes || [], produtos: d.produtos || [], atualizadoEm: d.atualizadoEm || "" }; }
+  } catch (e) { log("painel do Revendi: " + e.message); }
   crediarioLido = Date.now();
 }
+// Retrato do Revendi (vendas, clientes, estoque) gravado pela sincronização. Vazio até a primeira leitura.
+let painelRV = { vendas: [], clientes: [], produtos: [], atualizadoEm: "" };
+const temPainel = () => Boolean(painelRV.atualizadoEm);
 const somarVendas = (filtro) => Object.entries(vendasPorDia).filter(([d]) => filtro(d)).reduce((t, [, v]) => ({ qtd: t.qtd + (v.qtd || 0), total: t.total + (v.total || 0) }), { qtd: 0, total: 0 });
 const clientesCrediario = () => CR.porCliente(crediario);
 
@@ -405,6 +423,17 @@ async function resumoDoDia() {
     const r = CR.resumo(crediario);
     e.addFields({ name: "💳 Crediário (Revendi)", value: `Vence hoje: **${C.brl(r.hoje)}** (${r.qtdHoje}) · Em atraso: **${C.brl(r.atraso)}** (${r.clientesAtraso} cliente(s)) · Próximos 7 dias: ${C.brl(r.semana)} · A receber: ${C.brl(r.aReceber)}` });
   }
+  if (temPainel()) {
+    const extras = [];
+    const aniv = PR.aniversariantes(painelRV.clientes, hoje.data, 0);
+    if (aniv.length) extras.push(`🎂 **${aniv.length}** aniversariante(s) hoje: ${curto(aniv.map((c) => C.primeiroNome(c.nome)).join(", "), 200)}`);
+    const ent = PR.entregasPendentes(painelRV.vendas, hoje.data);
+    if (ent.length) extras.push(`🚚 **${ent.length}** entrega(s) pendente(s)` + (ent.some((v) => v.esperando > 3) ? " · ⚠️ alguma há mais de 3 dias" : ""));
+    const est = PR.alertasEstoque(painelRV.produtos, painelRV.vendas, hoje.data, { diasValidade: 30 });
+    if (est.vencendo.length) extras.push(`⏰ **${est.vencendo.length}** produto(s) vencendo em 30 dias`);
+    if (est.esgotados.length) extras.push(`🛒 **${est.esgotados.length}** esgotado(s) que vendem`);
+    if (extras.length) e.addFields({ name: "🛍️ Revendi hoje", value: curto(extras.join("\n"), 1024) });
+  }
   const pendentes = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => !m.resgatadoEm && C.resumoMembro(g, m).quitado).map((m) => `${m.nome} (${g.codigo})`));
   if (pendentes.length) e.addFields({ name: `🎁 Quitaram e ainda não resgataram (${pendentes.length})`, value: curto(pendentes.join(" · "), 1000) });
   if (formando.length) e.addFields({ name: "🟦 Próximo grupo", value: formando.map((g) => `${g.codigo}: ${(g.membros || []).length}${g.vagas ? "/" + g.vagas : ""} membros · começa ${C.rotuloMes(g.inicio, true)}`).join("\n") });
@@ -537,11 +566,168 @@ async function cobrancasCrediario() {
   const e = new EmbedBuilder().setColor(0x8e44ad).setTitle(`💳 Crediário de hoje · ${C.dataBR(CR.hojeISO())}`).setDescription(curto(linhas.join("\n"), 4000))
     .setFooter({ text: "Dados do Revendi (só leitura). Dê baixa no Revendi; aqui atualiza na próxima sincronização." });
   const comp = opcoes.length ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("crd").setPlaceholder("📲 Cobrar no WhatsApp…").addOptions(opcoes))] : [];
-  await enviar("cobrancas", { embeds: [e], components: comp });
+  await enviar(estado.canais?.crediario ? "crediario" : "cobrancas", { embeds: [e], components: comp });
+}
+
+// ---------------------------------------------------------------- Revendi no Discord
+const ROSA_RV = 0xd63384;
+const menuZap = (id, placeholder, itens) => itens.length
+  ? [new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(id).setPlaceholder(placeholder).addOptions(itens.slice(0, 25)))] : [];
+const linhaItem = (it) => `${it.brinde ? "🎁" : "•"} ${it.qtd}× ${curto(it.nome, 55)}${it.marca ? ` · ${curto(it.marca, 20)}` : ""}${it.brinde ? " (brinde)" : ` · ${C.brl(it.preco * it.qtd)}`}`;
+
+function embedVenda(v) {
+  const sit = PR.situacaoPagamento(v);
+  const itens = v.itens?.length ? v.itens.map(linhaItem).join("\n") : `${v.qtdItens || "?"} item(ns)`;
+  const e = new EmbedBuilder().setColor(sit === "pago" ? VERDE : sit === "parcial" ? 0xd4a72c : ROSA_RV)
+    .setTitle(`🛍️ ${curto(v.cliente, 60)} · ${C.brl(v.valor)}`)
+    .setDescription(curto(itens, 3500) + (v.obs ? `\n\n📝 ${curto(v.obs, 200)}` : ""))
+    .addFields(
+      { name: "Pagamento", value: PR.ROTULO_PAG[sit] + (sit !== "pago" ? ` · falta ${C.brl(v.valor - v.pago)}` : ""), inline: true },
+      { name: "Lucro", value: C.brl(v.lucro) + (v.valor ? ` (${Math.round((v.lucro / v.valor) * 100)}%)` : ""), inline: true },
+      { name: "Entrega", value: v.entrega === "PENDING" ? "🚚 A entregar" : "✅ Entregue", inline: true })
+    .setFooter({ text: `Venda ${v.id} no Revendi · ${C.dataBR(v.data)}` + (v.desconto ? ` · desconto ${C.brl(v.desconto)}` : "") });
+  return e;
+}
+
+/** #vendas: posta cada venda nova. Na primeira vez só marca as que já existiam (não inunda o canal). */
+async function postarVendasNovas() {
+  if (!temPainel() || !estado.canais?.rvVendas) return;
+  const vistas = new Set(estado.rvVendasVistas || []);
+  if (!estado.rvVendasIniciado) {
+    estado.rvVendasIniciado = new Date().toISOString();
+    estado.rvVendasVistas = painelRV.vendas.slice(0, 600).map((v) => v.id); salvar();
+    const ult = painelRV.vendas.slice(0, 3).reverse();
+    for (const v of ult) await enviar("rvVendas", { content: "↩️ Últimas vendas antes de ligar o canal:", embeds: [embedVenda(v)] });
+    return;
+  }
+  const novas = painelRV.vendas.filter((v) => !vistas.has(v.id)).reverse();
+  if (!novas.length) return;
+  for (const v of novas.slice(-15)) {
+    const zap = v.whatsapp ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`rvw:ag:${v.id}`).setLabel("Agradecer no WhatsApp").setEmoji("💝").setStyle(ButtonStyle.Secondary))] : [];
+    await enviar("rvVendas", { embeds: [embedVenda(v)], components: zap });
+    vistas.add(v.id);
+  }
+  novas.forEach((v) => vistas.add(v.id));
+  estado.rvVendasVistas = [...vistas].slice(-600); salvar();
+}
+
+/** Mensagem fixa num canal, editada quando o conteúdo muda (painéis de entregas e estoque). */
+async function painelFixo(chave, conteudo) {
+  const c = await canal(chave);
+  if (!c) return;
+  estado.rvFixos = estado.rvFixos || {};
+  const marca = createHash("sha1").update(JSON.stringify(conteudo).replace(/Atualizado [^"·]+/g, "")).digest("hex");
+  const atual = estado.rvFixos[chave];
+  if (atual?.marca === marca) return;
+  let msg = null;
+  if (atual?.msg) { try { msg = await c.messages.fetch(atual.msg); } catch {} }
+  try {
+    if (msg) await msg.edit(conteudo); else msg = await c.send(conteudo);
+    estado.rvFixos[chave] = { msg: msg.id, marca }; salvar();
+  } catch (e) { log(`painel ${chave}: ${e.message}`); }
+}
+
+async function painelEntregas() {
+  const hoje = CR.hojeISO();
+  const lista = PR.entregasPendentes(painelRV.vendas, hoje);
+  const e = new EmbedBuilder().setColor(lista.some((v) => v.esperando > 3) ? VERMELHO : lista.length ? 0xd4a72c : VERDE)
+    .setTitle(`🚚 Entregas pendentes (${lista.length})`)
+    .setDescription(lista.length ? curto(lista.map((v) => `${v.esperando > 3 ? "🔴" : v.esperando > 1 ? "🟡" : "🟢"} **${curto(v.cliente, 40)}** · ${C.brl(v.valor)} · vendida ${C.dataBR(v.data)}` +
+      ` · ${v.esperando === 0 ? "hoje" : v.esperando + " dia(s)"}` + (v.itens?.length ? `\n  ${curto(v.itens.map((it) => `${it.qtd}× ${it.nome}`).join(", "), 180)}` : "")).join("\n"), 4000)
+      : "Tudo entregue! 🎉")
+    .setFooter({ text: "Marque como entregue no Revendi; este painel se atualiza sozinho · 🟢 até 1 dia · 🟡 2-3 dias · 🔴 mais de 3" });
+  const op = lista.filter((v) => v.whatsapp).map((v) => ({ label: curto(v.cliente, 100), value: v.id, description: curto(`${C.brl(v.valor)} · ${v.esperando} dia(s) esperando`, 100) }));
+  await painelFixo("rvEntregas", { embeds: [e], components: menuZap("rvw:en", "📲 Combinar entrega no WhatsApp…", op) });
+}
+
+async function painelEstoque() {
+  const a = PR.alertasEstoque(painelRV.produtos, painelRV.vendas, CR.hojeISO());
+  const e = new EmbedBuilder().setColor(a.vencendo.some((p) => p.faltam <= 15) ? VERMELHO : COR).setTitle("📦 Estoque")
+    .setDescription(`**${a.totalProdutos}** produtos · **${a.totalUnidades}** unidades · valor de venda ${C.brl(a.valorEstoque)}`);
+  if (a.vencendo.length) e.addFields({ name: `⏰ Vencendo nos próximos 60 dias (${a.vencendo.length})`, value: curto(a.vencendo.map((p) =>
+    `${p.faltam < 0 ? "⛔ venceu" : p.faltam <= 15 ? "🔴" : p.faltam <= 30 ? "🟡" : "🟢"} ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""} · ${p.unidades} un · ${C.dataBR(p.validade)}` +
+    (p.faltam >= 0 ? ` (${p.faltam} dias)` : "")).join("\n"), 1024) });
+  else e.addFields({ name: "⏰ Vencendo nos próximos 60 dias", value: "Nada vencendo. ✅" });
+  if (a.esgotados.length) e.addFields({ name: `🛒 Esgotados que vendem (repor) (${a.esgotados.length})`, value: curto(a.esgotados.map((p) =>
+    `• ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""}${p.codigo ? " · cód. " + p.codigo : ""} · ${p.vendidos} vendido(s) em 90 dias`).join("\n"), 1024) });
+  if (a.parados.length) e.addFields({ name: `💤 Parados há mais de 90 dias (${a.parados.length} · ${C.brl(a.valorParado)})`, value: curto(a.parados.slice(0, 12).map((p) =>
+    `• ${curto(p.nome, 50)}${p.marca ? " · " + p.marca : ""} · ${p.unidades} un · ${C.brl(p.valorParado)}`).join("\n") +
+    (a.parados.length > 12 ? `\n… e mais ${a.parados.length - 12}` : "") + "\n💡 Boa hora para promoção, kit ou brinde.", 1024) });
+  e.setFooter({ text: `Atualizado ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} · dados do Revendi` });
+  await painelFixo("rvEstoque", { embeds: [e] });
+}
+
+async function aniversariosDoDia(segunda) {
+  const hoje = CR.hojeISO();
+  const doDia = PR.aniversariantes(painelRV.clientes, hoje, 0);
+  const hist = new Map(PR.historicoClientes(painelRV.vendas).map((h) => [h.chave, h]));
+  const extra = (c) => { const h = hist.get(C.chaveTel(c.whatsapp) || c.nome.toLowerCase()); return h ? ` · ${h.compras} compra(s), ${C.brl(h.total)}` : ""; };
+  if (doDia.length) {
+    const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`🎂 Aniversariantes de hoje · ${C.dataBR(hoje)}`)
+      .setDescription(doDia.map((c) => `🎉 **${c.nome}**${c.whatsapp ? " · " + C.fone(c.whatsapp) : " · sem WhatsApp"}${extra(c)}`).join("\n"));
+    const op = doDia.filter((c) => c.whatsapp).map((c) => ({ label: curto(c.nome, 100), value: c.id }));
+    await enviar("rvAniversarios", { embeds: [e], components: menuZap("rvw:an", "🎂 Mandar parabéns no WhatsApp…", op) });
+  }
+  if (segunda) {
+    const semana = PR.aniversariantes(painelRV.clientes, hoje, 6).filter((c) => c.emDias > 0);
+    const e = new EmbedBuilder().setColor(0xf3a6c4).setTitle("📅 Aniversários desta semana")
+      .setDescription(semana.length ? semana.map((c) => `• ${C.dataBR(c.data).slice(0, 5)} · **${c.nome}**${extra(c)}`).join("\n") : "Ninguém faz aniversário nos próximos 6 dias.")
+      .setFooter({ text: "No dia, o parabéns aparece aqui com o WhatsApp pronto." });
+    await enviar("rvAniversarios", { embeds: [e] });
+  }
+}
+
+async function reativacaoSemanal() {
+  const lista = PR.paraReativar(painelRV.vendas, CR.hojeISO(), 60).slice(0, 25);
+  const e = new EmbedBuilder().setColor(0x9b59b6).setTitle(`💌 Clientes sumidas · ${lista.length} para chamar de volta`)
+    .setDescription(lista.length ? curto(lista.map((h) => `• **${curto(h.cliente, 40)}** · ${h.semComprar} dias sem comprar · ${h.compras} compra(s), ${C.brl(h.total)}` +
+      (h.marcaFavorita ? ` · gosta de ${h.marcaFavorita}` : "")).join("\n"), 4000) : "Todas as clientes compraram nos últimos 60 dias. 🎉")
+    .setFooter({ text: "Ordenadas por quanto já compraram no último ano · a mensagem cita a marca favorita dela" });
+  const op = lista.map((h) => ({ label: curto(h.cliente, 100), value: curto(h.chave, 100), description: curto(`${h.semComprar} dias · ${C.brl(h.total)}`, 100) }));
+  await enviar("rvReativar", { embeds: [e], components: menuZap("rvw:re", "📲 Chamar no WhatsApp…", op) });
+}
+
+function embedDesempenho(titulo, d, ant) {
+  const e = new EmbedBuilder().setColor(COR).setTitle(titulo)
+    .setDescription(`**${d.qtd}** venda(s) · **${C.brl(d.total)}** (${PR.variacao(d.total, ant.total)})\n` +
+      `💰 Lucro ${C.brl(d.lucro)} · margem ${d.margem}% (${PR.variacao(d.lucro, ant.lucro)})\n` +
+      `🧾 Ticket médio ${C.brl(d.ticket)} (${PR.variacao(d.ticket, ant.ticket)}) · recebido ${C.brl(d.recebido)}\n` +
+      `👥 ${d.topClientes.length} cliente(s), ${d.clientesNovas} nova(s)`);
+  if (d.topProdutos.length) e.addFields({ name: "🏆 Mais vendidos", value: curto(d.topProdutos.slice(0, 5).map((p, n) => `${n + 1}. ${curto(p.nome, 50)} · ${p.qtd} un · ${C.brl(p.total)}`).join("\n"), 1024) });
+  if (d.topClientes.length) e.addFields({ name: "💖 Clientes que mais compraram", value: curto(d.topClientes.slice(0, 5).map((c, n) => `${n + 1}. ${curto(c.cliente, 40)} · ${C.brl(c.total)}`).join("\n"), 1024), inline: true });
+  if (d.topMarcas.length) e.addFields({ name: "🏷️ Marcas", value: curto(d.topMarcas.slice(0, 5).map((m) => `• ${m.marca} · ${C.brl(m.total)}`).join("\n"), 1024), inline: true });
+  return e.setFooter({ text: `Comparação com o período anterior de mesmo tamanho · dados do Revendi` });
+}
+async function desempenhoSemanal() {
+  const hoje = CR.hojeISO(), fim = PR.somarDias(hoje, -1), ini = PR.somarDias(hoje, -7);
+  const d = PR.desempenho(painelRV.vendas, ini, fim), ant = PR.desempenho(painelRV.vendas, PR.somarDias(ini, -7), PR.somarDias(ini, -1));
+  await enviar("rvDesempenho", { embeds: [embedDesempenho(`📈 Semana ${C.dataBR(ini).slice(0, 5)} a ${C.dataBR(fim).slice(0, 5)}`, d, ant)] });
+}
+async function desempenhoMensal(ym) {
+  const ini = ym + "-01", fim = PR.somarDias(C.somarMes(ym, 1) + "-01", -1);
+  const ymA = C.somarMes(ym, -1), d = PR.desempenho(painelRV.vendas, ini, fim);
+  const ant = PR.desempenho(painelRV.vendas, ymA + "-01", PR.somarDias(ym + "-01", -1));
+  await enviar("rvDesempenho", { embeds: [embedDesempenho(`📊 ${C.rotuloMes(ym, true)} no Revendi`, d, ant)] });
+}
+
+async function rotinasRevendi(h) {
+  if (!temPainel() || !estado.canais?.rvVendas) return;
+  await postarVendasNovas().catch((e) => log("vendas: " + e.message));
+  if (estado.rvPainelVisto !== painelRV.atualizadoEm) {
+    estado.rvPainelVisto = painelRV.atualizadoEm;
+    await painelEntregas().catch((e) => log("entregas: " + e.message));
+    await painelEstoque().catch((e) => log("estoque: " + e.message));
+  }
+  if (h.hora < 8 || h.hora >= 21) return;
+  if (estado.rvAniv !== h.data) { estado.rvAniv = h.data; salvar(); await aniversariosDoDia(h.diaSemana === 1 || !estado.rvAnivSemana).catch((e) => log("aniversários: " + e.message)); estado.rvAnivSemana = true; }
+  if (h.hora >= 9 && (h.diaSemana === 1 || !estado.rvDesSemana) && estado.rvDesSemana !== h.data) { estado.rvDesSemana = h.data; salvar(); await desempenhoSemanal().catch((e) => log("desempenho: " + e.message)); }
+  if (h.hora >= 9 && h.dia === 1 && estado.rvDesMes !== h.ym) { estado.rvDesMes = h.ym; salvar(); await desempenhoMensal(C.somarMes(h.ym, -1)).catch((e) => log("desempenho do mês: " + e.message)); }
+  if (h.hora >= 10 && (h.diaSemana === 1 || !estado.rvReativar) && estado.rvReativar !== h.data) { estado.rvReativar = h.data; salvar(); await reativacaoSemanal().catch((e) => log("reativar: " + e.message)); }
 }
 
 async function rotinas() {
   const h = C.agoraSP();
+  await rotinasRevendi(h);
   if (h.hora >= 8 && h.hora < 21 && estado.resumoDia !== h.data) {
     estado.resumoDia = h.data; salvar();
     await resumoDoDia().catch((e) => log("resumo: " + e.message));
@@ -636,6 +822,7 @@ async function autocompletar(i) {
     const lista = [];
     for (const g of grupos.values()) for (const m of g.membros || []) { const k = C.chaveTel(m.whatsapp) || m.nome; if (!vistos.has(k)) { vistos.add(k); lista.push({ name: curto(`${m.nome} · consórcio`, 100), value: curto(k, 100) }); } }
     for (const c of clientesCrediario()) { const k = C.chaveTel(c.whatsapp) || c.cliente; if (!vistos.has(k)) { vistos.add(k); lista.push({ name: curto(`${c.cliente} · crediário`, 100), value: curto(k, 100) }); } }
+    for (const c of painelRV.clientes) { const k = C.chaveTel(c.whatsapp) || c.nome; if (!vistos.has(k)) { vistos.add(k); lista.push({ name: curto(`${c.nome} · Revendi`, 100), value: curto(k, 100) }); } }
     opcoes = lista.filter((o) => o.name.toLowerCase().includes(texto) || o.value.includes(texto.replace(/\D/g, "") || "§"));
   } else if (foco.name === "grupo") {
     opcoes = C.ordenarGrupos([...grupos.values()]).map((g) => ({ name: curto(`${g.codigo} · ${C.brl(g.valorParcela)} · ${C.ROTULO[C.situacao(g)]}`, 100), value: g.id }));
@@ -673,6 +860,8 @@ async function comando(i) {
       "• **#comprovantes**: cole o print do Pix e escolha de quem é — o bot dá baixa e prepara o recibo.",
       "• **#resumo-do-dia**: todo dia às 8h; no dia 1, o relatório do mês anterior.",
       "• Lembrete 2 dias antes do vencimento, aviso de fim de grupo, lançamento do resgate no Revendi e backup aos domingos.",
+      "• **🛍️ REVENDI**: #vendas (cada venda nova), #crediario (9h), #entregas e #estoque (painéis que se atualizam), #aniversarios (8h), #clientes-sumidas (segunda), #desempenho (segunda e dia 1).",
+      "Revendi: `/revendi vendas`, `/revendi entregas`, `/revendi estoque`, `/revendi aniversarios`, `/revendi sumidas`, `/revendi sincronizar`, `/cliente`.",
       "Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`, `/consorcio novo-grupo`, `/consorcio adicionar`, `/consorcio links`, `/consorcio atualizar`, `/loja pedidos`.",
     ].join("\n") });
   }
@@ -715,14 +904,61 @@ async function comando(i) {
     const bate = (nomeX, w) => (tel.length >= 8 && C.chaveTel(w) === tel) || String(nomeX || "").toLowerCase() === q.toLowerCase();
     const consorcios = [...grupos.values()].flatMap((g) => (g.membros || []).filter((m) => bate(m.nome, m.whatsapp)).map((m) => ({ g, m })));
     const cred = clientesCrediario().find((c) => bate(c.cliente, c.whatsapp));
-    if (!consorcios.length && !cred) return i.reply({ ...EFEMERA, content: "Não encontrei essa cliente no consórcio nem no crediário." });
-    const embeds = consorcios.slice(0, 8).map(({ g, m }) => embedMembro(g, m));
+    const rvCli = painelRV.clientes.find((c) => bate(c.nome, c.whatsapp));
+    const rvHist = PR.historicoClientes(painelRV.vendas).find((h) => bate(h.cliente, h.whatsapp));
+    if (!consorcios.length && !cred && !rvCli && !rvHist) return i.reply({ ...EFEMERA, content: "Não encontrei essa cliente no consórcio, no crediário nem no Revendi." });
+    const embeds = [];
+    if (rvCli || rvHist) {
+      const nomeC = rvCli?.nome || rvHist.cliente;
+      const ultimas = painelRV.vendas.filter((v) => bate(v.cliente, v.whatsapp)).slice(0, 5);
+      const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(`🛍️ ${nomeC} · Revendi`).setDescription([
+        rvHist ? `**${rvHist.compras}** compra(s) no último ano · **${C.brl(rvHist.total)}** · última em ${C.dataBR(rvHist.ultima)} (${PR.diasEntre(rvHist.ultima, CR.hojeISO())} dias)` : "Sem compras no último ano.",
+        rvHist?.marcaFavorita ? `💖 Marca favorita: ${rvHist.marcaFavorita}` : "",
+        rvCli?.aniversario ? `🎂 Aniversário: ${rvCli.aniversario.slice(3)}/${rvCli.aniversario.slice(0, 2)}` : "",
+        rvCli?.etiquetas?.length ? `🏷️ ${rvCli.etiquetas.join(" · ")}` : "",
+        (rvCli?.whatsapp || rvHist?.whatsapp) ? `📱 ${C.fone(rvCli?.whatsapp || rvHist?.whatsapp)}` : "",
+      ].filter(Boolean).join("\n"));
+      if (ultimas.length) e.addFields({ name: "Últimas compras", value: curto(ultimas.map((v) => `• ${C.dataBR(v.data)} · ${C.brl(v.valor)} · ${PR.ROTULO_PAG[PR.situacaoPagamento(v)]}` +
+        (v.itens?.length ? ` · ${curto(v.itens.map((it) => it.nome).join(", "), 90)}` : "")).join("\n"), 1024) });
+      embeds.push(e);
+    }
+    embeds.push(...consorcios.slice(0, 7).map(({ g, m }) => embedMembro(g, m)));
     if (cred) embeds.push(new EmbedBuilder().setColor(cred.atrasadas.length ? VERMELHO : 0x8e44ad).setTitle(`💳 ${cred.cliente} · crediário (Revendi)`)
       .setDescription(cred.abertas.length ? curto(cred.abertas.map((p) => `${CR.atrasada(p) ? "⚠️" : CR.venceHoje(p) ? "📅" : "▫️"} ${C.dataBR(p.vencimento)} · ${p.numero}/${p.total} · ${C.brl(p.valor)}${p.venda ? " · venda " + p.venda : ""}`).join("\n"), 4000) + `\n\n**Em aberto:** ${C.brl(cred.devendo)}` + (cred.emAtraso ? ` · **em atraso:** ${C.brl(cred.emAtraso)}` : "")
         : "Nada em aberto no crediário. 🎉"));
-    const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp);
+    const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp || rvCli?.whatsapp);
     const comp = cred?.abertas.length && zap ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`crdc:${curto(C.chaveTel(zap), 60)}`).setLabel("Cobrar crediário").setEmoji("📲").setStyle(ButtonStyle.Primary))] : [];
     return i.reply({ ...EFEMERA, embeds: embeds.slice(0, 10), components: comp });
+  }
+  if (nome === "revendi") {
+    const sub = i.options.getSubcommand();
+    if (sub === "sincronizar") {
+      if (!revendiAtivo()) return i.reply({ ...EFEMERA, content: "Este PC não tem o login do Revendi (REVENDI_EMAIL/SENHA no .env). Se o outro PC tiver, ele lê sozinho a cada 30 min." });
+      await i.deferReply(EFEMERA);
+      forcarSincronizacao(); await ciclo();
+      const st = estadoRevendi();
+      return i.editReply(st.ultimoErro ? `⚠️ ${st.ultimoErro}` : `✅ Revendi lido agora: ${painelRV.vendas.length} vendas, ${painelRV.clientes.length} clientes, ${painelRV.produtos.length} produtos, ${crediario.length} parcelas.`);
+    }
+    if (!temPainel()) return i.reply({ ...EFEMERA, content: "Ainda não li o Revendi. Confira REVENDI_ATIVO no .env do PC e use /revendi sincronizar." });
+    const hoje = CR.hojeISO();
+    if (sub === "vendas") {
+      const p = i.options.getString("periodo");
+      const ini = p === "mes" ? hoje.slice(0, 8) + "01" : PR.somarDias(hoje, -Math.max(0, Number(p) - 1));
+      const d = PR.desempenho(painelRV.vendas, ini, hoje);
+      const dias = PR.diasEntre(ini, hoje) + 1, ant = PR.desempenho(painelRV.vendas, PR.somarDias(ini, -dias), PR.somarDias(ini, -1));
+      const e = embedDesempenho(`🛍️ Vendas ${p === "0" ? "de hoje" : p === "mes" ? "do mês" : `dos últimos ${p} dias`}`, d, ant);
+      const lista = painelRV.vendas.filter((v) => v.data >= ini && v.data <= hoje).slice(0, 15);
+      if (lista.length) e.addFields({ name: "Vendas", value: curto(lista.map((v) => `• ${C.dataBR(v.data).slice(0, 5)} · ${curto(v.cliente, 30)} · ${C.brl(v.valor)} · ${PR.ROTULO_PAG[PR.situacaoPagamento(v)]}`).join("\n"), 1024) });
+      return i.reply({ ...EFEMERA, embeds: [e] });
+    }
+    if (sub === "entregas") { await painelEntregas(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEntregas}>.` }); }
+    if (sub === "estoque") { estado.rvFixos = { ...(estado.rvFixos || {}), rvEstoque: { ...(estado.rvFixos?.rvEstoque || {}), marca: "" } }; await painelEstoque(); return i.reply({ ...EFEMERA, content: `Painel atualizado em <#${estado.canais?.rvEstoque}>.` }); }
+    if (sub === "aniversarios") {
+      const l = PR.aniversariantes(painelRV.clientes, hoje, 30);
+      return i.reply({ ...EFEMERA, embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🎂 Aniversários · próximos 30 dias")
+        .setDescription(l.length ? curto(l.map((c) => `• ${C.dataBR(c.data).slice(0, 5)}${c.emDias === 0 ? " (hoje!)" : ""} · **${c.nome}**`).join("\n"), 4000) : "Ninguém nos próximos 30 dias (ou as clientes estão sem data de aniversário no Revendi).")] });
+    }
+    if (sub === "sumidas") { await i.deferReply(EFEMERA); await reativacaoSemanal(); return i.editReply(`Lista enviada em <#${estado.canais?.rvReativar}>.`); }
   }
   if (nome === "loja") {
     await i.deferReply(EFEMERA);
@@ -852,6 +1088,15 @@ async function componente(i) {
     if (!c?.whatsapp) return i.reply({ ...EFEMERA, content: "Cliente sem WhatsApp no Revendi." });
     const lista = c.atrasadas.length ? c.atrasadas : c.abertas.slice(0, 1);
     return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + c.cliente, C.linkWhats(c.whatsapp, CR.mensagemCrediario(c, lista))) });
+  }
+  if (tipo === "rvw") {
+    const id = acao === "ag" ? a : i.values?.[0];
+    let alvo = null, texto = "";
+    if (acao === "ag" || acao === "en") { const v = painelRV.vendas.find((x) => x.id === id); if (v) { alvo = { nome: v.cliente, whatsapp: v.whatsapp }; texto = acao === "ag" ? PR.msgAgradecer(v) : PR.msgEntrega(v); } }
+    if (acao === "an") { const c = painelRV.clientes.find((x) => x.id === id); if (c) { alvo = c; texto = PR.msgAniversario(c); } }
+    if (acao === "re") { const h = PR.paraReativar(painelRV.vendas, CR.hojeISO(), 60).find((x) => x.chave === id); if (h) { alvo = { nome: h.cliente, whatsapp: h.whatsapp }; texto = PR.msgReativar(h); } }
+    if (!alvo?.whatsapp) return i.reply({ ...EFEMERA, content: "Cliente sem WhatsApp no Revendi (ou o registro mudou)." });
+    return i.reply({ ...EFEMERA, content: linhaLink("📲 Abrir WhatsApp de " + alvo.nome, C.linkWhats(alvo.whatsapp, texto)) });
   }
   if (tipo === "rev") {
     const e = EmbedBuilder.from(i.message.embeds[0]).setFooter({ text: `✅ Lançado no Revendi por ${i.user.username} · ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}` });

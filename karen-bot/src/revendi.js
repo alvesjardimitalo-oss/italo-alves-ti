@@ -93,7 +93,48 @@ async function listarVendas(inicio, fim) {
   return todas;
 }
 
+async function listarClientes() {
+  const d = await get("/clients");
+  if (!Array.isArray(d)) throw new Error("o Revendi mudou o formato dos clientes");
+  return d;
+}
+async function listarProdutos() {
+  const todos = [];
+  for (let page = 1; page <= 60; page++) {
+    const d = await get("/v2/products", { with_count: "true", page });
+    if (!d || !Array.isArray(d.rows)) throw new Error("o Revendi mudou o formato do estoque");
+    todos.push(...d.rows);
+    const total = Number(d._count?.total_products || 0);
+    if (!d.rows.length || (total && todos.length >= total)) break;
+  }
+  return todos;
+}
+const detalheVenda = (id) => get(`/sales-v2/${encodeURIComponent(id)}`);
+const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
+
 // ---------------------------------------------------------------- conversão
+const num = (v) => Math.round((Number(v) || 0) * 100) / 100;
+export function converterCliente(c) {
+  return { id: String(c.id), nome: String(c.name || "Cliente sem nome").slice(0, 80), whatsapp: normalizarTelefone(c.phone),
+    aniversario: mesDiaAniv(c.birthday), etiquetas: (c.clientTags || []).map((t) => String(t.tag?.name || "")).filter(Boolean).slice(0, 10) };
+}
+const mesDiaAniv = (v) => { const m = String(v || "").match(/^\d{4}-(\d{2})-(\d{2})/); return m ? `${m[1]}-${m[2]}` : ""; };
+export function converterProduto(p) {
+  const validades = (p.units || []).filter((u) => !u.sold && u.expiration_date).map((u) => String(u.expiration_date).slice(0, 10)).sort();
+  return { id: String(p.id), nome: String(p.name || "").slice(0, 80), marca: String(p.brand?.name || ""), codigo: String(p.brand_sku || ""),
+    unidades: Number(p.available_units) || 0, preco: num(p.sale_price), validade: String(p.nearest_expiration_date || validades[0] || "").slice(0, 10),
+    vencendo: Boolean(p.expires_soon) };
+}
+export function converterItens(itens) {
+  return (itens || []).map((it) => ({ produtoId: String(it.product_id), nome: String(it.product?.name || "Produto").slice(0, 70),
+    marca: String(it.product?.brand?.name || ""), qtd: Number(it.quantity) || 1, preco: num(it.price), brinde: Boolean(it.is_gift) }));
+}
+export function converterVenda(v, itens = null) {
+  return { id: String(v.id), data: dia(v.date || v.created_at), criadaEm: String(v.created_at || ""), atualizadaEm: String(v.updated_at || ""),
+    clienteId: String(v.client_id || v.client?.id || ""), cliente: String(v.client?.name || "Cliente sem nome").slice(0, 80),
+    whatsapp: normalizarTelefone(v.client?.phone), valor: num(v.value), pago: num(v.paid_amount), lucro: num(v.profit), desconto: num(v.discount),
+    entrega: String(v.delivery_status || ""), qtdItens: Number(v._count?.items) || 0, obs: String(v.description || "").slice(0, 200), itens };
+}
 /** Telefone do Revendi (formato livre) → 55 + DDD + número. Sem DDD, assume o DDD padrão (33). */
 export function normalizarTelefone(v) {
   let d = String(v || "").replace(/\D/g, "");
@@ -137,6 +178,39 @@ export function totaisPorDia(vendas) {
   return dias;
 }
 
+// ---------------------------------------------------------------- painel (vendas, clientes, estoque)
+const DIAS_VENDAS = 400, DIAS_ITENS = 120;
+/** Lê clientes, estoque e vendas do último ano (com os itens das vendas dos últimos 120 dias) e grava
+ *  um retrato em ti/base/botKaren/revendiPainel. Os itens já lidos ficam em cache (só relê se a venda mudou). */
+async function montarPainel(agora, log) {
+  const anterior = await db.obter("botKaren", "revendiPainel").catch(() => null);
+  let cache = new Map();
+  try { cache = new Map((JSON.parse(anterior?.json || "{}").vendas || []).filter((v) => v.itens).map((v) => [v.id, v])); } catch {}
+  const [clientes, produtos, vendasRaw] = await Promise.all([
+    listarClientes(), listarProdutos(), listarVendas(new Date(agora.getTime() - DIAS_VENDAS * 864e5), agora)]);
+  const limiteItens = dia(new Date(agora.getTime() - DIAS_ITENS * 864e5).toISOString());
+  const vendas = [];
+  let lidas = 0;
+  for (const raw of vendasRaw) {
+    const v = converterVenda(raw);
+    const c = cache.get(v.id);
+    if (c && c.atualizadaEm === v.atualizadaEm) v.itens = c.itens;
+    else if (v.data >= limiteItens && lidas < 80) {
+      try { v.itens = converterItens((await detalheVenda(v.id))?.items); lidas++; await espera(120); }
+      catch (e) { log("Revendi (itens da venda " + v.id + "): " + e.message); }
+    } else if (c) v.itens = c.itens;
+    vendas.push(v);
+  }
+  vendas.sort((a, b) => b.data.localeCompare(a.data) || b.criadaEm.localeCompare(a.criadaEm));
+  const painel = { atualizadoEm: agora.toISOString(), clientes: clientes.filter((c) => !c.deleted).map(converterCliente),
+    produtos: produtos.map(converterProduto), vendas };
+  await db.definir("botKaren", "revendiPainel", { json: JSON.stringify(painel), atualizadoEm: painel.atualizadoEm });
+  if (lidas) log(`Revendi: painel atualizado (${vendas.length} vendas, ${painel.clientes.length} clientes, ${painel.produtos.length} produtos; ${lidas} venda(s) detalhada(s))`);
+}
+
+/** Faz a próxima sincronização rodar já (comando /revendi sincronizar). */
+export function forcarSincronizacao() { ultima = 0; }
+
 // ---------------------------------------------------------------- sincronização
 /** Roda no ciclo do bot; respeita o intervalo. Devolve true se algo mudou. */
 export async function sincronizarRevendi(log) {
@@ -168,10 +242,12 @@ export async function sincronizarRevendi(log) {
       const vendas = await listarVendas(new Date(agora.getTime() - 40 * 864e5), agora);
       await db.definir("botKaren", "revendiVendas", { dias: JSON.stringify(totaisPorDia(vendas)), atualizadoEm: agora.toISOString() });
     } catch (e) { log("Revendi (vendas): " + e.message); }
+    try { await montarPainel(agora, log); }
+    catch (e) { log("Revendi (painel): " + e.message); }
     if (ultimoErro) log("Revendi: sincronização voltou a funcionar");
     ultimoErro = ""; ultimoOk = agora.toISOString();
     if (gravadas || removidas) log(`Revendi: ${gravadas} parcela(s) atualizada(s)` + (removidas ? `, ${removidas} removida(s)` : ""));
-    return gravadas > 0 || removidas > 0;
+    return true; // crediário e/ou painel podem ter mudado: o bot relê do Firebase
   } catch (e) {
     const primeira = ultimoErro !== e.message;
     ultimoErro = e.message;

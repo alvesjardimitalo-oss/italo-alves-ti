@@ -94,6 +94,21 @@ se ela mudar, a sincronização para e avisa em #logs-do-bot, e o resto do bot s
 - No Discord: 💳 Crediário e 🛍️ Vendas no **resumo do dia**, *Crediário de hoje* em **#cobrancas** às 9h com cobrança
   pronta no WhatsApp, **`/cliente`** com consórcios + crediário, e crediário e vendas no **relatório do mês**.
 
+### Categoria 🛍️ REVENDI no Discord (criada sozinha ao atualizar)
+| Canal | O quê |
+| --- | --- |
+| **#vendas** | Cada venda nova lançada no Revendi: cliente, itens, valor, pagamento, lucro e entrega, com botão **Agradecer no WhatsApp** |
+| **#crediario** | Todo dia às 9h: parcelas que vencem hoje e atrasadas, com cobrança pronta no WhatsApp |
+| **#entregas** | Painel fixo (se atualiza sozinho) com as vendas não entregues e há quantos dias esperam; menu para combinar a entrega |
+| **#estoque** | Painel fixo: vencendo em 60 dias, esgotados que vendem (repor) e parados há 90 dias (ideia de promoção) |
+| **#aniversarios** | 8h: aniversariantes do dia com parabéns pronto; segunda: os da semana |
+| **#clientes-sumidas** | Segunda 10h: quem não compra há 60+ dias, por valor gasto, com mensagem citando a marca favorita |
+| **#desempenho** | Segunda 9h: a semana em números (vendas, lucro, margem, ticket, mais vendidos, clientes, marcas) comparada com a anterior; dia 1: o mês |
+
+Também: **🛍️ Revendi hoje** no resumo das 8h, **`/cliente`** com histórico de compras, aniversário, marca favorita e etiquetas,
+e **`/revendi`** (`vendas`, `entregas`, `estoque`, `aniversarios`, `sumidas`, `sincronizar`).
+O retrato do Revendi (vendas do último ano, clientes e estoque) fica em `ti/base/botKaren/revendiPainel`.
+
 **Para ligar:** atalho **Editar variaveis** → preencha e salve:
 ```
 REVENDI_ATIVO=sim

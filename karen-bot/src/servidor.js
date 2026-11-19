@@ -22,6 +22,15 @@ export const ESTRUTURA = [
     { chave: "pagamentos", nome: "✅・pagamentos", topico: "Registro de cada parcela marcada como paga (pelo painel ou pelo bot)." },
     { chave: "resgates", nome: "🎁・resgates", topico: "Resgates de prêmio registrados." },
   ] },
+  { categoria: "🛍️ REVENDI", area: "equipe", canais: [
+    { chave: "rvVendas", nome: "💰・vendas", topico: "Cada venda lançada no Revendi: cliente, itens, valor, lucro e entrega, com agradecimento pronto no WhatsApp." },
+    { chave: "crediario", nome: "💳・crediario", topico: "Todo dia às 9h: parcelas do crediário que vencem hoje e as atrasadas, com cobrança pronta no WhatsApp." },
+    { chave: "rvEntregas", nome: "🚚・entregas", topico: "Painel sempre atualizado com as vendas ainda não entregues no Revendi e há quantos dias esperam." },
+    { chave: "rvEstoque", nome: "📦・estoque", topico: "Painel do estoque: vencendo nos próximos 60 dias, esgotados que vendem e produtos parados." },
+    { chave: "rvAniversarios", nome: "🎂・aniversarios", topico: "Aniversariantes do dia (8h) e da semana (segunda), com parabéns pronto no WhatsApp." },
+    { chave: "rvReativar", nome: "💌・clientes-sumidas", topico: "Toda segunda: clientes sem comprar há mais de 60 dias, com mensagem pronta para chamar de volta." },
+    { chave: "rvDesempenho", nome: "📈・desempenho", topico: "Toda segunda: a semana em números (vendas, lucro, ticket, campeões). No dia 1: o mês." },
+  ] },
   { categoria: "📥 FORMULÁRIOS DO SITE", area: "equipe", canais: [
     { chave: "renovacoes", nome: "🔁・renovacoes", topico: "Respostas do formulário de renovação (nota, críticas, sugestões e se renova)." },
     { chave: "reservas", nome: "📝・banco-de-reserva", topico: "Quem quer entrar no próximo grupo, pelo site." },
