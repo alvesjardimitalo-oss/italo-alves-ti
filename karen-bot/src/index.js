@@ -16,7 +16,7 @@ import * as db from "./firestore.js";
 import * as C from "./consorcio.js";
 import { montarServidor, alternarAreaClientes, completarCanais } from "./servidor.js";
 import * as CR from "./crediario.js";
-import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao } from "./revendi.js";
+import { sincronizarRevendi, estadoRevendi, revendiAtivo, forcarSincronizacao, buscarCatalogo } from "./revendi.js";
 import * as PR from "./painel-revendi.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
@@ -123,6 +123,8 @@ const comandos = [
     .addSubcommand((s) => s.setName("aniversarios").setDescription("Aniversariantes dos próximos 30 dias"))
     .addSubcommand((s) => s.setName("sumidas").setDescription("Clientes sem comprar há 60+ dias"))
     .addSubcommand((s) => s.setName("sincronizar").setDescription("Lê o Revendi agora (em vez de esperar 30 min)")),
+  new SlashCommandBuilder().setName("produto").setDescription("Catálogo das marcas: foto, preço sugerido e se tem no estoque")
+    .addStringOption((o) => o.setName("busca").setDescription("Código da revista ou nome").setAutocomplete(true).setRequired(true)),
   new SlashCommandBuilder().setName("loja").setDescription("Loja do site")
     .addSubcommand((s) => s.setName("pedidos").setDescription("Pedidos da loja dos últimos 7 dias")),
   new SlashCommandBuilder().setName("servidor").setDescription("Organização do servidor")
@@ -586,6 +588,8 @@ function embedVenda(v) {
       { name: "Lucro", value: C.brl(v.lucro) + (v.valor ? ` (${Math.round((v.lucro / v.valor) * 100)}%)` : ""), inline: true },
       { name: "Entrega", value: v.entrega === "PENDING" ? "🚚 A entregar" : "✅ Entregue", inline: true })
     .setFooter({ text: `Venda ${v.id} no Revendi · ${C.dataBR(v.data)}` + (v.desconto ? ` · desconto ${C.brl(v.desconto)}` : "") });
+  const foto = v.itens?.find((it) => /^https:\/\//.test(it.foto || ""))?.foto;
+  if (foto) e.setThumbnail(foto);
   return e;
 }
 
@@ -817,6 +821,11 @@ async function autocompletar(i) {
   const foco = i.options.getFocused(true);
   const texto = String(foco.value || "").toLowerCase();
   let opcoes = [];
+  if (foco.name === "busca") {
+    let lista = [];
+    try { if (texto.length >= 2) lista = await buscarCatalogo(foco.value, 25); } catch {}
+    return i.respond(lista.map((p) => ({ name: curto(`${p.codigo} · ${p.nome} · ${p.marca}`, 100), value: curto(p.codigo || p.nome, 100) }))).catch(() => {});
+  }
   if (foco.name === "quem") {
     const vistos = new Set();
     const lista = [];
@@ -861,7 +870,7 @@ async function comando(i) {
       "• **#resumo-do-dia**: todo dia às 8h; no dia 1, o relatório do mês anterior.",
       "• Lembrete 2 dias antes do vencimento, aviso de fim de grupo, lançamento do resgate no Revendi e backup aos domingos.",
       "• **🛍️ REVENDI**: #vendas (cada venda nova), #crediario (9h), #entregas e #estoque (painéis que se atualizam), #aniversarios (8h), #clientes-sumidas (segunda), #desempenho (segunda e dia 1).",
-      "Revendi: `/revendi vendas`, `/revendi entregas`, `/revendi estoque`, `/revendi aniversarios`, `/revendi sumidas`, `/revendi sincronizar`, `/cliente`.",
+      "Catálogo: `/produto <código ou nome>` (foto, preço sugerido e estoque). Revendi: `/revendi vendas`, `/revendi entregas`, `/revendi estoque`, `/revendi aniversarios`, `/revendi sumidas`, `/revendi sincronizar`, `/cliente`.",
       "Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/consorcio desfazer`, `/consorcio membro`, `/consorcio novo-grupo`, `/consorcio adicionar`, `/consorcio links`, `/consorcio atualizar`, `/loja pedidos`.",
     ].join("\n") });
   }
@@ -929,6 +938,24 @@ async function comando(i) {
     const zap = (cred?.whatsapp || consorcios[0]?.m.whatsapp || rvCli?.whatsapp);
     const comp = cred?.abertas.length && zap ? [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`crdc:${curto(C.chaveTel(zap), 60)}`).setLabel("Cobrar crediário").setEmoji("📲").setStyle(ButtonStyle.Primary))] : [];
     return i.reply({ ...EFEMERA, embeds: embeds.slice(0, 10), components: comp });
+  }
+  if (nome === "produto") {
+    await i.deferReply(EFEMERA);
+    let lista;
+    try { lista = await buscarCatalogo(i.options.getString("busca"), 5); }
+    catch (e) { return i.editReply("⚠️ Não consegui consultar o catálogo: " + e.message); }
+    if (!lista.length) return i.editReply("Nada encontrado no catálogo de O Boticário, Eudora, Quem Disse Berenice e O.U.i.");
+    const embeds = lista.slice(0, lista[0].codigo === C.soNumeros(i.options.getString("busca")) ? 1 : 5).map((p, n) => {
+      const est = painelRV.produtos.find((x) => (p.codigo && x.codigo === p.codigo) || x.nome.toLowerCase() === p.nome.toLowerCase());
+      const e = new EmbedBuilder().setColor(ROSA_RV).setTitle(curto(p.nome, 250))
+        .addFields({ name: "Código", value: p.codigo || "—", inline: true }, { name: "Marca", value: p.marca || "—", inline: true },
+          { name: "Preço sugerido", value: p.preco ? C.brl(p.preco) : "—", inline: true },
+          { name: "No estoque da Karen", value: est ? (est.unidades > 0 ? `✅ ${est.unidades} un · ${C.brl(est.preco)}` + (est.validade ? ` · validade ${C.dataBR(est.validade)}` : "") : "❌ esgotado") : "Não cadastrado" });
+      if (p.descricao && n === 0) e.setDescription(curto(p.descricao, 600));
+      if (/^https:\/\//.test(p.foto)) n === 0 ? e.setImage(p.foto) : e.setThumbnail(p.fotoPequena);
+      return e;
+    });
+    return i.editReply({ embeds });
   }
   if (nome === "revendi") {
     const sub = i.options.getSubcommand();

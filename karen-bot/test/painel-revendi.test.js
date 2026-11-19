@@ -13,9 +13,9 @@ const venda = (id, data, cliente, whatsapp, valor, extra = {}) => ({ id, data, c
 test("converte venda, itens, cliente e produto do formato do Revendi", () => {
   const v = R.converterVenda({ id: 9, value: 150.5, paid_amount: 50, profit: 40, discount: 0, date: "2026-11-18T15:00:00.000Z", delivery_status: "PENDING",
     client_id: 3, client: { name: "Ana Souza", phone: "(33) 99962-8147" }, _count: { items: 2 }, created_at: "2026-11-18T15:00:00.000Z", updated_at: "x" },
-  R.converterItens([{ product_id: 7, quantity: 2, price: 50, is_gift: false, product: { name: "Malbec", brand: { name: "O Boticário" } } }]));
+  R.converterItens([{ product_id: 7, quantity: 2, price: 50, is_gift: false, product: { name: "Malbec", brand_sku: "89831", product_image: "https://x/7/89831.jpg", brand: { name: "O Boticário" } } }]));
   assert.equal(v.data, "2026-11-18"); assert.equal(v.whatsapp, "5533999628147"); assert.equal(v.entrega, "PENDING");
-  assert.deepEqual(v.itens[0], { produtoId: "7", nome: "Malbec", marca: "O Boticário", qtd: 2, preco: 50, brinde: false });
+  assert.deepEqual(v.itens[0], { produtoId: "7", nome: "Malbec", marca: "O Boticário", codigo: "89831", foto: "https://x/7/89831.jpg", qtd: 2, preco: 50, brinde: false });
   assert.equal(PR.situacaoPagamento(v), "parcial");
   const c = R.converterCliente({ id: 1, name: "Bia", phone: "33999628147", birthday: "1990-05-12T00:00:00.000Z", clientTags: [{ tag: { name: "Consorcio G1" } }] });
   assert.equal(c.aniversario, "05-12"); assert.deepEqual(c.etiquetas, ["Consorcio G1"]);
@@ -77,4 +77,9 @@ test("desempenho do período e comparação", () => {
   assert.equal(d.topProdutos[0].nome, "Batom"); assert.equal(d.topMarcas[0].marca, "Eudora");
   assert.equal(d.clientesNovas, 1); // Bia é nova; Ana já tinha comprado antes
   assert.equal(PR.variacao(160, 100), "+60%"); assert.equal(PR.variacao(5, 0), "novo");
+});
+
+test("catálogo das marcas: converte produto", () => {
+  const p = R.converterCatalogo({ id: 1, name: "Malbec", brand_sku: "89831", description: "Linha\n  amadeirada", product_image: "https://a/7/89831.jpg", product_image_sm: "https://a/7/89831-small.jpg", sale_price: "199.90", brand: { name: "O Boticário" } });
+  assert.deepEqual(p, { id: "1", nome: "Malbec", codigo: "89831", marca: "O Boticário", descricao: "Linha amadeirada", foto: "https://a/7/89831.jpg", fotoPequena: "https://a/7/89831-small.jpg", preco: 199.9 });
 });

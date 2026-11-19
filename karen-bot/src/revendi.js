@@ -127,7 +127,8 @@ export function converterProduto(p) {
 }
 export function converterItens(itens) {
   return (itens || []).map((it) => ({ produtoId: String(it.product_id), nome: String(it.product?.name || "Produto").slice(0, 70),
-    marca: String(it.product?.brand?.name || ""), qtd: Number(it.quantity) || 1, preco: num(it.price), brinde: Boolean(it.is_gift) }));
+    marca: String(it.product?.brand?.name || ""), codigo: String(it.product?.brand_sku || ""), foto: String(it.product?.product_image || it.product?.product_image_sm || ""),
+    qtd: Number(it.quantity) || 1, preco: num(it.price), brinde: Boolean(it.is_gift) }));
 }
 export function converterVenda(v, itens = null) {
   return { id: String(v.id), data: dia(v.date || v.created_at), criadaEm: String(v.created_at || ""), atualizadaEm: String(v.updated_at || ""),
@@ -194,7 +195,7 @@ async function montarPainel(agora, log) {
   for (const raw of vendasRaw) {
     const v = converterVenda(raw);
     const c = cache.get(v.id);
-    if (c && c.atualizadaEm === v.atualizadaEm) v.itens = c.itens;
+    if (c && c.atualizadaEm === v.atualizadaEm && c.itens.every((it) => "foto" in it)) v.itens = c.itens;
     else if (v.data >= limiteItens && lidas < 80) {
       try { v.itens = converterItens((await detalheVenda(v.id))?.items); lidas++; await espera(120); }
       catch (e) { log("Revendi (itens da venda " + v.id + "): " + e.message); }
@@ -206,6 +207,25 @@ async function montarPainel(agora, log) {
     produtos: produtos.map(converterProduto), vendas };
   await db.definir("botKaren", "revendiPainel", { json: JSON.stringify(painel), atualizadoEm: painel.atualizadoEm });
   if (lidas) log(`Revendi: painel atualizado (${vendas.length} vendas, ${painel.clientes.length} clientes, ${painel.produtos.length} produtos; ${lidas} venda(s) detalhada(s))`);
+}
+
+// ---------------------------------------------------------------- catálogo das marcas (consulta ao vivo)
+const MARCAS = String(process.env.REVENDI_MARCAS || "7,5,57,222"); // O Boticário, Eudora, Quem Disse Berenice, O.U.i
+export function converterCatalogo(p) {
+  return { id: String(p.id), nome: String(p.name || "").slice(0, 120), codigo: String(p.brand_sku || ""), marca: String(p.brand?.name || ""),
+    descricao: String(p.description || "").replace(/\s+/g, " ").trim(), foto: String(p.product_image || p.product_image_sm || ""),
+    fotoPequena: String(p.product_image_sm || p.product_image || ""), preco: num(p.sale_price) };
+}
+/** Busca no catálogo das marcas por código da revista ou nome. Código exato vem primeiro. */
+export async function buscarCatalogo(texto, limite = 10) {
+  if (!revendiAtivo()) throw new Error("este PC não tem o login do Revendi (REVENDI_EMAIL/SENHA no .env)");
+  const s = String(texto || "").trim();
+  if (s.length < 2) return [];
+  const d = await get("/catalog", { s, brands: MARCAS, limit: Math.max(limite, 25) });
+  if (!Array.isArray(d)) throw new Error("o Revendi mudou o formato do catálogo");
+  const lista = d.map(converterCatalogo);
+  const cod = s.replace(/\D/g, "");
+  return lista.sort((a, b) => Number(b.codigo === cod) - Number(a.codigo === cod)).slice(0, limite);
 }
 
 /** Faz a próxima sincronização rodar já (comando /revendi sincronizar). */
