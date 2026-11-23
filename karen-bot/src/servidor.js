@@ -52,13 +52,14 @@ export const ESTRUTURA = [
     { chave: "comofunciona", nome: "ℹ️・como-funciona", acesso: "publico", topico: "Como comprar, pagar e receber · consórcio · loja do site." },
     { chave: "vitrine", nome: "🛍️・pronta-entrega", acesso: "publico", topico: "O que a Karen tem agora para entrega rápida. Escolha em 🛒 Quero este e abrimos seu pedido." },
     { chave: "novidades", nome: "✨・novidades", acesso: "publico", topico: "Chegou no estoque, lançamentos e promoções." },
+    { chave: "convite", nome: "💌・convide-amigas", acesso: "publico", topico: "Link para convidar amigas para o Discord da Karen." },
     { chave: "abrirticket", nome: "🎫・abrir-ticket", acesso: "clientes", topico: "Fale com a Karen em particular: pedidos, consórcio, pagamento, troca. Só você e a equipe veem o ticket." },
     { chave: "meuconsorcio", nome: "💳・meu-consorcio", acesso: "consorciadas", topico: "Use /minhas-parcelas para ver a sua situação (só você vê)." },
     { chave: "callespera", nome: "⏳ Aguardando atendimento", tipo: "voz", acesso: "espera", topico: "", adotar: ["aguard", "espera"] },
   ] },
   // Tickets: cada ticket vira um canal privado aqui (cliente + equipe). Fechados vão para o histórico.
   { categoria: "🎫 TICKETS", area: "equipe", canais: [
-    { chave: "ticketsFechados", nome: "🗂️・tickets-fechados", topico: "Histórico: a conversa de cada ticket fechado (arquivo .txt)." },
+    { chave: "ticketsFechados", nome: "🗂️・tickets-fechados", topico: "Histórico: a conversa de cada ticket fechado (arquivo .zip com a conversa em HTML)." },
   ] },
   // Calls de atendimento: só a equipe vê. A cliente entra em ⏳ Aguardando e a equipe puxa ela para cá (botão no aviso).
   { categoria: "🎧 ATENDIMENTO", area: "equipe", canais: [
