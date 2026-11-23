@@ -39,6 +39,8 @@ Os grupos (mensalidade, parcelas, prêmio, vagas, membros) são configurados no 
 | **✅ Ticket aberto** | A cliente recebe a confirmação na tela e no privado ("em breve alguém da equipe responde"), com botão para ir ao ticket. |
 | **📄 Conversa em HTML** | Ao fechar, a conversa vai num `.zip` com o HTML (com fotos) para 🗂️ tickets-fechados **e para o privado da cliente**. Para o texto das mensagens aparecer: ligue **Message Content Intent** no Developer Portal (Bot) e ponha `LER_CONVERSAS=sim` no .env. |
 | **💌 Convite** | O bot cria um convite permanente para 👋 boas-vindas, publica em 💌 convide-amigas e liga o widget do servidor. A página **italoinfotec.com.br/karen/discord** pega o link sozinha. `/convite` mostra o link. |
+| **🌸 Pós-venda** | Uns 60 dias depois de uma compra, a cliente com set recebe por mensagem: "Já está acabando?", com o nome do produto e o botão da pronta-entrega (respeita o "Não quero lembretes"). |
+| **🚨 Bot fora do ar** | O bot cria um webhook em #alertas. A cada 15 min o GitHub confere se ele está vivo; se os dois PCs pararem, avisa em #alertas e por e-mail, e de novo quando voltar (precisa do secret `FIREBASE_SERVICE_ACCOUNT` no GitHub). |
 | **🔁 Troca rápida entre PCs** | A reserva assume em ~35 s (antes 3 min). Ponha `PRIORIDADE=1` no PC preferido (trabalho) e `PRIORIDADE=2` no outro (casa): quando o preferido volta, pega o bot de volta sozinho. **`/servidor trocar-pc`** passa o bot para o outro PC na hora (e ele fica lá até a próxima troca ou até aquele PC parar). |
 
 ## Instalar (uma vez, ~10 minutos)

@@ -1,0 +1,27 @@
+name: Monitor dos bots do Discord
+
+# A cada 15 min confere se o bot da Ítalo InfoTec e o da Karen estão vivos.
+# Se um cair (os dois PCs desligados), avisa no Discord pelo webhook e este job falha (o GitHub manda e-mail).
+# Precisa do secret FIREBASE_SERVICE_ACCOUNT (conteúdo do arquivo da conta de serviço do projeto high-os).
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet google-auth requests
+      - name: Conferir bots
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python tools/bots/monitor.py

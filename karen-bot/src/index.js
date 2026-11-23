@@ -1283,6 +1283,38 @@ async function lembretesDeParcela(h) {
   if (n) log(`💳 ${n} lembrete(s) de parcela enviado(s) por mensagem`);
 }
 
+// ---------------------------------------------------------------- 🌸 pós-venda: ~60 dias depois da compra, por DM
+// Só para quem tem set (WhatsApp ligado). Uma mensagem por compra; respeita o "Não quero lembretes".
+async function posVenda(h) {
+  if (h.hora < 10 || h.hora >= 19 || estado.posVendaDia === h.data || !painelRV.vendas?.length) return;
+  estado.posVendaDia = h.data;
+  estado.posVenda = estado.posVenda || {};
+  let n = 0;
+  for (const [userId, set] of Object.entries(estado.sets || {})) {
+    if (estado.semLembrete?.[userId] || !set?.tel) continue;
+    const k = C.chaveTel(set.tel);
+    const compras = painelRV.vendas.filter((v) => C.chaveTel(v.whatsapp) === k).sort((a, b) => String(b.data).localeCompare(String(a.data)));
+    const ultima = compras[0];
+    if (!ultima) continue;
+    const dias = Math.round((Date.parse(h.data) - Date.parse(String(ultima.data).slice(0, 10))) / 864e5);
+    const chave = `${userId}:${String(ultima.data).slice(0, 10)}`;
+    if (dias < 58 || dias > 70 || estado.posVenda[chave]) continue;
+    const itens = (ultima.itens || []).filter((it) => !it.brinde).map((it) => nomeBonito(it.nome)).filter(Boolean);
+    const produto = itens[0] ? (itens.length > 1 ? `${itens[0]} e mais ${itens.length - 1}` : itens[0]) : "seus produtos";
+    const user = await client.users.fetch(userId).catch(() => null);
+    if (!user) continue;
+    const ok = await user.send(V.decorar({ embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle("🌸 Já está acabando?")
+      .setDescription(`Oi, ${C.primeiroNome(set.nome || "")}! 💝 Faz uns 2 meses que você levou **${produto}**.\n\nSe estiver acabando, é só pedir que a Karen separa pra você — ou dá uma olhada no que tem na **🛍️ pronta-entrega**.`)
+      .setFooter({ text: "Lembrete automático" })],
+      components: [new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Ver a pronta-entrega").setEmoji("🛍️").setURL(`https://discord.com/channels/${guild.id}/${estado.canais?.vitrine || estado.canais?.boasvindas}`),
+        new ButtonBuilder().setCustomId("lem:off").setLabel("Não quero lembretes").setStyle(ButtonStyle.Secondary))] })).then(() => true).catch(() => false);
+    estado.posVenda[chave] = ok ? "enviado" : "dm-fechada"; n += ok ? 1 : 0;
+  }
+  salvar();
+  if (n) log(`🌸 ${n} lembrete(s) de pós-venda enviado(s) por mensagem`);
+}
+
 // ---------------------------------------------------------------- ⭐ avaliação do atendimento (depois do ticket)
 async function pedirAvaliacao(t) {
   const user = await client.users.fetch(t.user).catch(() => null);
@@ -1475,6 +1507,7 @@ async function rotinas() {
   if (estado.canais?.boasvindas) await painelFixo("boasvindas", conteudoBoasVindas()).catch(() => {});
   await guiasFixados().catch((e) => log("guias: " + e.message));
   await lembretesDeParcela(h).catch((e) => log("lembretes: " + e.message));
+  await posVenda(h).catch((e) => log("pós-venda: " + e.message));
   if (estado.canais?.pagamentos) await painelFixo("pagamentos", conteudoPagamentosMes(), "", true).catch(() => {});
   if (estado.canais?.resgates) await painelFixo("resgates", conteudoResgatesPendentes(), "", true).catch(() => {});
   if (estado.canais?.abrirticket) await painelFixo("abrirticket", conteudoAbrirTicket()).catch(() => {});
@@ -2394,6 +2427,7 @@ client.once(Events.ClientReady, async () => {
     }
   }
   if (estado.canais?.boasvindas) await garantirConvite().catch((e) => log("convite: " + e.message));
+  await garantirWebhookMonitor().catch((e) => log("webhook do monitor: " + e.message));
   for (const t of Object.values(estado.tickets || {})) if (t.callId) { if (guild.channels.cache.get(t.callId)) agendarLimpezaCall(t.callId); else t.callId = ""; }
   await ciclo();
   setInterval(ciclo, INTERVALO);
@@ -2410,6 +2444,16 @@ async function garantirConvite() {
       .catch((e) => log("widget: " + e.message));
   }
   if (estado.canais?.convite) await painelFixo("convite", conteudoConvite());
+}
+// Webhook em #alertas: o monitor do GitHub avisa por ele mesmo com os dois PCs desligados.
+async function garantirWebhookMonitor() {
+  const c = await canal("alertas");
+  if (!c || estado.webhookMonitor === c.id) return;
+  const ws = await c.fetchWebhooks().catch(() => null);
+  const wh = ws?.find((w) => w.name === "Monitor do bot" && w.token) || await c.createWebhook({ name: "Monitor do bot", reason: "Alerta quando o bot cair" });
+  await db.definir("botKaren", "monitor", { webhook: wh.url });
+  estado.webhookMonitor = c.id; salvar();
+  log("alerta de bot fora do ar ligado (#alertas)");
 }
 const urlConvite = () => (estado.convite ? `https://discord.gg/${estado.convite}` : "");
 function conteudoConvite() {
