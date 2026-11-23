@@ -362,7 +362,7 @@ def secao_avaliacoes():
     itens = ''.join(f'<div class="card avaliacao">{estrelas(a.get("nota", 5))}<p>“{e(a["texto"])}”</p><div class="sub">— {e(a["nome"])}{" · " + e(a["data"]) if a.get("data") else ""}</div></div>' for a in AVALIACOES[:6])
     bot = f'<p style="margin-top:20px"><a class="btn" href="{e(SITE["google_perfil_url"])}" target="_blank" rel="noopener">Ver todas no Google</a></p>' if SITE.get('google_perfil_url') else ''
     return f'''<section class="sec alt" id="avaliacoes"><div class="wrap">
-      <div class="sec-head"><span class="kicker">// avaliações</span><h2>O que dizem os clientes</h2><p>Avaliações publicadas no Google.</p></div>
+      <div class="sec-head"><span class="kicker">// avaliações</span><h2>O que dizem os clientes</h2><p>Avaliações de clientes atendidos pela Ítalo InfoTec.</p></div>
       <div class="grid g3">{itens}</div>{bot}</div></section>'''
 
 

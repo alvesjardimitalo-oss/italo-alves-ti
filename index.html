@@ -121,6 +121,25 @@
   </div>
 </section>
 
+<section class="sec alt" id="avaliacoes" hidden><div class="wrap">
+  <div class="sec-head"><span class="kicker">// avaliações</span><h2>O que dizem os clientes</h2><p>Avaliações de clientes atendidos pela Ítalo InfoTec.</p></div>
+  <div class="grid g3" id="lista-avaliacoes"></div>
+</div></section>
+<script>
+(function () {
+  var esc = function (t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+  fetch('conteudo/avaliacoes.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+    var itens = (d && d.itens || []).slice(0, 6);
+    if (!itens.length) return;
+    document.getElementById('lista-avaliacoes').innerHTML = itens.map(function (a) {
+      var n = Math.max(1, Math.min(5, Math.round(a.nota || 5)));
+      return '<div class="card avaliacao"><span class="estrelas" aria-label="' + n + ' de 5">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</span>'
+        + '<p>“' + esc(a.texto) + '”</p><div class="sub">— ' + esc(a.nome) + (a.data ? ' · ' + esc(a.data) : '') + (a.servico ? ' · ' + esc(a.servico) : '') + '</div></div>';
+    }).join('');
+    document.getElementById('avaliacoes').hidden = false;
+  }).catch(function () {});
+})();
+</script>
 </main>
 
   <footer class="rodape">
