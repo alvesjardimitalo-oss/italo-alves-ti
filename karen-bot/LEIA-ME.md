@@ -29,6 +29,18 @@ Comandos: `/consorcio resumo`, `/consorcio atrasados`, `/consorcio pagou`, `/con
 
 Os grupos (mensalidade, parcelas, prêmio, vagas, membros) são configurados no painel: **Loja da Karen › Consórcio**.
 
+## Novidades (23/11/2026)
+| O quê | Como funciona |
+| --- | --- |
+| **⏰ Cobrança de resposta** | Ticket sem resposta da equipe em 15 min → aviso em #alertas; em 1 h → alerta vermelho. Só no horário de atendimento (`HORARIO_ATENDIMENTO=8-20`, seg. a sáb.). Assumir ou responder conta como resposta. |
+| **🔔 Aguardando a cada 30 s** | Enquanto a cliente estiver na call ⏳ Aguardando, #alertas avisa toda a equipe e a liderança (@here + Karen/Admin/equipe) **a cada 30 segundos** (até 1 h), apagando o aviso anterior. Para quando alguém puxa ou ela sai. |
+| **💬 `/resposta`** | Respostas prontas no ticket: recebido, pedir foto, tem na pronta-entrega, é por encomenda, comprovante do Pix, pedido chegou, combinar entrega, consórcio, troca, pode fechar, ainda está aí. Edite em `RESPOSTAS_PRONTAS` no index.js. |
+| **🔊 Call do ticket** | Botão **Abrir call** dentro do ticket: cria uma call só da cliente com a equipe, que some sozinha quando fica vazia. |
+| **✅ Ticket aberto** | A cliente recebe a confirmação na tela e no privado ("em breve alguém da equipe responde"), com botão para ir ao ticket. |
+| **📄 Conversa em HTML** | Ao fechar, a conversa vai num `.zip` com o HTML (com fotos) para 🗂️ tickets-fechados **e para o privado da cliente**. Para o texto das mensagens aparecer: ligue **Message Content Intent** no Developer Portal (Bot) e ponha `LER_CONVERSAS=sim` no .env. |
+| **💌 Convite** | O bot cria um convite permanente para 👋 boas-vindas, publica em 💌 convide-amigas e liga o widget do servidor. A página **italoinfotec.com.br/karen/discord** pega o link sozinha. `/convite` mostra o link. |
+| **🔁 Troca rápida entre PCs** | A reserva assume em ~35 s (antes 3 min). Ponha `PRIORIDADE=1` no PC preferido (trabalho) e `PRIORIDADE=2` no outro (casa): quando o preferido volta, pega o bot de volta sozinho. **`/servidor trocar-pc`** passa o bot para o outro PC na hora (e ele fica lá até a próxima troca ou até aquele PC parar). |
+
 ## Instalar (uma vez, ~10 minutos)
 
 ### 1. Criar o bot no Discord
@@ -74,8 +86,8 @@ O estado do bot (canais, tópicos, vínculos) também fica salvo no Firebase (`t
 ## Dois PCs (principal e reserva)
 Pode instalar em mais de um PC (ex.: trabalho e casa) com o **mesmo token**. Só um fica ligado ao Discord por vez:
 o primeiro que liga vira o **principal**; o outro fica de **reserva** e assume sozinho se o principal ficar
-3 minutos sem sinal (desligou, dormiu, caiu a internet). Quando o principal volta, ele vê que o outro está
-com o bot e fica de reserva. O atalho **Status** mostra o papel de cada PC, e o painel mostra em qual PC o bot está.
+35 segundos sem sinal (desligou, dormiu, caiu a internet). Com `PRIORIDADE=1` no PC preferido e `PRIORIDADE=2`
+no outro, o preferido pega o bot de volta quando volta; `/servidor trocar-pc` troca na hora pelo Discord. O atalho **Status** mostra o papel de cada PC, e o painel mostra em qual PC o bot está.
 O controle fica em `ti/base/botKaren/lider` no Firebase.
 
 ## Com o PC desligado

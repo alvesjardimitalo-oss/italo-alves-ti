@@ -21,6 +21,7 @@ import * as PR from "./painel-revendi.js";
 import * as G from "./graficos.js";
 import * as V from "./visual.js";
 import * as S from "./sets.js";
+import * as CV from "./conversa.js";
 
 const TOKEN = process.env.DISCORD_TOKEN || "";
 const GUILD_ID = process.env.DISCORD_GUILD_ID || "";
@@ -31,7 +32,10 @@ const COR = V.CORES.marca, VERDE = V.CORES.pago, VERMELHO = V.CORES.atraso, AZUL
 const EFEMERA = { flags: MessageFlags.Ephemeral };
 // Revezamento entre PCs: só um bot fica ligado ao Discord; os outros esperam de reserva.
 const PC = String(process.env.NOME_DO_PC || process.env.COMPUTERNAME || os.hostname()).slice(0, 60);
-const LIDER_EXPIRA = 3 * 60000;
+// Troca rápida: o principal renova a cada 10 s; se ficar 35 s sem renovar, a reserva assume.
+// PRIORIDADE no .env (1 = preferido, 2 = reserva): quando o preferido volta, pega o bot de volta.
+const LIDER_EXPIRA = 35000, BATIDA_LIDER = 10000;
+const PRIORIDADE = Math.max(0, Number(process.env.PRIORIDADE || 1)) || 1;
 let papel = "iniciando";
 
 if (!TOKEN || !GUILD_ID) { console.error("Faltam DISCORD_TOKEN e/ou DISCORD_GUILD_ID no .env."); process.exit(1); }
@@ -64,7 +68,9 @@ async function carregarEstado() {
 
 // ---------------------------------------------------------------- utilidades
 // GuildMessages (não privilegiado) só para saber que chegou um print em #comprovantes.
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates] });
+// LER_CONVERSAS=sim (+ "Message Content Intent" ligado no Developer Portal) faz a conversa dos tickets sair completa no arquivo.
+const LER_CONVERSAS = String(process.env.LER_CONVERSAS || "").toLowerCase() === "sim";
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildVoiceStates, ...(LER_CONVERSAS ? [GatewayIntentBits.MessageContent] : [])] });
 let guild = null;
 let grupos = new Map();
 let ultimoCiclo = null, ultimoErro = "";
@@ -89,6 +95,22 @@ const ehEquipe = (i) => {
   return ids.some((id) => m.roles?.cache?.has(id));
 };
 const linhaLink = (rotulo, url) => url ? `[${rotulo}](${url})` : rotulo;
+
+// ---------------------------------------------------------------- respostas prontas (/resposta)
+// {cliente} vira a menção da cliente do ticket.
+const RESPOSTAS_PRONTAS = [
+  { id: "aguarde", nome: "⏳ Recebido, já estou vendo", texto: "Recebido, {cliente}! 💝 Já estou vendo aqui e te respondo em instantes." },
+  { id: "foto", nome: "📸 Mandar foto/print", texto: "Consegue me mandar uma **foto ou print** do produto (ou da revista com o código)? Assim eu confiro certinho pra você. 📸" },
+  { id: "estoque", nome: "🛍️ Tem na pronta-entrega", texto: "Tem sim! 🛍️ Esse está na **pronta-entrega**. Quer que eu já separe pra você?" },
+  { id: "encomenda", nome: "📦 É por encomenda", texto: "Esse eu peço pra você na próxima **encomenda**. 📦 Assim que chegar eu te aviso aqui e combinamos a entrega." },
+  { id: "pix", nome: "💸 Mandar comprovante do Pix", texto: "Assim que fizer o **Pix**, é só mandar o comprovante aqui no ticket que eu já dou baixa. 💸" },
+  { id: "chegou", nome: "🎉 Seu pedido chegou", texto: "Oba, {cliente}! 🎉 **Seu pedido chegou!** Vamos combinar o melhor dia e horário para a entrega?" },
+  { id: "entrega", nome: "🚚 Combinar entrega", texto: "Qual o melhor **dia, horário e endereço** para a entrega? 🚚" },
+  { id: "consorcio", nome: "💳 Como funciona o consórcio", texto: "No **consórcio** você paga uma parcela por mês e, ao quitar, resgata o valor do prêmio em produtos. 💳 Os grupos e as vagas ficam em italoinfotec.com.br/karen/consorcio/ — quer que eu te coloque na lista do próximo grupo?" },
+  { id: "troca", nome: "🔁 Troca/defeito", texto: "Sinto muito pelo problema! 🔁 Me manda uma **foto do produto e da embalagem** e me conta o que aconteceu, que eu resolvo a troca com você." },
+  { id: "encerrar", nome: "🔒 Resolvido? Pode fechar", texto: "Prontinho, {cliente}! 💝 Se estiver tudo certo, pode fechar o ticket no botão 🔒 **Fechar ticket** — e depois me conta como foi nas estrelinhas ⭐." },
+  { id: "aindaai", nome: "👀 Ainda está aí?", texto: "{cliente}, ainda está por aqui? 💝 Se precisar de mais alguma coisa é só responder." },
+];
 
 // ---------------------------------------------------------------- comandos
 const comandos = [
@@ -148,10 +170,15 @@ const comandos = [
       .addStringOption((o) => o.setName("para").setDescription("Quem acessa").setRequired(true).addChoices(
         { name: "só a equipe (Karen e Admin)", value: "equipe" }, { name: "clientes e consorciadas", value: "clientes" },
         { name: "só consorciadas", value: "consorciadas" }, { name: "qualquer pessoa do servidor", value: "publico" })))
+    .addSubcommand((s) => s.setName("trocar-pc").setDescription("Passa o bot para o outro PC (trabalho ↔ casa) na hora"))
     .addSubcommand((s) => s.setName("mapa").setDescription("Mostra cada canal e call e quem consegue ver (todos, clientes, só equipe)"))
     .addSubcommand((s) => s.setName("vincular").setDescription("Liga uma pessoa do Discord ao WhatsApp dela (para /minhas-parcelas)")
       .addUserOption((o) => o.setName("pessoa").setDescription("Pessoa").setRequired(true))
       .addStringOption((o) => o.setName("whatsapp").setDescription("WhatsApp com DDD").setRequired(true))),
+  new SlashCommandBuilder().setName("resposta").setDescription("Envia uma resposta pronta no ticket")
+    .addStringOption((o) => o.setName("texto").setDescription("Qual resposta").setRequired(true)
+      .addChoices(...RESPOSTAS_PRONTAS.map((r) => ({ name: r.nome, value: r.id })))),
+  new SlashCommandBuilder().setName("convite").setDescription("Link para convidar alguém para o Discord da Karen"),
   new SlashCommandBuilder().setName("minhas-parcelas").setDescription("Ver as minhas parcelas do consórcio (só você vê)"),
   new SlashCommandBuilder().setName("ajuda").setDescription("O que o bot da Karen faz"),
 ].map((c) => c.toJSON());
@@ -921,6 +948,28 @@ function conteudoBoasVindas() {
 // ---------------------------------------------------------------- fila de atendimento por voz
 // Cliente entra em ⏳ Aguardando → aviso em #alertas marcando Karen/Admin, com botões para puxar para 🎧 Atendimento 1/2.
 const avisosEspera = new Map(); // userId → mensagem do aviso
+// Enquanto a cliente espera, repete o aviso para a equipe e a liderança a cada 30 s (até 1 h).
+const lembretesEspera = new Map(); // userId → { timer, msg, desde }
+function pararLembreteEspera(userId) {
+  const l = lembretesEspera.get(userId);
+  if (!l) return;
+  clearInterval(l.timer); l.msg?.delete().catch(() => {});
+  lembretesEspera.delete(userId);
+}
+function iniciarLembreteEspera(membro) {
+  pararLembreteEspera(membro.id);
+  const l = { desde: Date.now(), msg: null, timer: null };
+  l.timer = setInterval(async () => {
+    if (membro.voice?.channelId !== estado.canais?.callespera || Date.now() - l.desde > 3600e3) return pararLembreteEspera(membro.id);
+    const c = await canal("alertas");
+    l.msg?.delete().catch(() => {});
+    const mencoes = [estado.cargos?.dona, estado.cargos?.admin, ...cargosEquipeExtras(guild, estado.cargos).map((r) => r.id)].filter(Boolean);
+    const seg = Math.round((Date.now() - l.desde) / 1000), tempo = seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60}s` : `${seg}s`;
+    l.msg = await c?.send({ content: `🔔 @here ${mencoes.map((id) => `<@&${id}>`).join(" ")} — **${membro.displayName}** está esperando na call há **${tempo}**! Alguém puxa? 🎧`,
+      allowedMentions: { parse: ["everyone"], roles: mencoes } }).catch(() => null);
+  }, 30000);
+  lembretesEspera.set(membro.id, l);
+}
 const CALLS_ATEND = ["callatend1", "callatend2", "callatend3"];
 const ehCallAtend = (id) => id && CALLS_ATEND.some((k) => estado.canais?.[k] === id);
 /** Libera só para essa cliente a call de atendimento (as outras clientes continuam sem ver) e move ela. */
@@ -956,14 +1005,34 @@ async function entrouNaEspera(membro) {
     embeds: [new EmbedBuilder().setColor(AMARELO).setTitle(`🔔 ${curto(membro.displayName, 60)} aguardando atendimento`).setDescription(linhas.join("\n")).setFooter({ text: "Toque para puxar para a call de atendimento" }).setTimestamp()],
     components: [linha] })).catch((e) => { log("aviso de espera: " + e.message); return null; });
   if (msg) avisosEspera.set(membro.id, msg);
+  iniciarLembreteEspera(membro);
 }
 async function fecharAviso(userId, texto) {
+  pararLembreteEspera(userId);
   const msg = avisosEspera.get(userId);
   if (!msg) return;
   avisosEspera.delete(userId);
   const e = EmbedBuilder.from(msg.embeds[0]).setColor(texto.startsWith("✅") ? VERDE : V.CORES.neutro).setFooter({ text: texto });
   await msg.edit({ content: "", embeds: [e], components: [] }).catch(() => {});
 }
+// Calls dos tickets: somem 90 s depois de ficarem vazias.
+const limpezaCalls = new Map();
+const ticketDaCall = (callId) => Object.values(estado.tickets || {}).find((t) => t.callId === callId);
+function agendarLimpezaCall(callId, espera = 90000) {
+  clearTimeout(limpezaCalls.get(callId));
+  limpezaCalls.set(callId, setTimeout(async () => {
+    limpezaCalls.delete(callId);
+    const ch = guild?.channels.cache.get(callId);
+    if (ch && ch.members.size) return;
+    await ch?.delete("Call do ticket vazia").catch(() => {});
+    const t = ticketDaCall(callId); if (t) { t.callId = ""; salvar(); }
+  }, espera));
+}
+client.on(Events.VoiceStateUpdate, (antes, depois) => {
+  if (antes.channelId === depois.channelId) return;
+  if (antes.channelId && ticketDaCall(antes.channelId) && !antes.channel?.members.size) agendarLimpezaCall(antes.channelId);
+  if (depois.channelId && limpezaCalls.has(depois.channelId)) { clearTimeout(limpezaCalls.get(depois.channelId)); limpezaCalls.delete(depois.channelId); }
+});
 client.on(Events.VoiceStateUpdate, async (antes, depois) => {
   try {
     const espera = estado.canais?.callespera;
@@ -1283,6 +1352,7 @@ async function abrirTicket(i, tipo, texto) {
   estado.tickets = { ...(estado.tickets || {}), [ch.id]: { user: i.user.id, tipo, num, nome, abertoEm: new Date().toISOString(), ultimo: Date.now(), assumido: "" } }; salvar();
   const acoes = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`tk:assumir:${ch.id}`).setLabel("Assumir").setEmoji("✋").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`tk:call:${ch.id}`).setLabel("Abrir call").setEmoji("🔊").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`tk:fechar:${ch.id}`).setLabel("Fechar ticket").setEmoji("🔒").setStyle(ButtonStyle.Danger));
   await ch.send(V.decorar({ content: `${membro} 💝`, embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle(`${tp.emoji} Ticket ${num} · ${tp.nome}`)
     .setDescription((texto ? `**${nome}** escreveu:\n> ${curto(texto, 1500).replace(/\n/g, "\n> ")}\n\n` : "") + "Obrigada por chamar! Alguém da equipe já vai te responder por aqui. Pode mandar fotos e prints. 🌸")
@@ -1302,7 +1372,16 @@ async function abrirTicket(i, tipo, texto) {
   const mencoes = [estado.cargos?.dona, estado.cargos?.admin, ...cargosEquipeExtras(guild, estado.cargos).map((r) => r.id)].filter(Boolean);
   await enviar("alertas", { content: mencoes.map((id) => `<@&${id}>`).join(" "), allowedMentions: { roles: mencoes },
     embeds: [new EmbedBuilder().setColor(ROSA_RV).setTitle(`🎫 Ticket ${num} aberto`).setDescription(linhas.join("\n"))] });
-  return i.editReply(`Seu ticket foi aberto: <#${ch.id}> 💝`);
+  // Confirmação para a cliente (na tela e no privado)
+  const confirma = new EmbedBuilder().setColor(VERDE).setTitle(`✅ Ticket ${num} aberto!`)
+    .setDescription([`Recebemos sua mensagem sobre **${tp.nome}**. 💝`, "",
+      "👩‍💼 **Em breve alguém da equipe da Karen vai te responder** por lá.",
+      "🔔 Você será marcada quando respondermos — fique de olho nas notificações.",
+      "📸 Enquanto isso, já pode mandar fotos e prints no ticket.",
+      "🔊 Prefere conversar por voz? Toque em **Abrir call** dentro do ticket."].join("\n"));
+  const irTicket = new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(`Ir para o ticket ${num}`).setEmoji("🎫").setURL(`https://discord.com/channels/${guild.id}/${ch.id}`));
+  i.user.send(V.decorar({ embeds: [confirma], components: [irTicket] })).catch(() => {});
+  return i.editReply({ content: "", embeds: [confirma], components: [irTicket] });
 }
 async function fecharTicket(chId, quem, motivo = "") {
   const t = estado.tickets?.[chId], ch = guild.channels.cache.get(chId);
@@ -1315,20 +1394,43 @@ async function fecharTicket(chId, quem, motivo = "") {
     msgs.push(...lote.values()); antes = lote.last().id;
     if (lote.size < 100) break;
   }
-  const quando = (d) => new Date(d).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-  const txt = [`Ticket ${t.num} · ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · ${t.nome}`, `Aberto: ${quando(t.abertoEm)} · Fechado: ${quando(Date.now())} por ${quem}${motivo ? " (" + motivo + ")" : ""}`, ""]
-    .concat(msgs.reverse().filter((m) => m.content || m.attachments.size).map((m) => `[${quando(m.createdTimestamp)}] ${m.member?.displayName || m.author.username}: ${m.content}` +
-      [...m.attachments.values()].map((a) => ` [anexo: ${a.url}]`).join(""))).join("\n");
+  const html = CV.htmlConversa(msgs.reverse(), { ...t, tipoNome: TIPOS_TICKET[t.tipo]?.nome || t.tipo }, guild, quem, motivo);
+  const zip = CV.zipar(`ticket-${t.num}.html`, html);
+  const arquivo = () => [new AttachmentBuilder(zip, { name: `ticket-${t.num}.zip` })];
   await enviar("ticketsFechados", { embeds: [new EmbedBuilder().setColor(V.CORES.neutro).setTitle(`🗂️ Ticket ${t.num} · ${t.nome}`)
-    .setDescription(`${TIPOS_TICKET[t.tipo]?.emoji || ""} ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · <@${t.user}>\nFechado por ${quem}${motivo ? ` (${motivo})` : ""}` + (t.assumido ? ` · atendido por ${t.assumido}` : ""))],
-    files: [new AttachmentBuilder(Buffer.from(txt, "utf8"), { name: `ticket-${t.num}.txt` })] });
+    .setDescription(`${TIPOS_TICKET[t.tipo]?.emoji || ""} ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · <@${t.user}>\nFechado por ${quem}${motivo ? ` (${motivo})` : ""}` + (t.assumido ? ` · atendido por ${t.assumido}` : "") +
+      "\n📄 Baixe o .zip e abra o arquivo de dentro no navegador.")],
+    files: arquivo() });
+  if (t.callId) await guild.channels.cache.get(t.callId)?.delete("Ticket fechado").catch(() => {});
+  const cliente = await client.users.fetch(t.user).catch(() => null);
+  await cliente?.send({ content: `📄 **Cópia da conversa do seu ticket ${t.num}** — baixe, abra o .zip e toque no arquivo de dentro para ver no navegador, com as fotos. 💝`, files: arquivo() }).catch(() => {});
   delete estado.tickets[chId]; salvar();
   if (!/3 dias sem mensagens/.test(motivo)) await pedirAvaliacao(t).catch(() => {});
   await ch.delete(`Ticket fechado por ${quem}`).catch((e) => log("fechar ticket: " + e.message));
 }
+// Horário em que a equipe é cobrada por tickets sem resposta (HORARIO_ATENDIMENTO=8-20, seg. a sáb.).
+const [H_INI, H_FIM] = String(process.env.HORARIO_ATENDIMENTO || "8-20").split("-").map(Number);
+async function cobrarResposta(id, t) {
+  if (t.respondidoEm || t.assumido) return;
+  const h = C.agoraSP();
+  if (h.diaSemana === 0 || h.hora < H_INI || h.hora >= H_FIM) return;
+  const inicioExpediente = Date.now() - ((h.hora - H_INI) * 60 + h.minuto) * 60000;
+  const idade = Date.now() - Math.max(Date.parse(t.abertoEm), inicioExpediente);
+  const nivel = idade > 60 * 60000 && !t.cobrado60 ? 60 : idade > 15 * 60000 && !t.cobrado15 ? 15 : 0;
+  if (!nivel) return;
+  t.cobrado15 = true; if (nivel === 60) t.cobrado60 = true; salvar();
+  const mencoes = [estado.cargos?.dona, estado.cargos?.admin, ...cargosEquipeExtras(guild, estado.cargos).map((r) => r.id)].filter(Boolean);
+  await enviar("alertas", { content: mencoes.map((x) => `<@&${x}>`).join(" "), allowedMentions: { roles: mencoes },
+    embeds: [new EmbedBuilder().setColor(nivel === 60 ? VERMELHO : AMARELO)
+      .setTitle(nivel === 60 ? `🚨 Ticket ${t.num} sem resposta há mais de 1 hora!` : `⏰ Ticket ${t.num} esperando resposta há 15 min`)
+      .setDescription(`${TIPOS_TICKET[t.tipo]?.emoji || ""} ${TIPOS_TICKET[t.tipo]?.nome || t.tipo} · <@${t.user}> (${t.nome})\nAlguém assume? ✋`)],
+    components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(`Ir para o ticket ${t.num}`).setURL(`https://discord.com/channels/${guild.id}/${id}`))] });
+  log(`⏰ ticket ${t.num} sem resposta (${nivel} min)`);
+}
 async function revisarTickets() {
   for (const [id, t] of Object.entries(estado.tickets || {})) {
     if (!guild.channels.cache.get(id)) { delete estado.tickets[id]; salvar(); continue; }
+    await cobrarResposta(id, t).catch((e) => log("cobrança de resposta: " + e.message));
     const parado = Date.now() - (t.ultimo || Date.parse(t.abertoEm));
     if (parado > 72 * 3600e3) await fecharTicket(id, "bot", "3 dias sem mensagens");
     else if (parado > 48 * 3600e3 && !t.avisado) {
@@ -1537,10 +1639,28 @@ async function comando(i) {
     if (!meus.length) return i.reply({ ...EFEMERA, content: "Não encontrei consórcio no seu número. Fale com a Karen. 💝" });
     return i.reply({ ...EFEMERA, embeds: meus.slice(0, 10).map(({ g, m }) => embedMembro(g, m)) });
   }
+  if (nome === "convite") {
+    if (!estado.convite) await garantirConvite().catch(() => {});
+    return i.reply({ ...EFEMERA, content: estado.convite ? `💌 Convite do Discord da Karen: **${urlConvite()}**\nPelo site: **italoinfotec.com.br/karen/discord**` : "O convite ainda não foi criado. Tente de novo em instantes." });
+  }
+  if (nome === "resposta") {
+    const m = await guild.members.fetch(i.user.id).catch(() => null);
+    if (!ehDaEquipe(m) && !ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe usa respostas prontas." });
+    const r = RESPOSTAS_PRONTAS.find((x) => x.id === i.options.getString("texto"));
+    const t = estado.tickets?.[i.channelId];
+    if (t && !t.respondidoEm && t.user !== i.user.id) { t.respondidoEm = Date.now(); salvar(); }
+    return i.reply(V.decorar({ embeds: [new EmbedBuilder().setColor(ROSA_RV).setAuthor({ name: m?.displayName || i.user.username, iconURL: i.user.displayAvatarURL() })
+      .setDescription(r.texto.replace(/\{cliente\}/g, t ? `<@${t.user}>` : ""))], allowedMentions: { users: t ? [t.user] : [] } }));
+  }
   if (!ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Esse comando é só para a equipe da Karen." });
 
   if (nome === "servidor") {
     const sub = i.options.getSubcommand();
+    if (sub === "trocar-pc") {
+      await i.deferReply(EFEMERA);
+      const r = await passarParaOutroPC(i.user.username);
+      return i.editReply(r);
+    }
     if (sub === "montar") {
       const linha = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("srv:montar").setLabel("Sim, apagar tudo e montar").setStyle(ButtonStyle.Danger),
@@ -1999,12 +2119,28 @@ async function componente(i) {
     setTimeout(() => fecharTicket(a, m?.displayName || i.user.username).catch((e) => log("fechar ticket: " + e.message)), 5000);
     return;
   }
+  if (tipo === "tk" && acao === "call") {
+    const t = estado.tickets?.[a], ch = guild.channels.cache.get(a);
+    if (!t || !ch) return i.reply({ ...EFEMERA, content: "Esse ticket já foi fechado." });
+    const m = await guild.members.fetch(i.user.id).catch(() => null);
+    if (t.user !== i.user.id && !ehDaEquipe(m) && !ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só quem abriu ou a equipe pode abrir a call." });
+    if (t.callId && guild.channels.cache.get(t.callId)) return i.reply({ ...EFEMERA, content: `🔊 A call deste ticket já está aberta: <#${t.callId}>` });
+    await i.deferReply();
+    const voz = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect, PermissionFlagsBits.Speak, PermissionFlagsBits.Stream, PermissionFlagsBits.UseVAD, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory];
+    const perms = ch.permissionOverwrites.cache.map((o) => ({ id: o.id, type: o.type, allow: o.id === guild.roles.everyone.id ? [] : [...new Set([...o.allow.toArray(), "Connect", "Speak", "Stream", "UseVAD"])], deny: o.id === guild.roles.everyone.id ? [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] : o.deny.toArray() }));
+    if (!perms.some((o) => o.id === t.user)) perms.push({ id: t.user, allow: voz });
+    const call = await guild.channels.create({ name: `🔊 Ticket ${t.num}`, type: ChannelType.GuildVoice, parent: ch.parentId, permissionOverwrites: perms });
+    t.callId = call.id; salvar();
+    agendarLimpezaCall(call.id, 5 * 60000);
+    const quem = i.user.id === t.user ? "a equipe já foi avisada" : `<@${t.user}>, entra lá`;
+    return i.editReply({ content: `🔊 **Call do ticket criada:** <#${call.id}> — ${quem}! 💝\n*Ela some sozinha quando ficar vazia.*`, allowedMentions: { users: [t.user] } });
+  }
   if (tipo === "tk" && acao === "assumir") {
     const m = await guild.members.fetch(i.user.id).catch(() => null);
     if (!ehDaEquipe(m) && !ehEquipe(i)) return i.reply({ ...EFEMERA, content: "Só a equipe pode assumir." });
     const t = estado.tickets?.[a];
     if (!t) return i.reply({ ...EFEMERA, content: "Esse ticket já foi fechado." });
-    t.assumido = m?.displayName || i.user.username; salvar();
+    t.assumido = m?.displayName || i.user.username; t.respondidoEm = t.respondidoEm || Date.now(); salvar();
     await i.reply({ content: `✋ **${t.assumido}** assumiu este ticket e vai te atender, <@${t.user}>! 💝` });
     return;
   }
@@ -2203,7 +2339,10 @@ client.on(Events.InteractionCreate, async (i) => {
 // #comprovantes: a cada print colado, o bot pergunta de quem é e dá baixa.
 client.on(Events.MessageCreate, async (msg) => {
   const tk = estado.tickets?.[msg.channelId];
-  if (tk && !msg.author?.bot) { tk.ultimo = Date.now(); tk.avisado = false; }
+  if (tk && !msg.author?.bot) {
+    tk.ultimo = Date.now(); tk.avisado = false;
+    if (!tk.respondidoEm && msg.author.id !== tk.user && ehDaEquipe(msg.member)) { tk.respondidoEm = Date.now(); salvar(); }
+  }
   if (LIMPEZA_LIGADA && !msg.author?.bot && estado.canais?.comandos && msg.channelId === estado.canais.comandos && !msg.pinned) {
     setTimeout(() => msg.delete().catch(() => {}), 60000);
     return;
@@ -2254,9 +2393,32 @@ client.once(Events.ClientReady, async () => {
       } catch (e) { log("ordem das categorias: " + e.message); }
     }
   }
+  if (estado.canais?.boasvindas) await garantirConvite().catch((e) => log("convite: " + e.message));
+  for (const t of Object.values(estado.tickets || {})) if (t.callId) { if (guild.channels.cache.get(t.callId)) agendarLimpezaCall(t.callId); else t.callId = ""; }
   await ciclo();
   setInterval(ciclo, INTERVALO);
 });
+
+// ---------------------------------------------------------------- convite permanente + widget (página italoinfotec.com.br/karen/discord)
+async function garantirConvite() {
+  const boas = guild.channels.cache.get(estado.canais.boasvindas);
+  if (!boas) return;
+  let inv = estado.convite ? await client.fetchInvite(estado.convite).catch(() => null) : null;
+  if (!inv) { inv = await boas.createInvite({ maxAge: 0, maxUses: 0, unique: true, reason: "Convite permanente da Karen" }); estado.convite = inv.code; salvar(); log("convite permanente criado: discord.gg/" + inv.code); }
+  if (!estado.widgetLigado) {
+    await guild.setWidgetSettings({ enabled: true, channel: boas }).then(() => { estado.widgetLigado = true; salvar(); log("widget do servidor ligado (a página do site pega o convite)"); })
+      .catch((e) => log("widget: " + e.message));
+  }
+  if (estado.canais?.convite) await painelFixo("convite", conteudoConvite());
+}
+const urlConvite = () => (estado.convite ? `https://discord.gg/${estado.convite}` : "");
+function conteudoConvite() {
+  return { embeds: [new EmbedBuilder().setColor(COR).setTitle("💌 Convide suas amigas!")
+    .setDescription(["Conhece alguém que ama perfumes e cosméticos? Manda o convite! 🌸", "", `**${urlConvite()}**`, "", "Ou pelo site: **italoinfotec.com.br/karen/discord**"].join("\n"))],
+    components: [new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Abrir convite").setEmoji("🔗").setURL(urlConvite() || SITE),
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel("Loja da Karen").setEmoji("🛍️").setURL(SITE + "/"))] };
+}
 
 // Status para o atalho "Status" do PC.
 http.createServer((req, res) => {
@@ -2264,17 +2426,55 @@ http.createServer((req, res) => {
   res.end(JSON.stringify({ ok: true, papel, pc: PC, revendi: estadoRevendi(), crediario: crediario.length, discordReady: client.isReady(), firebase: db.firestoreConfigurado(), servidorMontado: Boolean(estado.canais?.grupos), grupos: grupos.size, ultimoCiclo, ultimoErro }));
 }).listen(PORTA, "127.0.0.1", () => log(`status em http://127.0.0.1:${PORTA}/health`));
 
-/** Tenta ser o PC principal. Ganha se ninguém renovou o revezamento nos últimos 3 minutos. */
+// ---------------------------------------------------------------- revezamento entre PCs
+// Doc ti/base/botKaren/lider: { dono, vistoEm, prioridade, fixo, pedido, reservadoPara, reservadoAte }.
+// Cada PC também manda sinal em botKaren/pc-<nome> (para saber quem está vivo de reserva).
+const idPC = "pc-" + slug(PC);
+let fixoAqui = false; // true quando este PC recebeu o bot por /servidor trocar-pc (o preferido não puxa de volta)
+const vivo = (iso, ms = 30000) => iso && Date.now() - Date.parse(iso) < ms;
+async function sinalPC() { await db.definir("botKaren", idPC, { pc: PC, papel, prioridade: PRIORIDADE, vistoEm: new Date().toISOString() }); }
+async function pcsVivos() {
+  const docs = await db.listar("botKaren").catch(() => []);
+  return docs.filter((d) => String(d._id || d.id || "").startsWith("pc-") || d.pc).filter((d) => d.pc && d.pc !== PC && vivo(d.vistoEm));
+}
+/** Tenta ser o PC principal (ou continua sendo). */
 async function assumirLideranca() {
   const agora = new Date().toISOString();
   const atual = await db.obter("botKaren", "lider");
-  const livre = !atual || atual.dono === PC || !atual.vistoEm || Date.now() - Date.parse(atual.vistoEm) > LIDER_EXPIRA;
-  if (!livre) return { ok: false, dono: atual.dono, vistoEm: atual.vistoEm };
+  const reservado = atual?.reservadoPara && atual.reservadoPara !== PC && Date.now() < Date.parse(atual.reservadoAte || 0);
+  // Versão antiga do bot (sem "prioridade" no doc) renova só a cada 1 min: espera os 3 min de antes para não ligar os dois juntos.
+  const expira = atual && atual.prioridade === undefined ? 3 * 60000 : LIDER_EXPIRA;
+  const livre = !atual || atual.dono === PC || !atual.dono || !atual.vistoEm || Date.now() - Date.parse(atual.vistoEm) > expira;
+  if (!livre || reservado) {
+    // Sou o PC preferido e o bot está num PC de prioridade menor (e não foi trocado à mão)? Peço de volta.
+    if (atual && !reservado && !atual.fixo && PRIORIDADE < (atual.prioridade || 1) && atual.pedido !== PC)
+      await db.atualizar("botKaren", "lider", { pedido: PC, pedidoEm: agora }, atual._atualizado).catch(() => {});
+    return { ok: false, dono: atual?.dono || "?", vistoEm: atual?.vistoEm };
+  }
+  // Sou o dono e alguém (vivo) pediu o bot: entrego, reservando 40 s para ele entrar.
+  if (atual?.dono === PC && atual.pedido && atual.pedido !== PC && vivo(atual.pedidoEm)) {
+    await db.atualizar("botKaren", "lider", { dono: "", vistoEm: "", pedido: "", reservadoPara: atual.pedido, reservadoAte: new Date(Date.now() + 40000).toISOString() }, atual._atualizado).catch(() => {});
+    return { ok: false, dono: atual.pedido, entregou: true };
+  }
+  const novo = atual?.dono !== PC;
+  if (novo) fixoAqui = Boolean(atual?.reservadoPara === PC && atual?.fixoPara === PC);
+  const campos = { dono: PC, vistoEm: agora, prioridade: PRIORIDADE, fixo: fixoAqui, ...(novo ? { pedido: "", reservadoPara: "", fixoPara: "" } : {}) };
   try {
-    if (atual) await db.atualizar("botKaren", "lider", { dono: PC, vistoEm: agora }, atual._atualizado);
-    else await db.definir("botKaren", "lider", { dono: PC, vistoEm: agora });
+    if (atual) await db.atualizar("botKaren", "lider", campos, atual._atualizado);
+    else await db.definir("botKaren", "lider", campos);
     return { ok: true };
   } catch { return { ok: false, dono: "outro PC", vistoEm: agora }; }
+}
+/** /servidor trocar-pc: entrega o bot para o outro PC que estiver ligado de reserva. */
+async function passarParaOutroPC(quem) {
+  const outros = await pcsVivos();
+  if (!outros.length) return "⚠️ Nenhum outro PC está ligado de reserva agora (o bot precisa estar instalado e o PC ligado).";
+  const alvo = outros.sort((a, b) => (a.prioridade || 1) - (b.prioridade || 1))[0].pc;
+  const atual = await db.obter("botKaren", "lider");
+  await db.atualizar("botKaren", "lider", { dono: "", vistoEm: "", pedido: "", reservadoPara: alvo, fixoPara: alvo, reservadoAte: new Date(Date.now() + 40000).toISOString() }, atual?._atualizado);
+  await avisarLog(`🔁 ${quem} passou o bot de **${PC}** para **${alvo}** (troca manual; fica lá até o próximo /servidor trocar-pc ou até aquele PC parar).`).catch(() => {});
+  setTimeout(() => { client.destroy(); process.exit(0); }, 3000);
+  return `🔁 Passando o bot para **${alvo}**. Em uns 20 segundos ele volta a responder de lá.`;
 }
 
 async function iniciar() {
@@ -2285,6 +2485,7 @@ async function iniciar() {
     try { r = await assumirLideranca(); } catch (e) { r = { ok: false, dono: "?", erro: e.message }; }
     if (r.ok) break;
     papel = "reserva";
+    await sinalPC().catch(() => {});
     // Se o PC principal não tem o login do Revendi e este tem, a leitura do Revendi roda daqui
     // (só grava no Firebase; o principal posta no Discord).
     if (revendiAtivo()) {
@@ -2293,19 +2494,24 @@ async function iniciar() {
         if (!st?.revendi) await sincronizarRevendi((t) => log("reserva · " + t));
       } catch (e) { log("reserva · Revendi: " + e.message); }
     }
-    const msg = r.erro ? `reserva: sem acesso ao Firebase (${r.erro}); tentando de novo` : `reserva: o PC "${r.dono}" está com o bot; assumo se ele ficar 3 min sem sinal`;
+    const msg = r.erro ? `reserva: sem acesso ao Firebase (${r.erro}); tentando de novo` : `reserva: o PC "${r.dono}" está com o bot; assumo se ele ficar ${LIDER_EXPIRA / 1000} s sem sinal`;
     if (msg !== aviso) { log(msg); aviso = msg; }
-    await new Promise((ok) => setTimeout(ok, 60000));
+    await new Promise((ok) => setTimeout(ok, BATIDA_LIDER));
   }
   papel = "principal";
-  log(`principal: este PC (${PC}) está com o bot`);
-  // Renova a cada minuto. Se outro PC assumiu (este ficou sem rede ou dormiu), sai e volta como reserva.
+  log(`principal: este PC (${PC}) está com o bot (prioridade ${PRIORIDADE}${fixoAqui ? ", troca manual" : ""})`);
+  // Renova a cada 10 s. Se outro PC assumiu ou pediu o bot (o preferido voltou), sai e volta como reserva.
   setInterval(async () => {
     try {
+      await sinalPC().catch(() => {});
       const r = await assumirLideranca();
-      if (!r.ok) { log(`o PC "${r.dono}" assumiu o bot; este volta para a reserva`); client.destroy(); process.exit(0); }
+      if (!r.ok) {
+        log(r.entregou ? `entregando o bot para "${r.dono}" (PC preferido voltou); este volta para a reserva` : `o PC "${r.dono}" assumiu o bot; este volta para a reserva`);
+        if (r.entregou) await avisarLog(`🔁 O PC **${r.dono}** voltou e pegou o bot de volta (${PC} fica de reserva).`).catch(() => {});
+        client.destroy(); process.exit(0);
+      }
     } catch (e) { log("revezamento: " + e.message); }
-  }, 60000);
+  }, BATIDA_LIDER);
   await carregarEstado();
   return client.login(TOKEN);
 }
