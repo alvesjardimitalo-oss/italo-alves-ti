@@ -211,6 +211,7 @@ def rodape(raiz, extra_js=''):
       <div><h4>Atendimento</h4><ul>
         <li><a href="#fale-comigo" data-abrir-chat>Fale comigo</a></li>
         <li><a href="{raiz}acompanhar.html">Acompanhar minha OS</a></li>
+        {f'<li><a href="{raiz}discord/">Atendimento no Discord</a></li>' if SITE.get('discord') else ''}
         <li><a href="{raiz}problemas/">Sintomas e problemas comuns</a></li>
         <li><a href="{raiz}servicos/">Todos os serviços</a></li>
         <li><a href="{raiz}ferramentas/checkup.html">Check-up do computador</a></li>
@@ -680,6 +681,55 @@ def montar_sitemap():
     return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + ''.join(linhas) + '</urlset>\n'
 
 
+def gerar_discord():
+    dc = SITE.get('discord') or {}
+    if not dc.get('servidor_id'):
+        return
+    convite = dc.get('convite') or ''
+    pg = head(f'Atendimento no Discord · {NOME}', f'Entre no servidor da {NOME} no Discord: abra um ticket, fale por call, acompanhe sua OS e receba avisos do conserto.', 'discord/', '../') + f'''
+  <main>
+    <div class="artigo-hero"><div class="wrap">
+      <div class="crumb"><a href="../">início</a> / discord</div>
+      <h1>Atendimento no Discord</h1>
+      <p>Abra um ticket, fale por call e acompanhe o conserto do seu equipamento — tudo em um só lugar.</p>
+    </div></div>
+    <div class="wrap pagina-larga">
+      <article class="conteudo">
+        <div class="card" style="text-align:center;padding:32px 22px">
+          <img src="../assets/img/logo.svg" width="72" height="72" alt="" style="margin:0 auto 12px">
+          <h2 style="margin-top:0">Servidor da {e(NOME)}</h2>
+          <p id="dc-online" class="sub" aria-live="polite">Atendimento 24 horas</p>
+          <a id="dc-entrar" class="btn btn-pri" href="{e(convite) or '#'}" target="_blank" rel="noopener" style="margin-top:10px;min-width:240px">Entrar no Discord</a>
+          <p id="dc-erro" class="sub" style="margin-top:14px" hidden>Não consegui carregar o convite agora. <a href="#fale-comigo" data-abrir-chat>Fale comigo</a> ou chame no WhatsApp.</p>
+        </div>
+        <h2>O que você encontra lá</h2>
+        <ul>
+          <li><strong>Tickets de atendimento:</strong> um canal privado só seu com a equipe, onde dá para mandar fotos e prints do problema.</li>
+          <li><strong>Atendimento por call:</strong> entre na sala de espera e um técnico te chama para conversar.</li>
+          <li><strong>Diagnóstico rápido:</strong> dicas na hora para os problemas mais comuns.</li>
+          <li><strong>Sua OS em tempo real:</strong> consulte a ordem de serviço e receba aviso no Discord a cada mudança, inclusive o orçamento para aprovar com um clique.</li>
+          <li><strong>Novidades e promoções</strong> em primeira mão.</li>
+        </ul>
+        <p class="sub">Não usa Discord? Sem problema: o atendimento continua pelo <a href="#fale-comigo" data-abrir-chat>Fale comigo</a> e pelo WhatsApp.</p>
+      </article>
+    </div>
+  </main>
+''' + rodape('../', f'''
+  <script>
+  (function () {{
+    var b = document.getElementById('dc-entrar'), o = document.getElementById('dc-online'), er = document.getElementById('dc-erro');
+    var fixo = {json.dumps(convite)};
+    fetch('https://discord.com/api/guilds/{e(dc["servidor_id"])}/widget.json').then(function (r) {{ return r.ok ? r.json() : null; }}).then(function (w) {{
+      var link = (w && w.instant_invite) || fixo;
+      if (!link) {{ er.hidden = false; b.setAttribute('aria-disabled', 'true'); return; }}
+      b.href = link;
+      if (w && w.presence_count) o.textContent = w.presence_count + ' online agora · Atendimento 24 horas';
+    }}).catch(function () {{ if (!fixo) er.hidden = false; }});
+  }})();
+  </script>''')
+    gravar('discord/index.html', pg)
+
+
 def gerar_apoio():
     # Varre todas as páginas públicas (inclusive as criadas à mão, como
     # desenvolvimento/, planos/ e agendar/) em vez de usar uma lista fixa.
@@ -705,6 +755,7 @@ if __name__ == '__main__':
     gerar_catalogos()
     gerar_ferramentas()
     gerar_institucionais()
+    gerar_discord()
     gerar_apoio()
     salvar_manifesto()
     if PRESERVADAS:
