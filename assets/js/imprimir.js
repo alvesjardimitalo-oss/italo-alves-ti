@@ -105,6 +105,15 @@ function blocoAcompanhar(codigo) {
       <div class="copia">${esc(url.replace(/^https?:\/\//, ''))}</div></div></section>`;
 }
 
+function blocoDiscord() {
+  const url = 'https://italoinfotec.com.br/discord/';
+  const tam = formato === '80' ? 96 : 76;
+  return `<section class="pix"><div class="pix-qr">${qrSvg(url, { tamanho: tam })}</div>
+    <div class="pix-txt"><div class="pix-tit">Atendimento no Discord</div>
+      <div class="pequeno">Abra um ticket, fale por call e receba os avisos da sua OS no celular.</div>
+      <div class="copia">italoinfotec.com.br/discord</div></div></section>`;
+}
+
 /* ---------------- Documentos ---------------- */
 function docEntrada() {
   const os = store.get('os', id);
@@ -116,6 +125,7 @@ function docEntrada() {
     + blocoCliente(cli) + blocoEquip(os)
     + texto('Defeito relatado pelo cliente', os.defeito || '-')
     + blocoAcompanhar(os.codigo)
+    + blocoDiscord()
     + (termos.length ? secao('Termos', `<ol class="termos">${termos.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>`) : '')
     + assinaturas([cli.nome, 'Cliente'], [e.nome, 'Recebido em ' + dataBR(os.entrada)])
     + rodape(formato === '80' ? '<div class="pequeno forte">Apresente este comprovante na retirada.</div>' : '');
@@ -167,6 +177,7 @@ function docNota() {
     ])
     + secao('Garantia', `<p class="pequeno just">${n.garantiaDias ? `Garantia de <b>${n.garantiaDias} dias</b> para os serviços executados, válida até <b>${dataBR(n.garantiaAte)}</b>, mediante apresentação desta nota. Não cobre mau uso, quedas, líquidos, surtos elétricos ou violação por terceiros.` : 'Serviço sem garantia.'}</p>`)
     + (n.saldo > 0 && !n.cancelada ? blocoPix(n.saldo, 'NS' + n.numero) : '')
+    + blocoDiscord()
     + assinaturas([n.cliente?.nome || '', 'Recebi o equipamento e o serviço'], formato === 'a4' ? [e.nome, `${e.cidade}, ${dataExtenso(n.conclusao || n.emitidaEm)}`] : null)
     + rodape();
 }
