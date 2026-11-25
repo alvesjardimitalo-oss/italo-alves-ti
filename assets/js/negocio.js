@@ -2,6 +2,7 @@
 import { store } from './store.js';
 import { round2, situacaoPagamento, norm, STATUS_OS_ABERTO } from './util.js';
 import { idRastreio } from './rastreio-hash.js';
+import { pixPayload } from './pix.js';
 
 export const pagamentosDo = (orcId) => store.lista('pagamentos').filter((p) => p.orcamentoId === orcId)
   .sort((a, b) => (a.data || '').localeCompare(b.data || '') || (a.numero || 0) - (b.numero || 0));
@@ -87,6 +88,7 @@ export async function publicarRastreio(osId) {
   if (os.rastreioId && os.rastreioId !== id) await store.apagarDoc('rastreio', os.rastreioId).catch(() => {});
   if (!id) return;
   const orc = orcamentosDaOS(osId).find((o) => o.status !== 'Cancelado');
+  const documentos = documentosPublicos(os);
   await store.definir('rastreio', id, {
     codigo: os.codigo,
     equipamento: [os.equipamento, os.marca].filter(Boolean).join(' '),
@@ -95,9 +97,68 @@ export async function publicarRastreio(osId) {
     saida: os.saida || '',
     recado: os.recado || '',
     orcamento: orc ? { numero: orc.numero, status: orc.status, total: orc.total } : null,
+    documentos,
     atualizadoEm: new Date().toISOString(),
   });
   if (os.rastreioId !== id) await store.atualizar('os', osId, { rastreioId: id }, { semGatilho: true });
+}
+
+/* Documentos que o cliente vê no "Acompanhar OS": comprovante de entrada,
+   orçamentos, notas de serviço e recibos. Ficam no mesmo documento público do
+   rastreio (que só abre com código da OS + telefone) e levam SÓ o que é do
+   serviço: nada de nome, CPF, telefone ou endereço do cliente. */
+const itensPublicos = (itens = []) => itens.map((i) => ({
+  descricao: String(i.descricao || ''), tipo: String(i.tipo || ''), qtd: Number(i.qtd) || 0, valor: Number(i.valor) || 0,
+}));
+function pixPublico(valor, txid) {
+  const e = empresa();
+  if (!(valor > 0.004)) return '';
+  return pixPayload({ chave: e.pixChave, nome: e.pixNome, cidade: e.pixCidade, valor, txid }) || '';
+}
+function somaDiasISO(iso, dias) {
+  if (!iso || !dias) return '';
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00');
+  d.setDate(d.getDate() + Number(dias));
+  return d.toISOString().slice(0, 10);
+}
+export function documentosPublicos(os) {
+  const e = empresa();
+  const orcs = orcamentosDaOS(os.id).filter((o) => o.status !== 'Cancelado');
+  const orcamentos = orcs.map((o) => {
+    const pago = pagoDo(o.id);
+    const saldo = Math.max(0, round2((Number(o.total) || 0) - pago));
+    return {
+      numero: o.numero, data: o.data || '', status: o.status || '',
+      validade: o.validadeDias ? somaDiasISO(o.data, o.validadeDias) : '',
+      itens: itensPublicos(o.itens), subtotal: Number(o.subtotal) || 0, desconto: Number(o.desconto) || 0,
+      total: Number(o.total) || 0, pago, saldo, obs: o.obs || '', diagnostico: os.laudo || '',
+      pix: o.status === 'Aprovado' ? pixPublico(saldo, 'ORC' + o.numero) : '',
+    };
+  });
+  const idsOrc = new Set(orcs.map((o) => o.id));
+  const notas = store.lista('notas').filter((n) => n.osId === os.id || idsOrc.has(n.orcamentoId))
+    .sort((a, b) => (a.numero || 0) - (b.numero || 0))
+    .map((n) => ({
+      numero: n.numero, emitidaEm: n.emitidaEm || '', conclusao: n.conclusao || '', orcamentoNumero: n.orcamentoNumero || '',
+      cancelada: !!n.cancelada, motivoCancelamento: n.cancelada ? (n.motivoCancelamento || '') : '',
+      itens: itensPublicos(n.itens), subtotal: Number(n.subtotal) || 0, desconto: Number(n.desconto) || 0,
+      total: Number(n.total) || 0, pago: Number(n.pago) || 0, saldo: Number(n.saldo) || 0,
+      pagamentos: (n.pagamentos || []).map((p) => ({ data: p.data || '', forma: p.forma || '', valor: Number(p.valor) || 0 })),
+      garantiaDias: Number(n.garantiaDias) || 0, garantiaAte: n.garantiaAte || '', servico: n.equipamento?.laudo || '',
+      pix: !n.cancelada ? pixPublico(Number(n.saldo) || 0, 'NS' + n.numero) : '',
+    }));
+  const recibos = orcs.flatMap((o) => pagamentosDo(o.id).map((p) => ({
+    numero: p.numero, data: p.data || '', forma: p.forma || '', valor: Number(p.valor) || 0, orcamentoNumero: o.numero,
+  })));
+  return {
+    empresa: { nome: e.nome, documento: e.documento, endereco: e.endereco, cidade: e.cidade, uf: e.uf, telefone: e.telefone, email: e.email, rodape: e.rodape },
+    entrada: {
+      codigo: os.codigo, data: os.entrada || '',
+      equipamento: [os.equipamento || os.tipo, os.marca, os.modelo].filter(Boolean).join(' '),
+      serie: os.serie || '', acessorios: os.acessorios || '', defeito: os.defeito || '',
+    },
+    orcamentos, notas, recibos,
+  };
 }
 
 /** Link público para o cliente acompanhar a OS. */

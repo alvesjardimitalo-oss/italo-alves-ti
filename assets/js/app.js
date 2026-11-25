@@ -228,6 +228,9 @@ $('#btn-login').addEventListener('click', async () => {
 // "Acompanhar OS" do site: toda OS gravada (ou orçamento dela) atualiza o status público
 store.aposGravar('os', (id) => publicarRastreio(id));
 store.aposGravar('orcamentos', (id) => { const o = store.get('orcamentos', id); if (o) publicarRastreio(o.osId); });
+// Nota de serviço e pagamento também mudam o que o cliente vê em "Acompanhar OS" (documentos e saldo).
+store.aposGravar('notas', (id) => { const n = store.get('notas', id); const os = n && (n.osId || store.get('orcamentos', n.orcamentoId)?.osId); if (os) publicarRastreio(os); });
+store.aposGravar('pagamentos', (id) => { const p = store.get('pagamentos', id); const os = p && store.get('orcamentos', p.orcamentoId)?.osId; if (os) publicarRastreio(os); });
 
 let iniciado = false;
 $('#view').innerHTML = '<div class="carregando"><div class="spinner"></div>carregando…</div>';

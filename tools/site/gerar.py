@@ -481,7 +481,7 @@ def gerar_institucionais():
           <button class="btn btn-pri" type="submit">Consultar</button>
         </form>
         <div id="resultado-rastreio" aria-live="polite"></div>
-        <p class="sub" style="margin-top:18px">A consulta exige o código da OS e o telefone cadastrado. Exibimos status, equipamento, datas, orçamento e recados quando disponíveis, sem nome, CPF ou endereço.</p>''',
+        <p class="sub" style="margin-top:18px">A consulta exige o código da OS e o telefone cadastrado. Exibimos status, equipamento, datas, recados e os documentos da OS (comprovante de entrada, orçamento, nota de serviço e recibos, com PIX do saldo), sem nome, CPF ou endereço.</p>''',
                    extra_js=f'\n  <script type="module" src="assets/js/ferramentas/rastreio.js?v={V}"></script>')
 
     # Garantia
