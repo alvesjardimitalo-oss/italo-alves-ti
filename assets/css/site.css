@@ -477,3 +477,55 @@ video.cam { width: 100%; max-width: 560px; border-radius: 12px; background: #000
 .video-capa iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .artigo-video{margin:28px 0}.artigo-video .video-capa{min-height:180px}
 @media(max-width:700px){.inicio-videos{padding:36px 0}.video-capa{min-height:175px}}
+
+/* Acompanhar OS: documentos da OS (orçamento, nota de serviço, recibos) */
+.docs-os { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 18px; }
+.docs-os h3 { margin: 0 0 2px; }
+.docs-os > .sub { margin: 0 0 12px; }
+.docs-lista { display: grid; gap: 10px; }
+.doc-item { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); }
+.doc-item.doc-destaque { border-color: rgba(34, 211, 238, .6); box-shadow: 0 0 0 1px rgba(34, 211, 238, .25); }
+.doc-ico { font-size: 1.4rem; }
+.doc-txt b { display: block; }
+.doc-txt small { color: var(--text-2); }
+.doc-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.doc-acoes .btn { padding: 8px 12px; font-size: .85rem; }
+.doc-corpo { grid-column: 1 / -1; margin-top: 8px; background: #fff; color: #111; border-radius: 10px; padding: 18px; font-size: .9rem; }
+.doc-corpo .doc-cab { display: flex; justify-content: space-between; gap: 12px; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.doc-corpo .doc-cab small { display: block; color: #555; }
+.doc-corpo .doc-emp { font-weight: 800; font-size: 1.05rem; }
+.doc-corpo .doc-num { text-align: right; }
+.doc-corpo .doc-num b, .doc-corpo .doc-num span { display: block; }
+.doc-corpo .doc-kv { display: grid; grid-template-columns: 130px 1fr; gap: 4px 10px; margin: 8px 0; }
+.doc-corpo .doc-kv dt { color: #555; }
+.doc-corpo .doc-kv dd { margin: 0; font-weight: 600; }
+.doc-corpo h4 { margin: 12px 0 6px; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: #333; }
+.doc-corpo .doc-caixa { border: 1px solid #ccc; border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; }
+.doc-corpo .doc-tab { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.doc-corpo .doc-tab th, .doc-corpo .doc-tab td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
+.doc-corpo .doc-tab small { display: block; color: #666; }
+.doc-corpo .doc-tab .c { text-align: center; }
+.doc-corpo .doc-tab .r { text-align: right; white-space: nowrap; }
+.doc-corpo .doc-totais { margin-left: auto; max-width: 320px; }
+.doc-corpo .doc-totais div { display: flex; justify-content: space-between; padding: 3px 0; }
+.doc-corpo .doc-totais .tot { font-weight: 800; font-size: 1.05rem; border-top: 2px solid #111; margin-top: 4px; padding-top: 6px; }
+.doc-corpo .doc-totais .forte { font-weight: 700; }
+.doc-corpo .doc-pix { display: flex; gap: 14px; align-items: center; border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin-top: 12px; flex-wrap: wrap; }
+.doc-corpo .doc-pix p { margin: 4px 0; }
+.doc-corpo .doc-copia { display: block; word-break: break-all; font-size: .7rem; color: #333; margin: 6px 0; }
+.doc-corpo .doc-pix .btn { color: #fff; background: #0f1729; }
+.doc-corpo .doc-aviso { text-align: center; font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: #555; }
+.doc-corpo .doc-cancelada { text-align: center; font-weight: 800; color: #b00; border: 2px solid #b00; padding: 6px; margin-bottom: 8px; }
+.doc-corpo .doc-valor { font-size: 1.6rem; font-weight: 800; text-align: center; margin: 10px 0; }
+.doc-corpo .doc-just { text-align: justify; }
+#resultado-rastreio .doc-corpo :is(p, dd, td, b, li) { color: #1a1a1a; }
+.doc-corpo { overflow-x: auto; }
+@media (max-width: 560px) {
+  .doc-item { grid-template-columns: auto 1fr; }
+  .doc-acoes { grid-column: 1 / -1; justify-content: stretch; }
+  .doc-acoes .btn { flex: 1; }
+  .doc-corpo { padding: 14px; font-size: .85rem; }
+  .doc-corpo .doc-kv { grid-template-columns: 110px 1fr; }
+  .doc-corpo .doc-tab th:nth-child(3), .doc-corpo .doc-tab td:nth-child(3) { display: none; }
+  .doc-corpo .doc-num { text-align: left; }
+}

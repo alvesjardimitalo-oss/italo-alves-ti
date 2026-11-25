@@ -1,7 +1,7 @@
 {
  "gerador": {
   "404.html": "4733c64931949261ad82985b03d614eac053d0ab97ddf79ffe28af441090ceb6",
-  "acompanhar.html": "a50bcf7f6ea72ed85d327726f84fe211354a12498afdfa8e5e18bfdfd430f146",
+  "acompanhar.html": "d87d29fd7f2c53e6f99b6ddefdfe4b504f94a8bea0d81fbfd140482f81252251",
   "assets/js/site-config.js": "1dd1c6c87afbe923f34b9110c438cadd1917f61e3124e6551653ed75040dbe98",
   "atendimento/frei-inocencio-mg.html": "bdce8d55edc844485d3f01fa767617d568dafc184d50827fac1fc0f18d9cafd0",
   "atendimento/index.html": "9fc98e52976dff6b95c8f199eeff7af26e4c8d6899112cb97f2f58b7e7b14bf2",
@@ -25,13 +25,13 @@
   "politica-de-privacidade.html": "a415f4525b1e0aff55d82da01b7baba29f6a2d0adfcf40157909cf721b4d108a",
   "robots.txt": "105133b1be3661610b966a5e12897f6a0811f91c29d7a16f5fac1d4545e922cd",
   "site.webmanifest": "2bc3f5606fa5a6c797863e577e638ac4f160818979e65dc75c7294b7626bef4e",
-  "sitemap.xml": "ce2bb877b67f265e57f5986c5522b6246ec9d28c04ce540de4c16090f052c177",
+  "sitemap.xml": "2a37034f352bef0d51438bcab27dd7fda58c512a1d7816b5d45af13436b58be7",
   "sobre.html": "b183bf50b6a21eadb1338187d7dac7617b5794072ee114803b6d3fb30f1cb4a9",
   "suporte-remoto.html": "bb423d0f9c68a66642a0c4df1121b636263daf8b20381b6f9d365aed0fe6ab0c"
  },
  "sitemap": {
   "https://italoinfotec.com.br/": "51a27f0dda9df834e1a70441ae2d48b86977fc4f6224c11f7fd2e8ebcab87ffc",
-  "https://italoinfotec.com.br/acompanhar.html": "a50bcf7f6ea72ed85d327726f84fe211354a12498afdfa8e5e18bfdfd430f146",
+  "https://italoinfotec.com.br/acompanhar.html": "d87d29fd7f2c53e6f99b6ddefdfe4b504f94a8bea0d81fbfd140482f81252251",
   "https://italoinfotec.com.br/agendar/": "6f62d241affb8e4dfbc413be7575c2f506b86447c25150b81f1d7aedb238d09f",
   "https://italoinfotec.com.br/analise/": "81d70b13c9b2dd952ec981a9053c51dca00f0ccf393ee42a1c346b28a2d528ed",
   "https://italoinfotec.com.br/atendimento-pessoal/": "977ffffa7509fdd93e4975b0c8ac1b4512ccc2aa497fc58c3d357b89b890aead",
